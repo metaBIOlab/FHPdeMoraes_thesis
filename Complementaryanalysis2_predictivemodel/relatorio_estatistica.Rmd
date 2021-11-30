@@ -1,0 +1,793 @@
+---
+title: "Relatorio estatitica"
+author: "Fernanda"
+date: "31 de julho de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(plyr)
+
+library(dplyr)
+
+library(tidyr)
+
+library(stringi)
+
+library(tidyverse)
+
+library(modelr)
+
+library(ggpubr)
+
+library(readr)
+
+library(stringr)
+
+library(ggridges)
+
+library(jtools)
+
+library(purrr)
+
+library(funModeling)
+
+library(Hmisc)
+
+library(lubridate)
+
+library(ggplot2)
+
+library(data.table)
+
+library(ggrepel)
+
+library(magrittr)
+
+library(Rmisc)
+
+library(WRS2)
+
+library(car)
+
+library(effsize)
+
+library(pander)
+
+library(knitr)
+
+library(kableExtra)
+
+library(plotly)
+
+library(sjstats)
+
+library(MASS)
+
+library(broom)
+
+library(pwr)
+```
+
+# Aplicacao do modelo universal na Sample IDOR
+
+A Sample Mota&Houzel2015 contem informacoes de varios mamiferos e de dois ou tres humanos. As demais, sao unicamente infomracoes de humanos, mas um deles nao veio com a idade, so com um intervalo. Assim. criei essa variavel Age_interval para comparar o K e a inclinacao (alpha) pela idades.
+
+```{r comp1, echo=FALSE, message=FALSE, warning=FALSE}
+dados_datasetscomp <- read_csv("dados_datasetscomp.csv", 
+                               col_types = cols(X1 = col_skip())) #
+
+# aplicacao do modelo para todas as especies (dataset do IDOR + datasets para comparacao + dataset Mota&Houzel2015)
+ggplot(dados_datasetscomp, aes(logExposedArea,
+                               1/2*logAvgThickness +logTotalArea, color = Sample)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_pubclean()
+
+fit_comp <-
+  lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_datasetscomp, na.action=na.omit)
+
+summary(fit_comp)
+```
+
+A inclinacao da reta esta proxima ao valor teorico de 1.25.
+Verificando a inclinacao de cada Sample:
+
+```{r comp amostras, echo=FALSE, message=FALSE, warning=FALSE}
+
+# aplicacao do modelo para todos os humanos (dataset do IDOR + datasets para comparacao )
+ggplot(filter(dados_datasetscomp,
+              Sample != "Mota&Houzel2015"),
+       aes(logExposedArea,
+           1 / 2 * logAvgThickness + logTotalArea, color = Sample)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_pubclean()
+
+lm_amostra <- dados_datasetscomp  %>%
+  group_by(Sample) %>%
+  do(fit_amostra = lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action=na.omit))
+
+amostra_Coef = tidy(lm_amostra,
+                    fit_amostra,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+amostra_Coef
+```
+
+OBS: todos so diagnosticos estao sendo considerados, ja que o modelo se propoe a ser uma regra universal.
+
+# Existe diferenca entre diagnosticos?
+
+OBS2: A variavel localGI é essencial para aplicacao do modelo, pois a partir dela calculamos a ExposedArea, mas tivemos que reprocessar todos os sujeitos e alguns ainda estao sem informacao. Quando está = 0 significa que noa processou, eu forcei a extracao de algum valor pelo software de processamento, entao vou ignorar os 0s por enquanto.
+
+E o que faze rcom os NaNs e Infs?
+```{r import dados, echo=FALSE, message=FALSE, warning=FALSE}
+dados <- read_csv("dados.csv", col_types = cols(X1 = col_skip()))	
+
+dados <- filter(dados , localGI != 0)
+
+```
+
+```{r deagin processing, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# esse codigo faz todo oprocessamento do deaging baseado na tabela dados, para incluir as outras ROIs. nesse exemplo nao vou colocar as outras ROIs para nao ficar muito longo, mas faz a mesma comparacao entre grupos de novo
+# area exposta ####
+# taxa de caimento da girificacao (log K teorico)---
+
+decay_ExposedArea <- dados  %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_ExposedArea = rlm(logExposedArea_corrected ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ---
+decay_ExposedArea_Coef = tidy(decay_ExposedArea,
+                             fit_decay_ExposedArea,
+                conf.int = TRUE,
+                conf.level = 0.95)
+decay_ExposedArea_Coef
+
+decay_ExposedArea_Pred = augment(decay_ExposedArea, fit_decay_ExposedArea)
+decay_ExposedArea_Pred
+
+decay_ExposedArea_R2 = glance(decay_ExposedArea, fit_decay_ExposedArea)
+decay_ExposedArea_R2
+
+# lambda, b e Ko CTL ---
+
+lambda_Ae_CTL_hemi <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "Age"&
+                                     decay_ExposedArea_Coef$ROI == "hemisphere"]
+
+b_Ae_CTL_hemi <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "(Intercept)"&
+                                     decay_ExposedArea_Coef$ROI == "hemisphere"]
+
+t0_CTL_hemi <- exp(b_Ae_CTL_hemi)
+
+lambda_Ae_CTL_F <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "Age"&
+                                     decay_ExposedArea_Coef$ROI == "F"]
+
+b_Ae_CTL_F <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "(Intercept)"&
+                                     decay_ExposedArea_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_Ae_CTL_F)
+
+lambda_Ae_CTL_F <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "Age"&
+                                     decay_ExposedArea_Coef$ROI == "F"]
+
+b_Ae_CTL_F <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "(Intercept)"&
+                                     decay_ExposedArea_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_Ae_CTL_F)
+
+lambda_Ae_CTL_O <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "Age"&
+                                     decay_ExposedArea_Coef$ROI == "O"]
+
+b_Ae_CTL_O <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "(Intercept)"&
+                                     decay_ExposedArea_Coef$ROI == "O"]
+
+t0_CTL_O <- exp(b_Ae_CTL_O)
+
+lambda_Ae_CTL_P <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "Age"&
+                                     decay_ExposedArea_Coef$ROI == "P"]
+
+b_Ae_CTL_P <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "(Intercept)"&
+                                     decay_ExposedArea_Coef$ROI == "P"]
+
+t0_CTL_P <- exp(b_Ae_CTL_P)
+
+lambda_Ae_CTL_T <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "Age"&
+                                     decay_ExposedArea_Coef$ROI == "T"]
+
+b_Ae_CTL_T <-
+  decay_ExposedArea_Coef$estimate[decay_ExposedArea_Coef$Diagnostic == "CONTROLE"&
+                                     decay_ExposedArea_Coef$term == "(Intercept)"&
+                                     decay_ExposedArea_Coef$ROI == "T"]
+
+t0_CTL_T <- exp(b_Ae_CTL_T)
+
+# area total ####
+# taxa de caimento da girificacao (log K teorico)---
+
+decay_TotalArea <- dados  %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_TotalArea = rlm(logTotalArea_corrected ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ---
+decay_TotalArea_Coef = tidy(decay_TotalArea,
+                            fit_decay_TotalArea,
+                            conf.int = TRUE,
+                            conf.level = 0.95)
+decay_TotalArea_Coef
+
+decay_TotalArea_Pred = augment(decay_TotalArea, fit_decay_TotalArea)
+decay_TotalArea_Pred
+
+decay_TotalArea_R2 = glance(decay_TotalArea, fit_decay_TotalArea)
+decay_TotalArea_R2
+
+# lambda, b e Ko CTL ---
+
+lambda_At_CTL_hemi <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "Age"&
+                                  decay_TotalArea_Coef$ROI == "hemisphere"]
+
+b_At_CTL_hemi <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "(Intercept)"&
+                                  decay_TotalArea_Coef$ROI == "hemisphere"]
+
+t0_CTL_hemi <- exp(b_At_CTL_hemi)
+
+lambda_At_CTL_F <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "Age"&
+                                  decay_TotalArea_Coef$ROI == "F"]
+
+b_At_CTL_F <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "(Intercept)"&
+                                  decay_TotalArea_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_At_CTL_F)
+
+lambda_At_CTL_F <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "Age"&
+                                  decay_TotalArea_Coef$ROI == "F"]
+
+b_At_CTL_F <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "(Intercept)"&
+                                  decay_TotalArea_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_At_CTL_F)
+
+lambda_At_CTL_O <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "Age"&
+                                  decay_TotalArea_Coef$ROI == "O"]
+
+b_At_CTL_O <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "(Intercept)"&
+                                  decay_TotalArea_Coef$ROI == "O"]
+
+t0_CTL_O <- exp(b_At_CTL_O)
+
+lambda_At_CTL_P <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "Age"&
+                                  decay_TotalArea_Coef$ROI == "P"]
+
+b_At_CTL_P <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "(Intercept)"&
+                                  decay_TotalArea_Coef$ROI == "P"]
+
+t0_CTL_P <- exp(b_At_CTL_P)
+
+lambda_At_CTL_T <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "Age"&
+                                  decay_TotalArea_Coef$ROI == "T"]
+
+b_At_CTL_T <-
+  decay_TotalArea_Coef$estimate[decay_TotalArea_Coef$Diagnostic == "CONTROLE"&
+                                  decay_TotalArea_Coef$term == "(Intercept)"&
+                                  decay_TotalArea_Coef$ROI == "T"]
+
+t0_CTL_T <- exp(b_At_CTL_T)
+# espessura ####
+# taxa de caimento da girificacao (espessura)---
+
+decay_AvgThickness <- dados  %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_AvgThickness = rlm(logAvgThickness ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ---
+decay_AvgThickness_Coef = tidy(
+  decay_AvgThickness,
+  fit_decay_AvgThickness,
+  conf.int = TRUE,
+  conf.level = 0.95
+)
+decay_AvgThickness_Coef
+
+decay_AvgThickness_Pred = augment(decay_AvgThickness, fit_decay_AvgThickness)
+decay_AvgThickness_Pred
+
+decay_AvgThickness_R2 = glance(decay_AvgThickness, fit_decay_AvgThickness)
+decay_AvgThickness_R2
+
+# lambda, b e Ko CTL ---
+
+lambda_t_CTL_hemi <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "Age"&
+                                     decay_AvgThickness_Coef$ROI == "hemisphere"]
+
+b_t_CTL_hemi <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "(Intercept)"&
+                                     decay_AvgThickness_Coef$ROI == "hemisphere"]
+
+t0_CTL_hemi <- exp(b_t_CTL_hemi)
+
+lambda_t_CTL_F <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "Age"&
+                                     decay_AvgThickness_Coef$ROI == "F"]
+
+b_t_CTL_F <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "(Intercept)"&
+                                     decay_AvgThickness_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_t_CTL_F)
+
+lambda_t_CTL_F <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "Age"&
+                                     decay_AvgThickness_Coef$ROI == "F"]
+
+b_t_CTL_F <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "(Intercept)"&
+                                     decay_AvgThickness_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_t_CTL_F)
+
+lambda_t_CTL_O <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "Age"&
+                                     decay_AvgThickness_Coef$ROI == "O"]
+
+b_t_CTL_O <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "(Intercept)"&
+                                     decay_AvgThickness_Coef$ROI == "O"]
+
+t0_CTL_O <- exp(b_t_CTL_O)
+
+lambda_t_CTL_P <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "Age"&
+                                     decay_AvgThickness_Coef$ROI == "P"]
+
+b_t_CTL_P <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "(Intercept)"&
+                                     decay_AvgThickness_Coef$ROI == "P"]
+
+t0_CTL_P <- exp(b_t_CTL_P)
+
+lambda_t_CTL_T <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "Age"&
+                                     decay_AvgThickness_Coef$ROI == "T"]
+
+b_t_CTL_T <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE"&
+                                     decay_AvgThickness_Coef$term == "(Intercept)"&
+                                     decay_AvgThickness_Coef$ROI == "T"]
+
+t0_CTL_T <- exp(b_t_CTL_T)
+# localGI ####
+# taxa de caimento da girificacao (espessura)---
+
+decay_localGI <- dados  %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_localGI = lm(localGI ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ---
+decay_localGI_Coef = tidy(
+  decay_localGI,
+  fit_decay_localGI,
+  conf.int = TRUE,
+  conf.level = 0.95
+)
+decay_localGI_Coef
+
+decay_localGI_Pred = augment(decay_localGI, fit_decay_localGI)
+decay_localGI_Pred
+
+decay_localGI_R2 = glance(decay_localGI, fit_decay_localGI)
+decay_localGI_R2
+
+# lambda, b e Ko CTL ---
+
+lambda_lGI_CTL_hemi <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "Age"&
+                                     decay_localGI_Coef$ROI == "hemisphere"]
+
+b_lGI_CTL_hemi <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "(Intercept)"&
+                                     decay_localGI_Coef$ROI == "hemisphere"]
+
+t0_CTL_hemi <- exp(b_lGI_CTL_hemi)
+
+lambda_lGI_CTL_F <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "Age"&
+                                     decay_localGI_Coef$ROI == "F"]
+
+b_lGI_CTL_F <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "(Intercept)"&
+                                     decay_localGI_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_lGI_CTL_F)
+
+lambda_lGI_CTL_F <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "Age"&
+                                     decay_localGI_Coef$ROI == "F"]
+
+b_lGI_CTL_F <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "(Intercept)"&
+                                     decay_localGI_Coef$ROI == "F"]
+
+t0_CTL_F <- exp(b_lGI_CTL_F)
+
+lambda_lGI_CTL_O <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "Age"&
+                                     decay_localGI_Coef$ROI == "O"]
+
+b_lGI_CTL_O <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "(Intercept)"&
+                                     decay_localGI_Coef$ROI == "O"]
+
+t0_CTL_O <- exp(b_lGI_CTL_O)
+
+lambda_lGI_CTL_P <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "Age"&
+                                     decay_localGI_Coef$ROI == "P"]
+
+b_lGI_CTL_P <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "(Intercept)"&
+                                     decay_localGI_Coef$ROI == "P"]
+
+t0_CTL_P <- exp(b_lGI_CTL_P)
+
+lambda_lGI_CTL_T <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "Age"&
+                                     decay_localGI_Coef$ROI == "T"]
+
+b_lGI_CTL_T <-
+  decay_localGI_Coef$estimate[decay_localGI_Coef$Diagnostic == "CONTROLE"&
+                                     decay_localGI_Coef$term == "(Intercept)"&
+                                     decay_localGI_Coef$ROI == "T"]
+
+t0_CTL_T <- exp(b_lGI_CTL_T)
+# CORRIGINDO OS PARAMETROS PELA IDADE ####
+# AvgThickness ---
+
+dados <- mutate(dados,
+                logAvgThickness_age_decay = as.numeric(
+                  ifelse(
+                    dados$ROI == "hemisphere",
+                    dados$logAvgThickness - lambda_t_CTL_hemi * (dados$Age - Idade),
+                    ifelse(
+                      dados$ROI == "F",
+                      dados$logAvgThickness  - lambda_t_CTL_F * (dados$Age - Idade),
+                      ifelse(
+                        dados$ROI == "O",
+                        dados$logAvgThickness  - lambda_t_CTL_O * (dados$Age - Idade),
+                        ifelse(
+                          dados$ROI == "P",
+                          dados$logAvgThickness  - lambda_t_CTL_P * (dados$Age - Idade),
+                          dados$logAvgThickness  - lambda_t_CTL_T * (dados$Age - Idade)
+                        )
+                      )
+                    )
+                  )
+                ))
+
+# AreaTotal ---
+
+dados <- mutate(dados,
+                logTotalArea_age_decay = as.numeric(
+                  ifelse(
+                    dados$ROI == "hemisphere",
+                    dados$logTotalArea_corrected - lambda_At_CTL_hemi * (dados$Age - Idade),
+                    ifelse(
+                      dados$ROI == "F",
+                      dados$logTotalArea_corrected - lambda_At_CTL_F * (dados$Age - Idade),
+                      ifelse(
+                        dados$ROI == "O",
+                        dados$logTotalArea_corrected - lambda_At_CTL_O * (dados$Age - Idade),
+                        ifelse(
+                          dados$ROI == "P",
+                          dados$logTotalArea_corrected - lambda_At_CTL_P * (dados$Age - Idade),
+                          dados$logTotalArea_corrected- lambda_At_CTL_T * (dados$Age - Idade)
+                        )
+                      )
+                    )
+                  )
+                ))
+
+# ExposedArea ---
+
+dados <- mutate(dados,
+                logExposedArea_age_decay = as.numeric(
+                  ifelse(
+                    dados$ROI == "hemisphere",
+                    dados$logExposedArea_corrected - lambda_Ae_CTL_hemi * (dados$Age - Idade),
+                    ifelse(
+                      dados$ROI == "F",
+                      dados$logExposedArea_corrected - lambda_Ae_CTL_F * (dados$Age - Idade),
+                      ifelse(
+                        dados$ROI == "O",
+                        dados$logExposedArea_corrected - lambda_Ae_CTL_O * (dados$Age - Idade),
+                        ifelse(
+                          dados$ROI == "P",
+                          dados$logExposedArea_corrected - lambda_Ae_CTL_P * (dados$Age - Idade),
+                          dados$logExposedArea_corrected - lambda_Ae_CTL_T * (dados$Age - Idade)
+                        )
+                      )
+                    )
+                  )
+                ))
+
+# LocalGI ---
+
+dados <- mutate(dados,
+                localGI_age_decay = as.numeric(
+                  ifelse(
+                    dados$ROI == "hemisphere",
+                    dados$localGI - lambda_lGI_CTL_hemi * (dados$Age - Idade),
+                    ifelse(
+                      dados$ROI == "F",
+                      dados$localGI - lambda_lGI_CTL_F * (dados$Age - Idade),
+                      ifelse(
+                        dados$ROI == "O",
+                        dados$localGI - lambda_lGI_CTL_O * (dados$Age - Idade),
+                        ifelse(
+                          dados$ROI == "P",
+                          dados$localGI - lambda_lGI_CTL_P * (dados$Age - Idade),
+                          dados$localGI - lambda_lGI_CTL_T * (dados$Age - Idade)
+                        )
+                      )
+                    )
+                  )
+                ))
+
+# K ---
+
+dados <-
+  mutate(
+    dados,
+    K_age_decay = (
+      dados$log_TotalArea_age_decay + (1 / 2) * dados$log_AvgThickness_age_decay -
+        (5/4 * dados$log_ExposedArea_age_decay)
+    )
+  )
+
+# x e y ---
+dados <- mutate(dados, x_age_decay = dados$log_ExposedArea_age_decay)
+dados <- mutate(dados, y_age_decay = dados$log_TotalArea_age_decay + (1 / 2) * dados$log_AvgThickness_age_decay)
+```
+
+```{r data filtering, message=FALSE, warning=FALSE, include=FALSE}
+dados <-
+  filter(
+    dados,
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" | Diagnostic == "ALZ",
+    RM_Maquina == "Philips"
+  ) # tira os outros diagnosticos que noa serao estudados e as imagens adquiridas na outra maquina, que ainda nao serao estudados tambem
+
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1,
+                        Longitudinal_correction == "no") 
+# apenas as observacoes relacionadas a ROI hemisferio e apenas da primeira visita
+# o longitudinal correction é referente a esse novo processamento. os dados corrigidos longitudinalmete ainda nao estao prontos :$
+# esse dado contem dados longitudinais, proxima etapa do trabalho -> o reprocessamento esta sendo realizado 
+
+```
+
+
+Esses dados tem outras variaveis (ROIs, maquina de aquisicao, Gender, etc...) que vao passar pela mesma rotina de comparacao: primeiro ocmparar as inclinacoes e depois comparar os ks (calculado aqui e defnido por logkteoico) definindo a inclinacao = 1.25.
+
+```{r comp_diagnosticos, echo=FALSE, message=FALSE, warning=FALSE}
+
+dados_lm_diag <- dados_hemi_v1 %>%
+  group_by(Diagnostic) %>%
+  do(fit_diag = lm((1 / 2) * logAvgThickness + logTotalArea ~ logExposedArea, data = .))
+
+# get the coefficients por diagnostico ----
+diag_Coef = tidy(dados_lm_diag,
+                 fit_diag,
+                 conf.int = TRUE,
+                 conf.level = 0.95)
+
+diag_Pred = augment(dados_lm_diag, fit_diag)
+
+diag_R2 = glance(dados_lm_diag, fit_diag)
+
+my_comparisons <-
+  list(c("CONTROLE", "CCL"), c("CONTROLE", "ALZ"), c("CCL", "ALZ"))
+
+diag_Coef %>% kable() %>% kable_styling()
+
+aov_diag <-
+  aov(K ~ Age * Diagnostic, data = dados_hemi_v1)
+tidy(aov_diag)
+
+ggplot(data = dados_hemi_v1,
+                      aes(x = logExposedArea,
+                          y = (1 / 2) * logAvgThickness + logTotalArea,
+                          color = Diagnostic)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              se = FALSE) +
+  labs(
+    title = "Girificacao por diagnostico",
+    subtitle = paste("Diagnostic ANOVA p = ", signif(tidy(aov_diag)$p.value[2], 5))
+  ) +
+  theme_pubclean() +
+  annotate(
+    "text",
+    label = paste(
+      "Slope (CTL)",
+      signif(diag_Coef$estimate[6], 3),
+      "\nSlope (CCL)",
+      signif(diag_Coef$estimate[4], 3) ,
+      "\nSlope (ALZ)",
+      signif(diag_Coef$estimate[2], 3)
+    ),
+    x = 10.5,
+    y = 11.6,
+    size = 3,
+    colour = "black"
+  )+ ylim(11.5, 12.5 )
+
+ggplot(dados_hemi_v1,
+                       mapping = aes(
+                         x = reorder(Diagnostic, K, FUN = median),
+                         y = K,
+                         color = Diagnostic
+                       )) +
+  geom_boxplot() +
+  labs(
+    title = "Comparando o offset log10(K) para cada diagnostico",
+    subtitle = paste("Diagnostic ANOVA p = ", signif(tidy(aov_diag)$p.value[2], 5)),
+    x = "Diagnostico",
+    y = "log Offset(K)"
+  ) +
+  stat_compare_means(comparisons = my_comparisons,
+                     label.y = c(-1,-0.95,-0.90)) +
+  theme_pubclean()
+
+```
+
+Essa ANOVA do grafico é uma das comparacoes que te disse e que fico com duvida. Nesse caso devemos fazer o teste F que voce recomendou?
+
+## Efeito da idade
+Sabemos que a idade influencia a forma do cerebro, e os sujeitos nao estao 100% pareados:
+
+```{r age, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(dados_hemi_v1,
+                       mapping = aes(
+                         x = reorder(Diagnostic, K, FUN = median),
+                         y = Age,
+                         color = Diagnostic
+                       )) +
+  geom_boxplot() +
+  labs(
+    title = "Comparando as idades para cada diagnostico"
+  ) +
+  stat_compare_means(comparisons = my_comparisons) +
+  theme_pubclean()
+
+ggplot(dados_hemi_v1,
+                       mapping = aes(
+                         x = Age,
+                         color = Diagnostic, alpha = 0.3
+                       )) +
+  geom_density() +
+  labs(
+    title = "Comparando as idades para cada diagnostico"
+  ) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1,
+                      aes(x = Age,
+                          y = K,
+                          color = Diagnostic)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              se = FALSE) +
+theme_pubclean()
+
+ggplot(dados_hemi_v1,
+                       mapping = aes(
+                         x = reorder(Diagnostic, K, FUN = median),
+                         y = K,
+                         color = Diagnostic
+                       )) +
+  geom_boxplot() +
+  labs(
+    title = "Comparando o K para cada diagnostico"
+  ) +
+  stat_compare_means(comparisons = my_comparisons) +
+  theme_pubclean()
+```
+
+Realizo uma correcao do efeito da idade supondo que cada sujeito percorre uma trajetoria linear de reducao dok com o envelhecimento saudavel.
+
+```{r deageing, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+ggplot(dados_hemi_v1,
+                       mapping = aes(
+                         x = reorder(Diagnostic, K, FUN = median),
+                         y = K_age_decay,
+                         color = Diagnostic
+                       )) +
+  geom_boxplot() +
+  stat_compare_means(comparisons = my_comparisons,
+                     label.y = c(-1,-0.95,-0.90)) +
+  theme_pubclean()
+
+
+ggplot(data = dados_hemi_v1,
+                      aes(x = Age,
+                          y = K_age_decay,
+                          color = Diagnostic)) +
+  geom_point() +
+  geom_smooth(method = "lm",
+              se = FALSE) +
+theme_pubclean()
+```
+
+OBS3: O codigodo deaging esta dando erro devido a existencia de NaNs e Infs, que devo minimizar com a inclusao dos dados dos outros sujeitos (quando acabar o processamento). (aLguma dica do que fazer com so Nans? posso utilizar aquele na.action=na.omit?)

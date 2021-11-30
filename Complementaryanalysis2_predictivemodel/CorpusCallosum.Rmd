@@ -1,0 +1,506 @@
+---
+title: "CorpusCallosum"
+author: "Fernanda Hansen"
+date: "24 September 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+# setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+ setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama as funcoes
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+# path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+ path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+# path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+ path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+# path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+alpha_beta <- str_c("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/data/resultados/")
+  
+# path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+# path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+ path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+# path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/FA_CC/")
+ path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/") 
+ 
+# importa os resultados
+source("03-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+dados_raw <- dados
+
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", !is.na(logAvgThickness), localGI != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+
+dados <- dados_all
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+
+# deixa so Philips
+
+# dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "Control"
+# dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+# dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI"
+
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("ALZ", "CCL","CONTROLE"))
+
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+
+# separa em arquivo de hemisferios e de lobos
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard")
+
+dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script", !is.na(K_age_decay))) %>% droplevels()
+
+dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere", Session == 1, method == "Yujiang_script") %>% droplevels()
+
+dados_hemi_v1_CH <- unique(filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", !is.na(K_age_decay)))
+
+dados_hemi_v1_eTIV <- dplyr::select(dados_hemi_v1, c(SUBJ, eTIV))
+
+dados_hemi_v1_CH <- left_join(dados_hemi_v1_CH, dados_hemi_v1_eTIV, by = "SUBJ")
+dados_hemi_v1_CH <- subset(dados_hemi_v1_CH, select = -c(eTIV.x))
+names(dados_hemi_v1_CH)[names(dados_hemi_v1_CH) == 'eTIV.y'] <- 'eTIV'
+
+
+dados_hemi_v1_CH$Diagnostic <- revalue(dados_hemi_v1_CH$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+dados_lobos_v1$Diagnostic <- revalue(dados_lobos_v1$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+
+```
+
+## Corpo Caloso
+```{r corpo caloso, eval=FALSE, include=FALSE}
+
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_corrected, x = logTotalArea_CC)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean() + labs(x = "log10(CC Total Area)", y = "log10(Offset K)") + labs(caption = paste("Humanos de todos os diagnosticos, apenas 1 visita, N = ", n_distinct(filter(dados, ROI == "hemisphere")$SUBJ)))
+
+  
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_corrected, x = logExposedArea_CC)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean() + labs(x = "log10(CC Exposed Area)", y = "log10(Offset K)")
+
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_age_decay, x = logTotalArea_age_decay_CC)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean() + labs(x = "log10(CC Total Area) - deaged", y = "log10(Offset K) - deaged")
+  
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_age_decay, x = logExposedArea_age_decay_CC)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean() + labs(x = "log10(CC Exposed Area) - deaged", y = "log10(Offset K) - deaged")
+  
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K, x = log10(WM_volume_CC))
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean() + labs(x = "log10(CC White Matter Volume)", y = "log10(Offset K)")
+
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_corrected, x = logTotalArea_CC, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean() + labs(x = "log10(CC Total Area)", y = "log10(Offset K)") + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+  
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_corrected, x = logExposedArea_CC, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean() + labs(x = "log10(CC Exposed Area)", y = "log10(Offset K)") + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_age_decay, x = logTotalArea_age_decay_CC, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean() + labs(x = "log10(CC Total Area) - deaged", y = "log10(Offset K) - deaged") + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+  
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K_age_decay, x = logExposedArea_age_decay_CC, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean() + labs(x = "log10(CC Smooth Area) - deaged", y = "log10(Offset K) - deaged") + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+  
+ggplot(
+  data = filter(dados, ROI == "hemisphere"),
+  aes(y = K, x = log10(WM_volume_CC), color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean() + labs(x = "log10(CC White Matter Volume)", y = "log10(Offset K)") + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+```
+
+### GIRIFICACAO E FA
+
+```{r girificacao e FA, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K, x = meanFA_CCbody)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K, x = meanFA_CCbody, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K, x = meanFA_CCgenu)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K, x = meanFA_CCgenu, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K, x = meanFA_Ccsplenium)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K, x = meanFA_Ccsplenium, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+######
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = S, x = meanFA_CCbody)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = S, x = meanFA_CCbody, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = S, x = meanFA_CCgenu)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = S, x = meanFA_CCgenu, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = S, x = meanFA_Ccsplenium)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = S, x = meanFA_Ccsplenium, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+######
+
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = I, x = meanFA_CCbody)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = I, x = meanFA_CCbody, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = I, x = meanFA_CCgenu)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = I, x = meanFA_CCgenu, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = I, x = meanFA_Ccsplenium)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = I, x = meanFA_Ccsplenium, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean()
+
+```
+
+
+
+### COMPARAR HEMIFERIOS - desvio interhemisferico
+
+```{r comparar hemisferios, echo=FALSE}
+
+dados_hemi_v1_CH_hemi <- dados_hemi_v1_CH %>% distinct() %>%
+  pivot_wider(
+    .,
+    names_from = hemi,
+    names_sep = ".",
+    values_from = c(
+      AvgThickness,
+      TotalArea,
+      GMvolume,
+      WhiteSurfArea,
+      localGI,
+      ExposedArea,
+      logAvgThickness,
+      logTotalArea,
+      logGMvolume,
+      logWhiteSurfArea,
+      logExposedArea,
+      K,
+      K_ds,
+      ExposedArea_ds,
+      K_CHwoB,
+      ExposedArea_CHwoB,
+      c,
+      TotalArea_corrected,
+      ExposedArea_corrected,
+      localGI_corrected,
+      logTotalArea_corrected,
+      logExposedArea_corrected,
+      K_corrected,
+      I_corrected,
+      S_corrected,
+      ConvexHullArea,
+      PialFullArea,
+      WhiteFullArea,
+      SmoothPialFullArea,
+      ConvexHullFullArea,
+      PialFullVol,
+      WhiteFullVol,
+      SmoothPialFullVol,
+      logTotalFullArea,
+      logConvexHullArea,
+      I,
+      S,
+      Sample,
+      logAvgThickness_age_decay,
+      logTotalArea_age_decay,
+      logExposedArea_age_decay,
+      K_age_decay,
+      I_age_decay,
+      S_age_decay,
+      K.zscore,
+      K_age_decay.zscore,
+      logAvgThickness.zscore,
+      logAvgThickness_age_decay.zscore,
+      I.zscore,
+      I_age_decay.zscore,
+      S.zscore,
+      S_age_decay.zscore
+    )
+  )
+
+ggplot(data = dados_hemi_v1_CH_hemi,
+       aes(
+       y = K.L,
+       x = K.R,
+       color = Diagnostic,
+       fill = Diagnostic
+       )) + 
+  geom_point() + 
+  geom_smooth(method = "lm") + 
+  stat_cor(aes(color = Diagnostic)) + 
+  theme_pubclean() +
+  stat_regline_equation(label.x = -0.52)
+# + labs(x = "log10(Offset K) Right hemi", y = "log10(Offset K) Left hemi") +  scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+
+ggplot(data = dados_hemi_v1_CH_hemi,
+       aes(
+       y = K_age_decay.L,
+       x = K_age_decay.R,
+       color = Diagnostic,
+       fill = Diagnostic
+       )) + geom_point() + geom_smooth(method = "lm") + stat_cor(aes(color = Diagnostic)) + theme_pubclean() + stat_regline_equation(label.x = -0.48)
+# + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) 
+
+ggplot(
+  data = dados_hemi_v1_CH_hemi,
+  aes(K.L-K.R, color = Diagnostic, fill = Diagnostic, alpha = 0.3)
+  ) + geom_density() + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+
+ggplot(
+  data = dados_hemi_v1_CH_hemi,
+  aes(K_age_decay.L -K_age_decay.R, color = Diagnostic, fill = Diagnostic, alpha = 0.3)
+  ) + geom_density() + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL"))
+
+ggplot(data = dados_hemi_v1_CH_hemi,
+       aes(
+       y = abs((K.L - K.R) / (
+       var(K.L, na.rm = TRUE) + var(K.R, na.rm = TRUE) - 2 *
+       cov(K.L, K.R, use = "complete")
+       ) ^ (1 / 2)),
+       x = log10(WM_volume_CC),
+       color = Diagnostic,
+       fill = Diagnostic
+       )) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) + ylab(expression(epsilon)) + stat_cor()
+
+ggplot(data = dados_hemi_v1_CH_hemi,
+       aes(
+       y = abs((K.L - K.R) / (
+       var(K.L, na.rm = TRUE) + var(K.R, na.rm = TRUE) - 2 *
+       cov(K.L, K.R, use = "complete")
+       ) ^ (1 / 2)),
+       x = log10(WM_volume_CC),
+       color = Diagnostic,
+       fill = Diagnostic
+       )) + geom_point() + geom_smooth(method = "lm", fullrange = FALSE) + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) + labs(x = "log10(WM_Volume_CC)") + ylab(expression(epsilon)) + xlim(0, 3.8) + stat_cor() 
+
+
+ggplot(
+  data = dados_hemi_v1_CH_hemi,
+  aes(y = abs((K.L - K.R) / (
+       var(K.L, na.rm = TRUE) + var(K.R, na.rm = TRUE) - 2 *
+       cov(K.L, K.R, use = "complete")
+       ) ^ (1 / 2)), x = meanFA_CCbody) 
+  ) + geom_point() + geom_smooth(method = "lm")   + stat_cor() + theme_pubclean()
+
+```
+
+
+### AREA E VOLUME DO CORPO CALOSO  - comprimento axonal medio ponderado
+```{r comprimento axonal medio, echo=FALSE, cache=FALSE}
+
+ggplot(
+  data = dados_hemi_v1_CH,
+  aes(y = K,x = logWhiteSurfArea, color = Diagnostic, fill = Diagnostic)
+  ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()
+
+
+
+# my_comparisons <- list( c("CONTROLE", "CCL"), c("CONTROLE", "ALZ"), c("CCL", "ALZ") )
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"), aes(y = l, x = Diagnostic)) + geom_boxplot(aes(color = Diagnostic, alpha = 0.2, fill = Diagnostic)) + theme_pubclean() + stat_compare_means(method = "anova", label.y = 0.053) + stat_compare_means(label = "p.format", method = "t.test", comparisons = my_comparisons, hide.ns = TRUE)   
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"), aes(y = l_agedecay, x = Diagnostic)) + geom_boxplot(aes(color = Diagnostic, alpha = 0.2, fill = Diagnostic)) + theme_pubclean() + stat_compare_means(method = "anova", label.y = 0.053) + stat_compare_means(label = "p.format", method = "t.test", ref.group = "CONTROLE", hide.ns = TRUE)
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"), aes(y = l_eTIV, x = Diagnostic)) + geom_boxplot(aes(color = Diagnostic, alpha = 0.2, fill = Diagnostic)) + theme_pubclean() + stat_compare_means(method = "anova", label.y = 0.00045) + stat_compare_means(label = "p.format", method = "t.test", ref.group = "CONTROLE", hide.ns = TRUE)
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"), aes(x = l, color = Diagnostic, alpha = 0.2, fill = Diagnostic)) + geom_density() + theme_pubclean()
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"), aes(x = l_agedecay, color = Diagnostic, alpha = 0.2, fill = Diagnostic)) + geom_density() + theme_pubclean()
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"), aes(x = l_eTIV, color = Diagnostic, alpha = 0.2, fill = Diagnostic)) + geom_density() + theme_pubclean()
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(
+#   x = l,
+#   y = K,
+#   color = Diagnostic,
+#   fill = Diagnostic
+#   )
+#   ) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) + stat_cor() 
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(
+#   x = l_agedecay,
+#   y = K_age_decay,
+#   color = Diagnostic,
+#   fill = Diagnostic
+#   )
+#   ) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) + stat_cor() 
+
+```
+### FRACAO CALOSA
+```{r fracao calosa, eval=FALSE, cache=FALSE, include=FALSE}
+
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(y = TotalArea_CC, x = WhiteSurfArea, color = Diagnostic, fill = Diagnostic)
+#   ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean()  + 
+#   stat_regline_equation(label.x = 79000)
+# 
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(y = TotalArea_CC/(eTIV^(2/3)), x = WhiteSurfArea/(eTIV^(2/3)), color = Diagnostic, fill = Diagnostic)
+#   ) + geom_point() + geom_smooth(method = "lm") + stat_cor() + theme_pubclean() + 
+#   stat_regline_equation(label.x = 6)
+# 
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(
+#   x = WhiteSurfArea,
+#   y = K,
+#   color = Diagnostic,
+#   fill = Diagnostic
+#   )
+#   ) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) + stat_cor() 
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(
+#   x = fC,
+#   y = K,
+#   color = Diagnostic,
+#   fill = Diagnostic
+#   )
+#   ) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + scale_color_discrete(name = "Diagnostic", labels = c("ALZ", "CCL", "CONTROL")) + stat_cor() 
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(
+#   x = fC_agedecay,
+#   y = K_age_decay,
+#   color = Diagnostic,
+#   fill = Diagnostic
+#   )
+#   ) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + stat_cor() 
+# 
+# ggplot(
+#   data = filter(dados, ROI == "hemisphere"),
+#   aes(
+#   x = logfC_agedecay,
+#   y = K_age_decay,
+#   color = Diagnostic,
+#   fill = Diagnostic
+#   )
+#   ) + geom_point() + geom_smooth(method = "lm") + theme_pubclean() + stat_cor() 
+
+```

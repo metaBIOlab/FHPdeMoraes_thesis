@@ -1,0 +1,512 @@
+dados_hemi_v1_CH
+dados_hemi_v1 <- dados %>% filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes") %>% as.factor(machine, sex, Session, age, Gender, Diagnostic, hemi, ROI)
+as.factor(machine, sex, Session, age, Gender, Diagnostic, hemi, ROI)
+dados_hemi_v1 <- dados %>% filter(ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes") %>% as.factor(machine, sex, Session, age, Gender, Diagnostic, hemi, ROI)
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes")
+dados_hemi_v1$machine <- as.factor(dados_hemi_v1$machine)
+dados_hemi_v1$sex <- as.factor(dados_hemi_v1$sex)
+dados_hemi_v1$Session <- as.factor(dados_hemi_v1$Session)
+dados_hemi_v1$age <- as.factor(dados_hemi_v1$age)
+dados_hemi_v1$Gender <- as.factor(dados_hemi_v1$Gender)
+dados_hemi_v1$Diagnostic <- as.factor(dados_hemi_v1$Diagnostic)
+dados_hemi_v1$hemi <- as.factor(dados_hemi_v1$hemi)
+dados_hemi_v1$ROI <- as.factor(dados_hemi_v1$ROI)
+dados_hemi_v1_CH <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", Longitudinal_correction == "yes")
+dados_hemi_v1_CH$machine <- as.factor(dados_hemi_v1_CH$machine)
+dados_hemi_v1_CH$sex <- as.factor(dados_hemi_v1_CH$sex)
+dados_hemi_v1_CH$Session <- as.factor(dados_hemi_v1_CH$Session)
+dados_hemi_v1_CH$age <- as.factor(dados_hemi_v1_CH$age)
+dados_hemi_v1_CH$Gender <- as.factor(dados_hemi_v1_CH$Gender)
+dados_hemi_v1_CH$Diagnostic <- as.factor(dados_hemi_v1_CH$Diagnostic)
+dados_hemi_v1_CH$hemi <- as.factor(dados_hemi_v1_CH$hemi)
+dados_hemi_v1_CH$ROI <- as.factor(dados_hemi_v1_CH$ROI)
+summary(glm(logkteorico~., family=binomial, data=dados_hemi_v1_CH))
+summary(glm(logkteorico~., family=binomial, data=dados_hemi_v1_CH))
+dados_hemi_v1_CH$sex
+dados_hemi_v1_CH$Gender
+dados_hemi_v1_CH$Gender
+summary(glm(logkteorico~age+Gender+Diagnostic+, family=binomial, data=dados_hemi_v1_CH))
+summary(glm(logkteorico~age+Gender+Diagnostic, family=binomial, data=dados_hemi_v1_CH))
+class(dados_hemi_v1_CH$age)
+class(dados_hemi_v1_CH$Gender)
+class(dados_hemi_v1_CH$Diagnostic)
+summary(glm(logkteorico~age+Gender+Diagnostic, family=binomial, data=dados_hemi_v1_CH))
+summary(glm(logkteorico~age+Gender+Diagnostic, data=dados_hemi_v1_CH))
+dados_hemi_v1_CH$Age_interval <- as.factor(dados_hemi_v1_CH$Age_interval)
+summary(glm(logkteorico~Age_interval+Gender+Diagnostic, data=dados_hemi_v1_CH))
+summary(glm(logkteorico~Gender, data=dados_hemi_v1_CH, family = binomial))
+# PREPARO
+# define a area de trabalho
+setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+# setwd("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/") # se no computador
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+# Chama as funcoes
+source("02-funcoes.R")
+# onde estao os arquivos de resultados:
+path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+#path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/resultados/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+# path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/")
+# importa os resultados ----
+source("03-import_files.R") # arquivos dos sujeitos
+# organiza os arquivos ----
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+dados_raw <- dados
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+Diagnostic == "CONTROLE" |
+Diagnostic == "CCL" |
+Diagnostic == "ALZ", localGI != 0 | !is.na(ExposedArea), !is.infinite(logExposedArea)) %>%
+droplevels()
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+dados <- dados_all
+# Prepara os dados para analise ----
+source("05-analises_prep.R")
+# deixa so Philips
+#dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "Control"
+#dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+#dados$Diagnostic[dados$Diagnostic == "MCI"] <- "MCI"
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+# separa em arquivo de hemisferios e de lobos ----
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes")
+dados_hemi_v1$machine <- as.factor(dados_hemi_v1$machine)
+dados_hemi_v1$sex <- as.factor(dados_hemi_v1$sex)
+dados_hemi_v1$Session <- as.factor(dados_hemi_v1$Session)
+dados_hemi_v1$age <- as.factor(dados_hemi_v1$age)
+dados_hemi_v1$Gender <- as.factor(dados_hemi_v1$Gender)
+dados_hemi_v1$Diagnostic <- as.factor(dados_hemi_v1$Diagnostic)
+dados_hemi_v1$hemi <- as.factor(dados_hemi_v1$hemi)
+dados_hemi_v1$ROI <- as.factor(dados_hemi_v1$ROI)
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script")
+dados_hemi_v1_CH <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", Longitudinal_correction == "yes")
+dados_hemi_v1_CH$age <- as.factor(dados_hemi_v1_CH$age)
+dados_hemi_v1_CH$Age_interval <- as.factor(dados_hemi_v1_CH$Age_interval)
+dados_hemi_v1_CH$Gender <- as.factor(dados_hemi_v1_CH$Gender)
+dados_hemi_v1_CH$Diagnostic <- as.factor(dados_hemi_v1_CH$Diagnostic)
+dados_hemi_v1_CH$hemi <- as.factor(dados_hemi_v1_CH$hemi)
+dados_hemi_v1_CH$ROI <- as.factor(dados_hemi_v1_CH$ROI)
+# PREPARO
+# define a area de trabalho
+setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+# setwd("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/") # se no computador
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+# Chama as funcoes
+source("02-funcoes.R")
+# onde estao os arquivos de resultados:
+path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/resultados/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+# path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/")
+# importa os resultados ----
+source("03-import_files.R") # arquivos dos sujeitos
+# organiza os arquivos ----
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+dados_raw <- dados
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+Diagnostic == "CONTROLE" |
+Diagnostic == "CCL" |
+Diagnostic == "ALZ", localGI != 0 | !is.na(ExposedArea), !is.infinite(logExposedArea)) %>%
+droplevels()
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+dados <- dados_all
+# Prepara os dados para analise ----
+source("05-analises_prep.R")
+# deixa so Philips
+#dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "Control"
+#dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+#dados$Diagnostic[dados$Diagnostic == "MCI"] <- "MCI"
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+# separa em arquivo de hemisferios e de lobos ----
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes")
+dados_hemi_v1$machine <- as.factor(dados_hemi_v1$machine)
+dados_hemi_v1$sex <- as.factor(dados_hemi_v1$sex)
+dados_hemi_v1$Session <- as.factor(dados_hemi_v1$Session)
+dados_hemi_v1$age <- as.factor(dados_hemi_v1$age)
+dados_hemi_v1$Gender <- as.factor(dados_hemi_v1$Gender)
+dados_hemi_v1$Diagnostic <- as.factor(dados_hemi_v1$Diagnostic)
+dados_hemi_v1$hemi <- as.factor(dados_hemi_v1$hemi)
+dados_hemi_v1$ROI <- as.factor(dados_hemi_v1$ROI)
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script")
+dados_hemi_v1_CH <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", Longitudinal_correction == "yes")
+dados_hemi_v1_CH$age <- as.factor(dados_hemi_v1_CH$age)
+dados_hemi_v1_CH$Age_interval <- as.factor(dados_hemi_v1_CH$Age_interval)
+dados_hemi_v1_CH$Gender <- as.factor(dados_hemi_v1_CH$Gender)
+dados_hemi_v1_CH$Diagnostic <- as.factor(dados_hemi_v1_CH$Diagnostic)
+dados_hemi_v1_CH$hemi <- as.factor(dados_hemi_v1_CH$hemi)
+dados_hemi_v1_CH$ROI <- as.factor(dados_hemi_v1_CH$ROI)
+summary(glm(logkteorico ~ Gender, data = data_hemi_v1))
+# PREPARO
+# define a area de trabalho
+setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+# setwd("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/") # se no computador
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+# Chama as funcoes
+source("02-funcoes.R")
+# onde estao os arquivos de resultados:
+path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/resultados/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+# path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/")
+# importa os resultados ----
+source("03-import_files.R") # arquivos dos sujeitos
+# organiza os arquivos ----
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+dados_raw <- dados
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+Diagnostic == "CONTROLE" |
+Diagnostic == "CCL" |
+Diagnostic == "ALZ", localGI != 0 | !is.na(ExposedArea), !is.infinite(logExposedArea)) %>%
+droplevels()
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+dados <- dados_all
+# Prepara os dados para analise ----
+source("05-analises_prep.R")
+# deixa so Philips
+#dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "Control"
+#dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+#dados$Diagnostic[dados$Diagnostic == "MCI"] <- "MCI"
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+# separa em arquivo de hemisferios e de lobos ----
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes")
+dados_hemi_v1$machine <- as.factor(dados_hemi_v1$machine)
+dados_hemi_v1$sex <- as.factor(dados_hemi_v1$sex)
+dados_hemi_v1$Session <- as.factor(dados_hemi_v1$Session)
+dados_hemi_v1$age <- as.factor(dados_hemi_v1$age)
+dados_hemi_v1$Gender <- as.factor(dados_hemi_v1$Gender)
+dados_hemi_v1$Diagnostic <- as.factor(dados_hemi_v1$Diagnostic)
+dados_hemi_v1$hemi <- as.factor(dados_hemi_v1$hemi)
+dados_hemi_v1$ROI <- as.factor(dados_hemi_v1$ROI)
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script")
+dados_hemi_v1_CH <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", Longitudinal_correction == "yes")
+dados_hemi_v1_CH$age <- as.factor(dados_hemi_v1_CH$age)
+dados_hemi_v1_CH$Age_interval <- as.factor(dados_hemi_v1_CH$Age_interval)
+dados_hemi_v1_CH$Gender <- as.factor(dados_hemi_v1_CH$Gender)
+dados_hemi_v1_CH$Diagnostic <- as.factor(dados_hemi_v1_CH$Diagnostic)
+dados_hemi_v1_CH$hemi <- as.factor(dados_hemi_v1_CH$hemi)
+dados_hemi_v1_CH$ROI <- as.factor(dados_hemi_v1_CH$ROI)
+summary(glm(logkteorico ~ Gender, data = data_hemi_v1))
+summary(glm(logkteorico ~ Gender, data = dados_hemi_v1))
+dados_hemi_v1
+data
+data
+dados
+summary(glm(logkteorico ~ Diagnostic, data = dados_hemi_v1))
+install.packages("caret")
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(stringi)
+library(tidyverse)
+library(readxl)
+library(modelr)
+library(ggpubr)
+library(readr)
+library(stringr)
+library(ggridges)
+library(jtools)
+library(purrr)
+library(funModeling)
+library(Hmisc)
+library(lubridate)
+library(ggplot2)
+library(data.table)
+library(ggrepel)
+library(magrittr)
+library(Rmisc)
+library(WRS2)
+#library(TeachingDemos)
+library(car)
+library(effsize)
+library(pander)
+library(knitr)
+library(kableExtra)
+library(plotly)
+library(sjstats)
+library(MASS)
+# library(patchwork)
+library(broom)
+library(pwr)
+library(R.matlab)
+library(caret)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(stringi)
+library(tidyverse)
+library(readxl)
+library(modelr)
+library(ggpubr)
+library(readr)
+library(stringr)
+library(ggridges)
+library(jtools)
+library(purrr)
+library(funModeling)
+library(Hmisc)
+library(lubridate)
+library(ggplot2)
+library(data.table)
+library(ggrepel)
+library(magrittr)
+library(Rmisc)
+library(WRS2)
+#library(TeachingDemos)
+library(car)
+library(effsize)
+library(pander)
+library(knitr)
+library(kableExtra)
+library(plotly)
+library(sjstats)
+library(MASS)
+# library(patchwork)
+library(broom)
+library(pwr)
+library(R.matlab)
+library(caret)
+install.packages("plyr")
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("stringi")
+install.packages("tidyverse")
+install.packages("modelr")
+install.packages("ggpubr")
+install.packages("readr")
+install.packages("stringr")
+install.packages("ggridges")
+install.packages("jtools")
+install.packages("purrr")
+install.packages("funModeling")
+install.packages("Hmisc")
+install.packages("lubridate")
+install.packages("ggplot2")
+install.packages("data.table")
+install.packages("ggrepel")
+install.packages("magrittr")
+install.packages("Rmisc")
+install.packages("WRS2")
+#install.packages("TeachingDemos")
+install.packages("car")
+install.packages("effsize")
+install.packages("pander")
+install.packages("knitr")
+install.packages("kableExtra")
+install.packages("plotly")
+install.packages("sjstats")
+install.packages("MASS")
+# install.packages("patchwork")
+install.packages("broom")
+install.packages("caret")
+install.packages("ggridges")
+install.packages("Rmisc")
+# PREPARO
+# define a area de trabalho
+setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+# setwd("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/") # se no computador
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+# Chama as funcoes
+source("02-funcoes.R")
+# onde estao os arquivos de resultados:
+path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/resultados/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+# path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/")
+# importa os resultados ----
+source("03-import_files.R") # arquivos dos sujeitos
+# organiza os arquivos ----
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+dados_raw <- dados
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+Diagnostic == "CONTROLE" |
+Diagnostic == "CCL" |
+Diagnostic == "ALZ", localGI != 0 | !is.na(ExposedArea), !is.infinite(logExposedArea)) %>%
+droplevels()
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+dados <- dados_all
+# Prepara os dados para analise ----
+source("05-analises_prep.R")
+# deixa so Philips
+#dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "Control"
+#dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+#dados$Diagnostic[dados$Diagnostic == "MCI"] <- "MCI"
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+# separa em arquivo de hemisferios e de lobos ----
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes")
+dados_hemi_v1$machine <- as.factor(dados_hemi_v1$machine)
+dados_hemi_v1$sex <- as.factor(dados_hemi_v1$sex)
+dados_hemi_v1$Session <- as.factor(dados_hemi_v1$Session)
+dados_hemi_v1$age <- as.factor(dados_hemi_v1$age)
+dados_hemi_v1$Gender <- as.factor(dados_hemi_v1$Gender)
+dados_hemi_v1$Diagnostic <- as.factor(dados_hemi_v1$Diagnostic)
+dados_hemi_v1$hemi <- as.factor(dados_hemi_v1$hemi)
+dados_hemi_v1$ROI <- as.factor(dados_hemi_v1$ROI)
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script")
+dados_hemi_v1_CH <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", Longitudinal_correction == "yes")
+dados_hemi_v1_CH$age <- as.factor(dados_hemi_v1_CH$age)
+dados_hemi_v1_CH$Age_interval <- as.factor(dados_hemi_v1_CH$Age_interval)
+dados_hemi_v1_CH$Gender <- as.factor(dados_hemi_v1_CH$Gender)
+dados_hemi_v1_CH$Diagnostic <- as.factor(dados_hemi_v1_CH$Diagnostic)
+dados_hemi_v1_CH$hemi <- as.factor(dados_hemi_v1_CH$hemi)
+dados_hemi_v1_CH$ROI <- as.factor(dados_hemi_v1_CH$ROI)
+createMultiFolds(dados_hemi_v1_CH, k = 2, times = 2)
+createMultiFolds(dados_hemi_v1_CH$SUBJ, k = 2, times = 2)
+createMultiFolds(unique(dados_hemi_v1_CH$SUBJ), k = 2, times = 2)
+createDataPartition(unique(dados_hemi_v1_CH$SUBJ), times = 2, p = 0.5, list = TRUE,
+groups = min(5, length(unique(dados_hemi_v1_CH$SUBJ))))
+createDataPartition(dados_hemi_v1_CH$SUBJ, times = 2, p = 0.5, list = TRUE,
+groups = min(5, length(unique(dados_hemi_v1_CH$SUBJ))))
+createDataPartition(dados_hemi_v1_CH$SUBJ, times = 2, p = 0.5, list = TRUE,
+groups = min(5, length(dados_hemi_v1_CH$SUBJ)))
+View(dados_hemi_v1_CH)
+trainIndex <- createDataPartition(dados_hemi_v1_CH$SUBJ, p = .8,
+list = FALSE,
+times = 1)
+head(trainIndex)
+createDataPartition(dados_hemi_v1_CH$SUBJ, p = .8,
+list = FALSE,
+times = 1)
+head(trainIndex)
+irisTrain <- dados_hemi_v1_CH[ trainIndex,]
+irisTest  <- dados_hemi_v1_CH[-trainIndex,]
+irisTest
+trainIndex <- createDataPartition(dados_hemi_v1_CH$SUBJ, p = .8,
+list = FALSE,
+times = 2)
+head(trainIndex)
+irisTrain <- dados_hemi_v1_CH[ trainIndex,]
+irisTest  <- dados_hemi_v1_CH[-trainIndex,]
+irisTest
+createDataPartition(dados_hemi_v1_CH$SUBJ, p = 0.5,
+list = FALSE,
+times = 2)
+createDataPartition(dados_hemi_v1_CH$SUBJ, p = .8,
+list = FALSE,
+times = 1, groups = min(5, length(unique(dados_hemi_v1_CH$SUBJ))))
+createDataPartition(dados_hemi_v1_CH$SUBJ, p = .8,
+list = FALSE,
+times = 2, groups = min(5, length(unique(dados_hemi_v1_CH$SUBJ))))
+createDataPartition(dados_hemi_v1_CH$SUBJ, p = .8,
+list = FALSE,
+times = 2, groups = min(5, length(dados_hemi_v1_CH$SUBJ)))
+groupKFold(Diagnostic, k = length(unique(Diagnostic)))
+groupKFold(dados_hemi_v1_CH$Diagnostic, k = length(unique(vDiagnostic)))
+groupKFold(dados_hemi_v1_CH$Diagnostic, k = length(unique(dados_hemi_v1_CH$Diagnostic)))
+createFolds(dados_hemi_v1_CH$SUBJ, k = 2, list = TRUE, returnTrain = FALSE)
+groupKFold(dados_hemi_v1_CH$SUBJ, k = 2)
+folds$
+c
+folds
+folds <- groupKFold(dados_hemi_v1_CH$SUBJ, k = 2)
+folds
+dados_hemi_v1_CHtraining <- dados_hemi_v1_CH[ folds,]
+dados_hemi_v1_CHtraining <- dados_hemi_v1_CH[ folds$Fold1,]
+dados_hemi_v1_CHtesting <- dados_hemi_v1_CH[ folds$Fold2,]
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining, family = family=binomial(link="logit"))
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining, family = binomial(link="logit"))
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining, family = binomial)
+log_reg(dados_hemi_v1_CHtraining, size=10)
+https://github.com/joyofdata/joyofdata-articles/blob/master/roc-auc/log_reg.R
+log_reg <- function(df, size=10) {
+N <- nrow(df)
+size=10
+df <- df[sample(N),]
+num <- floor(N/size)
+rest <- N - num * size
+ncv <- cumsum(c(rep(size,num), rest))
+predictions <- data.frame(survived = df$survived, pred = NA)
+for(n in ncv) {
+v <- rep(TRUE, N)
+v[(n-size+1):n] <- FALSE
+lr <- glm(survived ~ ., data = df[v,], family = binomial(logit))
+predictions[!v,"pred"] <- predict(lr, newdata=df[!v,], type="response")
+}
+return(predictions)
+}
+log_reg(dados_hemi_v1_CHtraining, size=10)
+GLM_DIAG <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1)
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining, family = binomial)
+pdata <- predict(GLM_training, newdata = dados_hemi_v1_CHtesting, type = "response")
+confusionMatrix(data = as.numeric(pdata>0.5), reference = dados_hemi_v1_CHtesting$logkteorico)
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining)
+pdata <- predict(GLM_training, newdata = dados_hemi_v1_CHtesting, type = "response")
+confusionMatrix(data = as.numeric(pdata>0.5), reference = dados_hemi_v1_CHtesting$logkteorico)
+pdata
+dados_hemi_v1_CHtesting$logkteorico
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining, family = binomial)
+pdata <- predict(GLM_training, newdata = dados_hemi_v1_CHtraining, type = "response")
+confusionMatrix(data = as.numeric(pdata>0.5), reference = dados_hemi_v1_CHtraining$logkteorico)
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining)
+pdata <- predict(GLM_training, newdata = dados_hemi_v1_CHtraining, type = "response")
+confusionMatrix(data = as.numeric(pdata>0.5), reference = dados_hemi_v1_CHtraining$logkteorico)
+pdata
+dados_hemi_v1_CHtraining$logkteorico
+GLM_training <- glm(logkteorico ~ Diagnostic, data = dados_hemi_v1_CHtraining)
+pdata <- predict(GLM_training, newdata = dados_hemi_v1_CHtraining, type = "response")
+confusionMatrix(data = pdata, reference = dados_hemi_v1_CHtraining$logkteorico)
+pdata
+dados_hemi_v1_CHtraining$logkteorico
+confusionMatrix(data = pdata, reference = dados_hemi_v1_CHtesting$logkteorico)
+dados_hemi_v1_CHtesting$logkteorico

@@ -1,0 +1,2682 @@
+---
+title: "Paper 1"
+author: "Fernanda"
+date: "07/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = TRUE,
+	warning = FALSE
+)
+```
+
+```{r preparo, message=FALSE}
+# PREPARO
+
+# define a area de trabalho
+# setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+ setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama as funcoes
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+# path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+ path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+# path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+ path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+# path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+alpha_beta <- str_c("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/data/resultados/")
+  
+# path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+# path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+ path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+# path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/FA_CC/")
+ path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/") 
+ 
+# importa os resultados
+source("03-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+dados_raw <- dados
+
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", !is.na(logAvgThickness), localGI != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+
+dados <- dados_all
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+# deixa so Philips
+
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+
+# separa em arquivo de hemisferios e de lobos
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard")
+
+dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script", !is.na(K_age_decay))) %>% droplevels()
+
+dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere", Session == 1, method == "Yujiang_script") %>% droplevels()
+
+dados_hemi_v1_CH <- unique(filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", !is.na(K_age_decay)))
+
+dados_hemi_v1_eTIV <- dplyr::select(dados_hemi_v1, c(SUBJ, eTIV))
+
+dados_hemi_v1_CH <- left_join(dados_hemi_v1_CH, dados_hemi_v1_eTIV, by = "SUBJ")
+dados_hemi_v1_CH <- subset(dados_hemi_v1_CH, select = -c(eTIV.x))
+names(dados_hemi_v1_CH)[names(dados_hemi_v1_CH) == 'eTIV.y'] <- 'eTIV'
+dados_hemi_v1_CH <- unique(dados_hemi_v1_CH)
+
+dados_hemi_v1_CH$Diagnostic <- revalue(dados_hemi_v1_CH$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+dados_lobos_v1$Diagnostic <- revalue(dados_lobos_v1$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+
+
+```
+
+### Todos processados pelo FreeSurfer com sucesso
+```{r N sujeitos FS}
+summary_dados_all <- filter(dados_all, Session == 1) %>%
+  group_by(Diagnostic, machine) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_all %>% kable(digits = 4) %>% kable_styling()
+```
+
+### Somente Philips
+
+```{r N sujeitos Philips}
+summary_dados_hemi <- dados %>%
+  group_by(Session, Diagnostic, Gender) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_hemi %>% kable(digits = 4) %>% kable_styling()
+
+
+# sumario_dados_hemi_v1_diag <-
+# dados_hemi_v1_CH %>%
+# group_by(sex, Diagnostic) %>%
+# summarise(
+# N = n_distinct(SUBJ),
+# Mean_age = mean(Age),
+# Std_age = sd(Age),
+# Mean_ESC = mean(ESC),
+# Std_ESC = sd(ESC),
+# Mean_COGNITIVE_INDEX = mean(COGNITIVE_INDEX,  na.rm = TRUE),
+# STD_COGNITIVE_INDEX = sd(COGNITIVE_INDEX,  na.rm = TRUE),
+# n_NA_COGNITIVE_INDEX = summary(COGNITIVE_INDEX)[7],
+# Mean_Tau = mean(TAU,  na.rm = TRUE),
+# STD_Tau = sd(TAU,  na.rm = TRUE),
+# n_NA_Tau = summary(TAU)[7],
+# Mean_AB4 = mean(`AB1-40`,  na.rm = TRUE),
+# STD_AB40 = sd(`AB1-40`,  na.rm = TRUE),
+# n_NA_AB40 = summary(`AB1-40`)[7],
+# Mean_AB42= mean(`AB1-42`,  na.rm = TRUE),
+# STD_AB42 = sd(`AB1-42`,  na.rm = TRUE),
+# n_NA_AB42 = summary(`AB1-42`)[7],
+# Mean_eTIV = mean(eTIV,  na.rm = TRUE),
+# STD_eTIV = sd(eTIV,  na.rm = TRUE),
+# n_NA_eTIV = summary(eTIV)[7],
+# Mean_AVGTHICK = mean(AvgThickness,  na.rm = TRUE),
+# STD_AVGTHICK = sd(AvgThickness,  na.rm = TRUE),
+# n_NA_AVGTHICK = summary(AvgThickness)[7],
+# Mean_K = mean(K,  na.rm = TRUE),
+# STD_K = sd(K,  na.rm = TRUE),
+# n_NA_K = summary(K)[7],
+# Mean_lipoxin = mean(Lipoxina,  na.rm = TRUE),
+# STD_lipoxin = sd(Lipoxina,  na.rm = TRUE),
+# n_NA_lipoxin = summary(Lipoxina)[7])
+
+
+# sumario_dados_hemi_v1_diag %>% kable(digits = 4) %>% kable_styling()
+
+lm_COGNITIVE_INDEX <- lm(COGNITIVE_INDEX ~ Diagnostic, data = dados_hemi_v1)
+anova(lm_COGNITIVE_INDEX)
+COGINDX_diag_TK <- TukeyHSD(aov(COGNITIVE_INDEX ~ Diagnostic, data = dados_hemi_v1))
+
+```
+
+### Sujeitos excluídos
+
+```{r N sujeitos excluidos, message=FALSE}
+
+excl <-
+  dados_excluidos %>% dplyr::select(c(SUBJ, age, Diagnostic, machine, ROI, localGI)) %>% filter(ROI == "hemisphere") %>% distinct(SUBJ, .keep_all = TRUE)
+  
+excl %>% kable(digits = 4) %>% kable_styling()
+
+```
+
+# Methods - sample description
+
+## Sex
+
+
+```{r sex}
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = sex,
+  y = K,
+  title = "Distribution of K across sex",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ"
+
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = sex,
+  y = I,
+  title = "Distribution of I across sex",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ"
+
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = sex,
+  y = S,
+  title = "Distribution of S across sex",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ"
+)
+```
+
+```{r sex 2}
+ggplot(dados_hemi_v1_CH, aes(x = sex, y = K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot() + stat_compare_means(method = "anova") + theme_pubr()
+
+ggplot(dados_hemi_v1_CH, aes(logExposedArea, 1/2*logAvgThickness + logTotalArea, color = sex, fill = sex)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(Diagnostic ~ .) + stat_regline_equation() +
+  theme_pubr()
+
+lm_amostras_sex <- dados_hemi_v1_CH %>%
+  group_by(sex, Diagnostic) %>%
+  do(fit_amostras_sex = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+amostras_Coef_sex = tidy(lm_amostras_sex,
+                    fit_amostras_sex,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+ amostras_Coef_sex %>% kable(digits = 4) %>% kable_styling()
+
+
+ggplot(dados_hemi_v1_CH, aes(x = sex, y = S, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot() + stat_compare_means(method = "anova") + theme_pubr()
+ 
+
+ ggplot(dados_hemi_v1_CH, aes(x = sex, y = I, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot() + stat_compare_means(method = "anova") + theme_pubr()
+
+ 
+```
+
+## Age
+
+```{r age}
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = Age,
+  title = "Distribution of Age across Diagnostics",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ"
+)
+
+ggstatsplot::ggscatterstats(
+  data = filter(dados_hemi_v1_CH,Diagnostic == "CTL"),
+  x = Age,
+  y = K,
+  color = "Diagnostic",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ",
+  xlab = "Age",
+  ylab = "K",
+  title = "Variation of K with Age",
+  messages = FALSE,
+  caption = "Diagnostic: CTL"
+)
+
+ggstatsplot::ggscatterstats(
+  data = filter(dados_hemi_v1_CH,Diagnostic == "MCI"),
+  x = Age,
+  y = K,
+  color = "Diagnostic",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ",
+  xlab = "Age",
+  ylab = "K",
+  title = "Variation of K with Age",
+  messages = FALSE,
+  caption = "Diagnostic: MCI"
+)
+
+ggstatsplot::ggscatterstats(
+  data = filter(dados_hemi_v1_CH,Diagnostic == "AD"),
+  x = Age,
+  y = K,
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ",
+  xlab = "Age",
+  ylab = "K",
+  title = "Variation of K with Age",
+  messages = FALSE,
+  caption = "Diagnostic: AD"
+)
+
+aov_age <- aov(Age ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_age)
+TukeyHSD(aov_age)
+
+```
+
+## Years of Scholling
+
+```{r esc}
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = ESC,
+  title = "Distribution of ESC across Diagnostics",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ"
+)
+
+ggstatsplot::ggscatterstats(
+  data = filter(dados_hemi_v1_CH,Diagnostic == "CTL"),
+  x = ESC,
+  y = K,
+  color = "Diagnostic",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ",
+  xlab = "ESC",
+  ylab = "K",
+  title = "Variation of K with ESC",
+  caption = "Diagnostic: CTL"
+)
+
+ggstatsplot::ggscatterstats(
+  data = filter(dados_hemi_v1_CH,Diagnostic == "MCI"),
+  x = ESC,
+  y = K,
+  color = "Diagnostic",
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ",
+  xlab = "ESC",
+  ylab = "K",
+  title = "Variation of K with ESC",
+  caption = "Diagnostic: MCI"
+)
+
+ggstatsplot::ggscatterstats(
+  data = filter(dados_hemi_v1_CH,Diagnostic == "AD"),
+  x = ESC,
+  y = K,
+  outlier.tagging = TRUE,
+  outlier.label = "SUBJ",
+  xlab = "ESC",
+  ylab = "K",
+  title = "Variation of K with ESC",
+  caption = "Diagnostic: AD"
+)
+
+aov_ESC <- aov(ESC ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_ESC)
+TukeyHSD(aov_ESC)
+
+```
+
+# Results 
+## Aplicacao do modelo
+
+Todos os sujeitos
+```{r model Mota & Houzel, echo=FALSE}
+
+dados_datasetscomp$Diagnostic <- revalue(dados_datasetscomp$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+
+lm_amostra <- (filter(dados_datasetscomp, Sample == "Mota&Houzel2015" | Sample == "IDOR")) %>%
+  group_by(Sample) %>%
+  do(fit_amostra = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+amostra_Coef = tidy(lm_amostra,
+                    fit_amostra,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+amostra_Pred = augment(lm_amostra, fit_amostra)
+amostra_R2 = glance(lm_amostra, fit_amostra)
+
+ggplot(filter(dados_datasetscomp, Sample == "Mota&Houzel2015" | Sample == "IDOR"), aes(logExposedArea, 1/2*logAvgThickness + logTotalArea)) +
+  geom_point(aes(color = Sample)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_pubr()
+
+amostra_Coef %>% kable(digits = 4) %>% kable_styling()
+
+```
+
+### Apenas humanos IDOR
+
+```{r modelo_humanos, echo=FALSE, message=FALSE, warning=FALSE}
+# dados_hemi_v1_CH <- unique(filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", is.na(K_age_decay)))
+
+lm_fit_comp_idor <- dados_hemi_v1_CH %>%
+  group_by(Diagnostic) %>%
+  do(fit_comp_idor = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+fit_comp_idor_Coef = tidy(lm_fit_comp_idor, fit_comp_idor,
+                          conf.int = TRUE,
+                          conf.level = 0.95)
+
+fit_comp_idor_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  dados_hemi_v1_CH,
+  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic )
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1_CH, na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_hemi_v1_CH$SUBJ)
+  ))
+
+paste("Verificando a diferenca entre o coeficiente obtido para a amostra IDOR e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1_CH, na.action = na.omit), 2, 1.25))
+
+paste("Verificando a diferenca entre o coeficiente obtido para os controles e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_v1_CH, Diagnostic == "CTL"), na.action = na.omit), 2, 1.25))
+
+paste("Verificando a diferenca entre o coeficiente obtido para os CCL e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_v1_CH, Diagnostic == "MCI"), na.action = na.omit), 2, 1.25))
+
+paste("Verificando a diferenca entre o coeficiente obtido para os DA e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_v1_CH, Diagnostic == "AD"), na.action = na.omit), 2, 1.25))    
+```
+
+```{r}
+lm_age <- filter(dados_hemi_v1_CH, Diagnostic == "CTL") %>%
+  group_by(Age_interval) %>%
+  do(fit_age = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+age_Coef = tidy(lm_age,
+                    fit_age,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+age_augment = augment(lm_age, fit_age)
+
+N_subj <- filter(dados_hemi_v1_CH, Diagnostic == "CTL") %>%
+  group_by(Age_interval) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+                                           
+ggplot(
+  data = filter(age_Coef, term == "logExposedArea"),
+  aes(
+  x = Age_interval,
+  y = estimate
+  )
+  ) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_hline(yintercept = 1.25, linetype = "dashed") +
+  geom_text(aes(label = N_subj$N_SUBJ), nudge_y = 0.6) +
+  theme_pubr() +
+  labs(y = "slope", x = "Age") +
+  labs(caption = paste(
+  "Controles, apenas 1 visita, N = ",
+  n_distinct(filter(dados_hemi_v1_CH, Diagnostic == "CTL")$SUBJ)))
+
+age_Coef_term <- filter(age_Coef, term == "logExposedArea")
+
+age_coef_aov <- (kruskal.test(estimate ~ Age_interval, data = age_Coef_term))
+age_coef_aov
+
+ggplot(data = filter(dados_hemi_v1_CH, Diagnostic == "CTL"), aes(logExposedArea, 1/2*logAvgThickness + logTotalArea, color = Age_interval10, fill = Age_interval10)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() + labs(fill= "Age", color = "Age", caption = paste(
+  "Diagnostic: CTL",
+  n_distinct(filter(dados_hemi_v1_CH, Diagnostic == "CTL")$SUBJ)))
+
+```
+
+### Diagnostic
+```{r}
+lm_diagnostic <- dados_hemi_v1_CH %>%
+  group_by(Diagnostic) %>%
+  do(fit_diagnostic = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+diagnostic_Coef = tidy(lm_diagnostic,
+                    fit_diagnostic,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+
+diagnostic_Coef %>% kable(digits = 4) %>% kable_styling()
+
+
+ggplot(
+  data = filter(diagnostic_Coef, term == "logExposedArea"),
+  aes(
+  x = Diagnostic,
+  y = estimate, color = Diagnostic, fill = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubr() + labs(y = "slope")
+
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = K,
+  pairwise.comparisons = TRUE, # display significant pairwise comparisons
+  p.adjust.method = "bonferroni", # method for adjusting p-values for multiple comparisons
+  # adding new components to `ggstatsplot` default
+  messages = FALSE,
+  title.text = "Differences in K for different Diagnostics"
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = K_age_decay,
+  ylab = "K after age correction",
+  pairwise.comparisons = TRUE, # display significant pairwise comparisons
+  p.adjust.method = "bonferroni", # method for adjusting p-values for multiple comparisons
+  # adding new components to `ggstatsplot` default
+  messages = FALSE,
+  title.text = "Differences in K after age correction for different Diagnostics"
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = S,
+  pairwise.comparisons = TRUE, # display significant pairwise comparisons
+  p.adjust.method = "bonferroni", # method for adjusting p-values for multiple comparisons
+  # adding new components to `ggstatsplot` default
+  messages = FALSE,
+  title.text = "Differences in S for different Diagnostics"
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = S_age_decay,
+  ylab = "S after age correction",
+  pairwise.comparisons = TRUE, # display significant pairwise comparisons
+  p.adjust.method = "bonferroni", # method for adjusting p-values for multiple comparisons
+  # adding new components to `ggstatsplot` default
+  messages = FALSE,
+  title.text = "Differences in S after age correction for different Diagnostics"
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = I,
+  pairwise.comparisons = TRUE, # display significant pairwise comparisons
+  p.adjust.method = "bonferroni", # method for adjusting p-values for multiple comparisons
+  # adding new components to `ggstatsplot` default
+  messages = FALSE,
+  title.text = "Differences in I for different Diagnostics"
+)
+
+ggstatsplot::ggbetweenstats(
+  data = dados_hemi_v1_CH,
+  x = Diagnostic,
+  y = I_age_decay,
+  ylab = "I after age correction",
+  pairwise.comparisons = TRUE, # display significant pairwise comparisons
+  p.adjust.method = "bonferroni", # method for adjusting p-values for multiple comparisons
+  # adding new components to `ggstatsplot` default
+  messages = FALSE,
+  title.text = "Differences in I after age correction for different Diagnostics"
+)
+```
+
+### Comparing Anovas - diff and p-values
+
+```{r}
+
+aov_diag <- aov(K ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag)
+aov_diag_K_diag_TK <- TukeyHSD(aov_diag)
+aov_diag_K_diag_TK
+
+aov_diag_K_diag_TK_t <- mutate(as.data.frame(aov_diag_K_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "hemisphere", Age_correction = "no")
+
+aov_diag2 <- aov(logAvgThickness ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag2)
+aov_diag_2_diag_TK <- TukeyHSD(aov_diag2)
+aov_diag_2_diag_TK
+
+aov_diag_2_diag_TK_t <- mutate(as.data.frame(aov_diag_2_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI"), morphological_parameter = "logAvgThickness", ROI = "hemisphere", Age_correction = "no")
+
+aov_diag_I <- aov(I ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag_I)
+aov_diag_I_diag_TK <- TukeyHSD(aov_diag_I)
+aov_diag_I_diag_TK
+
+aov_diag_I_diag_TK_t <- mutate(as.data.frame(aov_diag_I_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "I", Age_correction = "no", ROI = "hemisphere")
+
+aov_diag_I_age_decay <- aov(I_age_decay ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag_I_age_decay)
+aov_diag_I_age_decay_diag_TK <- TukeyHSD(aov_diag_I_age_decay)
+aov_diag_I_age_decay_diag_TK
+
+aov_diag_I_age_decay_diag_TK_t <- mutate(as.data.frame(aov_diag_I_age_decay_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "I", Age_correction = "yes", ROI = "hemisphere")
+
+aov_diag_S <- aov(S ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag_S)
+aov_diag_S_diag_TK <- TukeyHSD(aov_diag_S)
+aov_diag_S_diag_TK
+
+aov_diag_S_diag_TK_t <- mutate(as.data.frame(aov_diag_S_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "S", Age_correction = "no", ROI = "hemisphere")
+
+aov_diag_S_age_decay <- aov(S_age_decay ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag_S_age_decay)
+aov_diag_S_age_decay_diag_TK <- TukeyHSD(aov_diag_S_age_decay)
+aov_diag_S_age_decay_diag_TK
+
+aov_diag_S_age_decay_diag_TK_t <- mutate(as.data.frame(aov_diag_S_age_decay_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "S", Age_correction = "yes", ROI = "hemisphere")
+
+lm_diagnostic_agedecay <- dados_hemi_v1_CH %>%
+  group_by(Diagnostic) %>%
+  do(fit_diagnostic_agedecay = lm(1/2 * logAvgThickness_age_decay + logTotalArea_age_decay ~ logExposedArea_age_decay, data = ., na.action = na.omit))
+
+diagnostic_Coef_agedecay = tidy(lm_diagnostic_agedecay,
+                    fit_diagnostic_agedecay,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+diagnostic_Coef_agedecay %>% kable(digits = 4) %>% kable_styling()
+
+aov_diag_slope <- kruskal.test(estimate ~ Diagnostic, data = filter(diagnostic_Coef_agedecay, term == "logExposedArea_age_decay"))
+aov_diag_slope
+
+```
+
+### Diferenca entre diagnosticos
+
+```{r diag - age decay}
+aov_diag3 <- aov(K_age_decay ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag3)
+aov_diag_3_diag_TK <- TukeyHSD(aov_diag3)
+aov_diag_3_diag_TK
+
+aov_diag_3_diag_TK_t <- mutate(as.data.frame(aov_diag_3_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "hemisphere", Age_correction = "yes")
+
+aov_diag4 <- aov(logAvgThickness_age_decay ~ Diagnostic, data = dados_hemi_v1_CH)
+summary(aov_diag4)
+aov_diag_4_diag_TK <- TukeyHSD(aov_diag4)
+aov_diag_4_diag_TK
+
+aov_diag_4_diag_TK_t <- mutate(as.data.frame(aov_diag_4_diag_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "hemisphere", Age_correction = "yes")
+
+aov_summary <- rbind(aov_diag_K_diag_TK_t, aov_diag_2_diag_TK_t, aov_diag_3_diag_TK_t, aov_diag_4_diag_TK_t)
+
+```
+
+
+### Podemos localizar partes com maior detrimento por idade e doenca?
+
+```{r girificacao e lobos, echo=FALSE, message=FALSE, warning=FALSE}
+dados_lobos_v1_F <- filter(dados_lobos_v1, ROI == "F")
+
+dados_lobos_v1_T <- filter(dados_lobos_v1, ROI == "T")
+
+dados_lobos_v1_O <- filter(dados_lobos_v1, ROI == "O")
+
+dados_lobos_v1_P <- filter(dados_lobos_v1, ROI == "P")
+
+dados_lobos_v1_OP <- filter(dados_lobos_v1, ROI == "O" | ROI == "P")
+
+
+lm_diagnostic_lobe <- dados_lobos_v1 %>%
+  group_by(ROI, Diagnostic) %>%
+  do(
+  fit_diagnostic_lobe = lm(
+  1 / 2 * logAvgThickness + logTotalArea_corrected ~ logExposedArea_corrected,
+  data = .,
+  na.action = na.omit
+  )
+  )
+  
+diagnostic_Coef_lobe = tidy(
+  lm_diagnostic_lobe,
+  fit_diagnostic_lobe,
+  conf.int = TRUE,
+  conf.level = 0.95
+  )
+  
+diagnostic_Coef_lobe %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(data = filter(dados_lobos_v1, Diagnostic == "CTL"), aes(logExposedArea, 1/2 * logAvgThickness + logTotalArea, color = ROI, fill = ROI)) +
+  geom_point() + geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = filter(diagnostic_Coef_lobe, term == "logExposedArea_corrected", Diagnostic == "CTL", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_lobe, term == "(Intercept)", Diagnostic == "CTL", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() +
+  theme_pubr()
+
+ggplot(
+  data = dados_lobos_v1,
+  aes(
+  logExposedArea_corrected,
+  1 / 2 * logAvgThickness + logTotalArea_corrected,
+  color = Diagnostic,
+  fill = Diagnostic
+  )
+  ) +
+  geom_point() +
+  geom_abline(slope = filter(diagnostic_Coef_lobe, term == "logExposedArea_corrected", Diagnostic == "CTL", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_lobe, term == "(Intercept)", Diagnostic == "CTL", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() + 
+  facet_wrap(ROI ~ .) +
+  theme_pubr() 
+
+ggplot(
+  data = filter(diagnostic_Coef_lobe, term == "logExposedArea_corrected"),
+  aes(
+  x = reorder(Diagnostic, estimate),
+  y = estimate,
+  color = Diagnostic
+  )
+  ) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + 
+  geom_hline(yintercept = 1.25, linetype = "dashed")  + 
+  stat_compare_means(method = "kruskal.test") + 
+  labs(y = "slope") + 
+  facet_wrap(ROI ~. ) + 
+  theme_pubr()
+
+```
+
+
+```{r girificaca e lobos - corrigido pela curvatura, echo=FALSE, message=FALSE, warning=FALSE}
+aov_diag5 <- aov(K_corrected ~ Diagnostic*ROI, data = dados_lobos_v1)
+summary(aov_diag5)
+aov_diag_5_diag_TK <- TukeyHSD(aov_diag5)
+aov_diag_5_diag_TK
+
+aov_diag5_F <- aov(K_corrected ~ Diagnostic, data = dados_lobos_v1_F)
+summary(aov_diag5_F)
+aov_diag_5_diag_F_TK <- TukeyHSD(aov_diag5_F)
+aov_diag_5_diag_F_TK
+
+aov_diag_5_diag_F_TK_t <- mutate(as.data.frame(aov_diag_5_diag_F_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "frontal lobe", Age_correction = "no")
+
+aov_diag5_P <- aov(K_corrected ~ Diagnostic, data = dados_lobos_v1_P)
+summary(aov_diag5_P)
+aov_diag_5_diag_P_TK <- TukeyHSD(aov_diag5_P)
+aov_diag_5_diag_P_TK
+
+aov_diag_5_diag_P_TK_t <- mutate(as.data.frame(aov_diag_5_diag_P_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "parietal lobe", Age_correction = "no")
+
+
+aov_diag5_O <- aov(K_corrected ~ Diagnostic, data = dados_lobos_v1_O)
+summary(aov_diag5_O)
+aov_diag_5_diag_O_TK <- TukeyHSD(aov_diag5_O)
+aov_diag_5_diag_O_TK
+
+aov_diag_5_diag_O_TK_t <- mutate(as.data.frame(aov_diag_5_diag_O_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "occipital lobe", Age_correction = "no")
+
+aov_diag5_T <- aov(K_corrected ~ Diagnostic, data = dados_lobos_v1_T)
+summary(aov_diag5_T)
+aov_diag_5_diag_T_TK <- TukeyHSD(aov_diag5_T)
+aov_diag_5_diag_T_TK
+
+aov_diag_5_diag_T_TK_t <- mutate(as.data.frame(aov_diag_5_diag_T_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "temporal lobe", Age_correction = "no")
+
+aov_summary <- rbind(aov_summary, aov_diag_5_diag_F_TK_t, aov_diag_5_diag_P_TK_t, aov_diag_5_diag_O_TK_t,  aov_diag_5_diag_T_TK_t)
+
+ggplot(dados_lobos_v1, aes(x = Diagnostic, y = logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_boxplot() + stat_compare_means(method = "anova") + theme_pubr() + facet_wrap(ROI ~ . )
+
+aov_diag6 <- aov(logAvgThickness ~ Diagnostic * ROI, data = dados_lobos_v1)
+summary(aov_diag6)
+aov_diag_6_diag_TK <- TukeyHSD(aov_diag6)
+aov_diag_6_diag_TK
+
+aov_diag6_F <- aov(logAvgThickness ~ Diagnostic, data = dados_lobos_v1_F)
+summary(aov_diag6_F)
+aov_diag_6_diag_F_TK <- TukeyHSD(aov_diag6_F)
+aov_diag_6_diag_F_TK
+
+aov_diag_6_diag_F_TK_t <- mutate(as.data.frame(aov_diag_6_diag_F_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "frontal lobe", Age_correction = "no")
+
+aov_diag6_P <- aov(logAvgThickness ~ Diagnostic, data = dados_lobos_v1_P)
+summary(aov_diag6_P)
+aov_diag_6_diag_P_TK <- TukeyHSD(aov_diag6_P)
+aov_diag_6_diag_P_TK
+
+aov_diag_6_diag_P_TK_t <- mutate(as.data.frame(aov_diag_6_diag_P_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "parietal lobe", Age_correction = "no")
+
+aov_diag6_O <- aov(logAvgThickness ~ Diagnostic, data = dados_lobos_v1_O)
+summary(aov_diag6_O)
+aov_diag_6_diag_O_TK <- TukeyHSD(aov_diag6_O)
+aov_diag_6_diag_O_TK
+
+aov_diag_6_diag_O_TK_t <- mutate(as.data.frame(aov_diag_6_diag_O_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "occipital lobe", Age_correction = "no")
+
+aov_diag6_T <- aov(logAvgThickness ~ Diagnostic, data = dados_lobos_v1_T)
+summary(aov_diag6_T)
+aov_diag_6_diag_T_TK <- TukeyHSD(aov_diag6_T)
+aov_diag_6_diag_T_TK
+
+aov_diag_6_diag_T_TK_t <- mutate(as.data.frame(aov_diag_6_diag_T_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "temporal lobe", Age_correction = "no")
+
+aov_summary <- rbind(aov_summary, aov_diag_6_diag_F_TK_t, aov_diag_6_diag_P_TK_t, aov_diag_6_diag_O_TK_t,  aov_diag_6_diag_T_TK_t)
+
+lm_diagnostic_agedecay_lobe <- dados_lobos_v1 %>%
+  group_by(ROI, Diagnostic) %>%
+  do(fit_diagnostic_agedecay_lobe = lm(1/2 * logAvgThickness_age_decay + logTotalArea_age_decay ~ logExposedArea_age_decay, data = ., na.action = na.omit))
+
+diagnostic_Coef_agedecay_lobe = tidy(lm_diagnostic_agedecay_lobe,
+                    fit_diagnostic_agedecay_lobe,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+diagnostic_Coef_agedecay_lobe %>% kable(digits = 4) %>% kable_styling()
+
+aov_diag7 <- aov(K_age_decay ~ Diagnostic*ROI, data = dados_lobos_v1)
+summary(aov_diag7)
+aov_diag_7_diag_TK <- TukeyHSD(aov_diag7)
+aov_diag_7_diag_TK
+
+aov_diag7_F <- aov(K_age_decay ~ Diagnostic, data = dados_lobos_v1_F)
+summary(aov_diag7_F)
+aov_diag_7_diag_F_TK <- TukeyHSD(aov_diag7_F)
+aov_diag_7_diag_F_TK
+
+aov_diag_7_diag_F_TK_t <- mutate(as.data.frame(aov_diag_7_diag_F_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "frontal lobe", Age_correction = "yes")
+
+aov_diag7_P <- aov(K_age_decay ~ Diagnostic, data = dados_lobos_v1_P)
+summary(aov_diag7_P)
+aov_diag_7_diag_P_TK <- TukeyHSD(aov_diag7_P)
+aov_diag_7_diag_P_TK
+
+aov_diag_7_diag_P_TK_t <- mutate(as.data.frame(aov_diag_7_diag_P_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "parietal lobe", Age_correction = "yes")
+
+aov_diag7_O <- aov(K_age_decay ~ Diagnostic, data = dados_lobos_v1_O)
+summary(aov_diag7_O)
+aov_diag_7_diag_O_TK <- TukeyHSD(aov_diag7_O)
+aov_diag_7_diag_O_TK
+
+aov_diag_7_diag_O_TK_t <- mutate(as.data.frame(aov_diag_7_diag_O_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "occipital lobe", Age_correction = "yes")
+
+aov_diag7_T <- aov(K_age_decay ~ Diagnostic, data = dados_lobos_v1_T)
+summary(aov_diag7_T)
+aov_diag_7_diag_T_TK <- TukeyHSD(aov_diag7_T)
+aov_diag_7_diag_T_TK
+
+aov_diag_7_diag_T_TK_t <- mutate(as.data.frame(aov_diag_7_diag_T_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "K", ROI = "temporal lobe", Age_correction = "yes")
+
+aov_summary <- rbind(aov_summary, aov_diag_7_diag_F_TK_t, aov_diag_7_diag_P_TK_t, aov_diag_7_diag_O_TK_t,  aov_diag_7_diag_T_TK_t)
+
+aov_diag8 <- aov(logAvgThickness_age_decay ~ Diagnostic*ROI, data = dados_lobos_v1)
+summary(aov_diag8)
+aov_diag_8_diag_TK <- TukeyHSD(aov_diag8)
+aov_diag_8_diag_TK
+
+aov_diag8_F <- aov(logAvgThickness_age_decay ~ Diagnostic, data = dados_lobos_v1_F)
+summary(aov_diag8_F)
+aov_diag_8_diag_F_TK <- TukeyHSD(aov_diag8_F)
+aov_diag_8_diag_F_TK
+
+aov_diag_8_diag_F_TK_t <- mutate(as.data.frame(aov_diag_8_diag_F_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "frontal lobe", Age_correction = "yes")
+
+aov_diag8_P <- aov(logAvgThickness_age_decay ~ Diagnostic, data = dados_lobos_v1_P)
+summary(aov_diag8_P)
+aov_diag_8_diag_P_TK <- TukeyHSD(aov_diag8_P)
+aov_diag_8_diag_P_TK
+
+aov_diag_8_diag_P_TK_t <- mutate(as.data.frame(aov_diag_8_diag_P_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "parietal lobe", Age_correction = "yes")
+
+aov_diag8_O <- aov(logAvgThickness_age_decay ~ Diagnostic, data = dados_lobos_v1_O)
+summary(aov_diag8_O)
+aov_diag_8_diag_O_TK <- TukeyHSD(aov_diag8_O)
+aov_diag_8_diag_O_TK
+
+aov_diag_8_diag_O_TK_t <- mutate(as.data.frame(aov_diag_8_diag_O_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "occipital lobe", Age_correction = "yes")
+
+aov_diag8_T <- aov(logAvgThickness_age_decay ~ Diagnostic, data = dados_lobos_v1_T)
+summary(aov_diag8_T)
+aov_diag_8_diag_T_TK <- TukeyHSD(aov_diag8_T)
+aov_diag_8_diag_T_TK
+
+aov_diag_8_diag_T_TK_t <- mutate(as.data.frame(aov_diag_8_diag_T_TK$Diagnostic), Contrast = c("MCI-AD", "CTL-AD", "CTL-MCI") , morphological_parameter = "logAvgThickness", ROI = "temporal lobe", Age_correction = "yes")
+
+aov_summary <- rbind(aov_summary, aov_diag_8_diag_F_TK_t, aov_diag_8_diag_P_TK_t, aov_diag_8_diag_O_TK_t,  aov_diag_8_diag_T_TK_t)
+
+aov_summary <- aov_summary %>% mutate(signif = as.factor(ifelse(`p adj` < 0.05 | `p adj` == 0.05, "yes", "no")))
+aov_summary$ROI <- as.factor(aov_summary$ROI)
+aov_summary$ROI <- factor(aov_summary$ROI, levels = c("hemisphere", "frontal lobe", "occipital lobe", "parietal lobe", "temporal lobe"))
+
+ggplot(data = filter(aov_summary, `p adj` < 0.05 |
+                         `p adj` == 0.05), aes(
+  x = ROI,
+  y = diff,
+  ymin = lwr,
+  ymax = upr,
+  color = Contrast)) +
+  geom_hline(yintercept = 0,
+             linetype = "11",
+             colour = "grey60") +
+  geom_errorbar(width = 0.1, position = position_dodge(width = 0.6)) +
+  geom_point(position = position_dodge(width = 0.6)) +
+  scale_x_discrete(limits=c("temporal lobe", "parietal lobe","occipital lobe", "frontal lobe", "hemisphere")) + 
+  coord_flip() +
+  facet_grid(morphological_parameter~ Age_correction, labeller = label_both) +
+  labs(title = "95% family-wise confidence level", y =  "Differences in mean levels of Diagnostic", x = "ROI", caption = "only significant differences, p adj =< 0.05)") +
+  theme_pubr()
+
+aov_summary %>% filter(`p adj` < 0.05 |
+                         `p adj` == 0.05, ROI == "hemisphere") %>%
+  group_by(Contrast, Age_correction) %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+aov_summary %>% filter(`p adj` < 0.05 |
+                         `p adj` == 0.05, ROI == "hemisphere") %>% group_by(Contrast) %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+aov_summary %>% filter(`p adj` < 0.05 |
+                         `p adj` == 0.05, ROI != "hemisphere") %>% group_by(Contrast, Age_correction) %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+aov_summary %>% filter(`p adj` < 0.05 |
+                         `p adj` == 0.05, ROI != "hemisphere") %>% group_by(Contrast) %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+aov_summary %>% filter(`p adj` < 0.05 |
+                         `p adj` == 0.05, ROI != "hemisphere") %>% group_by(Contrast, ROI) %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+aov_summary %>% filter(`p adj` < 0.05 |
+                         `p adj` == 0.05) %>% group_by(Contrast) %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+aov_summary %>% filter(Contrast == "CTL-MCI") %>% filter(diff == max(diff)) %>% arrange(desc(diff)) %>%
+  kable() %>%
+  kable_styling()
+
+```
+
+## Envelhecimento vs DA
+
+```{r ageing vs DA}
+  dados_hemi_v1_CH_DACTL <- filter(dados_hemi_v1_CH, Diagnostic != "MCI")
+
+source("06-calculo_zscore_k_s_i_age.R")
+
+aov_diag_K <- aov(K ~ Diagnostic, data = dados_hemi_v1_CH_DACTL)
+aov_diag_K_diag_TK <- TukeyHSD(aov_diag_K)
+aov_diag_K_diag_TK
+aov_diag_K_diag_TK_t <- mutate(as.data.frame(aov_diag_K_diag_TK$Diagnostic), Contrast = c("CTL-ALD") , morphological_parameter = "K", ROI = "hemisphere", Age_correction = "no")
+
+aov_diag_K_age_decay <- aov(K_age_decay ~ Diagnostic, data = dados_hemi_v1_CH_DACTL)
+aov_diag_K_age_decay_diag_TK <- TukeyHSD(aov_diag_K_age_decay)
+aov_diag_K_age_decay_diag_TK
+aov_diag_K_age_decay_diag_TK_t <- mutate(as.data.frame(aov_diag_K_age_decay_diag_TK$Diagnostic), Contrast = c("CTL-AD")  , morphological_parameter = "K", ROI = "hemisphere", Age_correction = "yes")
+
+aov_diag_S <- aov(S ~ Diagnostic, data = dados_hemi_v1_CH_DACTL)
+aov_diag_S_diag_TK <- TukeyHSD(aov_diag_S)
+aov_diag_S_diag_TK
+aov_diag_S_diag_TK_t <- mutate(as.data.frame(aov_diag_S_diag_TK$Diagnostic), Contrast = c("CTL-AD")  , morphological_parameter = "S", ROI = "hemisphere", Age_correction = "no")
+
+aov_diag_S_age_decay <- aov(S_age_decay ~ Diagnostic, data = dados_hemi_v1_CH_DACTL)
+aov_diag_S_age_decay_diag_TK <- TukeyHSD(aov_diag_S_age_decay)
+aov_diag_S_age_decay_diag_TK
+aov_diag_S_age_decay_diag_TK_t <- mutate(as.data.frame(aov_diag_S_age_decay_diag_TK$Diagnostic), Contrast = c("CTL-AD")  , morphological_parameter = "S", ROI = "hemisphere", Age_correction = "yes")
+
+aov_diag_I <- aov(I ~ Diagnostic, data = dados_hemi_v1_CH_DACTL)
+aov_diag_I_diag_TK <- TukeyHSD(aov_diag_I)
+aov_diag_I_diag_TK
+aov_diag_I_diag_TK_t <- mutate(as.data.frame(aov_diag_S_diag_TK$Diagnostic), Contrast = c("CTL-AD")  , morphological_parameter = "I", ROI = "hemisphere", Age_correction = "no")
+
+aov_diag_I_age_decay <- aov(I_age_decay ~ Diagnostic, data = dados_hemi_v1_CH_DACTL)
+aov_diag_I_age_decay_diag_TK <- TukeyHSD(aov_diag_I_age_decay)
+aov_diag_I_age_decay_diag_TK
+aov_diag_I_age_decay_diag_TK_t <- mutate(as.data.frame(aov_diag_I_age_decay_diag_TK$Diagnostic), Contrast = c("CTL-AD")  , morphological_parameter = "I", ROI = "hemisphere", Age_correction = "yes")
+
+aov_summary_KSI_ADCTL <- full_join(aov_diag_K_diag_TK_t, aov_diag_K_age_decay_diag_TK_t) %>%
+full_join(aov_diag_S_diag_TK_t) %>%
+full_join(aov_diag_S_age_decay_diag_TK_t) %>%
+full_join(aov_diag_I_diag_TK_t) %>%
+full_join(aov_diag_I_age_decay_diag_TK_t)
+
+ggplot(data = filter(aov_summary_KSI_ADCTL, `p adj` < 0.05 |
+                         `p adj` == 0.05), aes(
+  x = ROI,
+  y = diff,
+  ymin = lwr,
+  ymax = upr,
+  color = Contrast)) +
+  geom_hline(yintercept = 0,
+             linetype = "11",
+             colour = "grey60") +
+  geom_errorbar(width = 0.1, position = position_dodge(width = 0.6)) +
+  geom_point(position = position_dodge(width = 0.6)) +
+  coord_flip() +
+  facet_grid(morphological_parameter ~ Age_correction, labeller = label_both) +
+  labs(title = "95% family-wise confidence level", y =  "Differences in mean levels of Diagnostic", x = "ROI", caption = "only significant differences, p adj =< 0.05)") +
+  theme_pubr()
+
+aov_summary_KSI_ADCTL %>% kable() %>% kable_styling()
+
+filter(aov_summary_KSI_ADCTL, `p adj` < 0.05 |
+                         `p adj` == 0.05) %>% kable() %>% kable_styling()
+
+
+mean_K_I_S_ADCTL <-
+  filter(dados_hemi_v1_CH_DACTL) %>% group_by(Diagnostic, Age_interval10) %>% summarise(
+    mean.T = mean(logAvgThickness, na.rm = TRUE),
+    SD_T = sd(logAvgThickness, na.rm = TRUE),
+    mean.K = mean(K, na.rm = TRUE),
+    SD_K = sd(K, na.rm = TRUE),
+    mean.I = mean(I, na.rm = TRUE),
+    SD_I = sd(I, na.rm = TRUE),
+    mean.S = mean(S, na.rm = TRUE),
+    SD_S = sd(S, na.rm = TRUE),
+    mean.T_age_decay = mean(logAvgThickness_age_decay, na.rm = TRUE),
+    SD_T_age_decay = sd(logAvgThickness_age_decay, na.rm = TRUE),
+    mean.K_age_decay = mean(K_age_decay, na.rm = TRUE),
+    SD_K_age_decay = sd(K_age_decay, na.rm = TRUE),
+    mean.I_age_decay = mean(I_age_decay, na.rm = TRUE),
+    SD_I_age_decay = sd(I_age_decay, na.rm = TRUE),
+    mean.S_age_decay = mean(S_age_decay, na.rm = TRUE),
+    SD_S_age_decay = sd(S_age_decay, na.rm = TRUE),
+    mean.T.zscore = mean(logAvgThickness.zscore, na.rm = TRUE),
+    SD_T.zscore = sd(logAvgThickness.zscore, na.rm = TRUE),
+    mean.K.zscore = mean(K.zscore, na.rm = TRUE),
+    SD_K.zscore = sd(K.zscore, na.rm = TRUE),
+    mean.I.zscore = mean(I.zscore, na.rm = TRUE),
+    SD_I.zscore = sd(I.zscore, na.rm = TRUE),
+    mean.S.zscore = mean(S.zscore, na.rm = TRUE),
+    SD_S.zscore = sd(S.zscore, na.rm = TRUE),
+    mean.T_age_decay.zscore = mean(logAvgThickness_age_decay.zscore, na.rm = TRUE),
+    SD_T_age_decay.zscore = sd(logAvgThickness_age_decay.zscore, na.rm = TRUE),
+    mean.K_age_decay.zscore = mean(K_age_decay.zscore, na.rm = TRUE),
+    SD_K_age_decay.zscore = sd(K_age_decay.zscore, na.rm = TRUE),
+    mean.I_age_decay.zscore = mean(I_age_decay.zscore, na.rm = TRUE),
+    SD_I_age_decay.zscore = sd(I_age_decay.zscore, na.rm = TRUE),
+    mean.S_age_decay.zscore = mean(S_age_decay.zscore, na.rm = TRUE),
+    SD_S_age_decay.zscore = sd(S_age_decay.zscore, na.rm = TRUE)
+  )
+
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.T.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.T.zscore - SD_T.zscore, ymax=mean.T.zscore + SD_T.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.T_age_decay.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.T_age_decay.zscore - SD_T_age_decay.zscore, ymax=mean.T_age_decay.zscore + SD_T_age_decay.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.K.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.K.zscore - SD_K.zscore, ymax=mean.K.zscore + SD_K.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.K_age_decay.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.K_age_decay.zscore - SD_K_age_decay.zscore, ymax=mean.K_age_decay.zscore + SD_K_age_decay.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.S.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.S.zscore - SD_S.zscore, ymax=mean.S.zscore + SD_S.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.S_age_decay.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.S_age_decay.zscore - SD_S_age_decay.zscore, ymax=mean.S_age_decay.zscore + SD_S_age_decay.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.I.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.I.zscore - SD_I.zscore, ymax=mean.I.zscore + SD_I.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+ggplot(mean_K_I_S_ADCTL, aes(y = mean.I_age_decay.zscore, x = Age_interval10, color = Diagnostic, fill = Diagnostic)) + 
+  geom_point() + geom_errorbar(aes(ymin = mean.I_age_decay.zscore - SD_I_age_decay.zscore, ymax=mean.I_age_decay.zscore + SD_I_age_decay.zscore)) + geom_line(aes(group = Diagnostic)) +
+    theme_pubr()
+
+plot_ly(
+  mean_K_I_S_ADCTL,
+  x =  ~ mean.K,
+  z =  ~ mean.S,
+  y =  ~ mean.I,
+  type = "scatter3d",
+  mode = 'lines+markers+text',
+  color =  ~ Diagnostic,
+  text = ~ Age_interval10
+) %>% layout(scene = list(
+  xaxis = list(title = 'K'),
+  zaxis = list(title = 'S'),
+  yaxis = list(title = 'I')
+))
+
+plot_ly(
+  mean_K_I_S_ADCTL,
+  x = ~ mean.K_age_decay,
+  z =  ~ mean.S_age_decay,
+  y =  ~ mean.I_age_decay,
+  type = "scatter3d",
+  mode = 'lines+markers+text',
+  color =  ~ Diagnostic,
+  text = ~ Age_interval10
+) %>% layout(scene = list(
+  xaxis = list(title = 'K_age_decay'),
+  zaxis = list(title = 'S_age_decay'),
+  yaxis = list(title = 'I_age_decay')
+))
+
+
+plot_ly(
+  filter(mean_K_I_S_ADCTL, Age_interval10 == "60" | Age_interval10 == "80"
+  ),
+  x =  ~ mean.K.zscore,
+  z =  ~ mean.S.zscore,
+  y =  ~ mean.I.zscore,
+  type = "scatter3d",
+  mode = 'lines+markers+text',
+  color =  ~ Diagnostic,
+  text = ~ Age_interval10
+) %>% layout(scene = list(
+  xaxis = list(title = 'K'),
+  zaxis = list(title = 'S'),
+  yaxis = list(title = 'I')
+))
+
+plot_ly(
+  filter(mean_K_I_S_ADCTL, Age_interval10 == "60" | Age_interval10 == "80"
+  ),
+  x = ~ mean.K_age_decay.zscore,
+  z =  ~ mean.S_age_decay.zscore,
+  y =  ~ mean.I_age_decay.zscore,
+  type = "scatter3d",
+  mode = 'lines+markers+text',
+  color =  ~ Diagnostic,
+  text = ~ Age_interval10
+) %>% layout(scene = list(
+  xaxis = list(title = 'K_age_decay'),
+  zaxis = list(title = 'S_age_decay'),
+  yaxis = list(title = 'I_age_decay')
+))
+```
+
+
+## clinical data - CORRELATION AND COVARIATION
+
+```{r include=FALSE}
+dados_hemi_v1_CH_CD <- dados_hemi_v1_CH %>% 
+  pivot_longer(c(COGNITIVE_INDEX, `A7/A5`, `TMT B-A`, MMSE, relogio, `DIGIT SPAN BACK`, `AB1-40`, `AB1-42`, TAU, AB1_ratio, TAU_AB1_42_ratio, TAU_AB1_ratio, Lipoxina), names_to = "clinical_test", values_to = "clinical_test_value")
+
+dados_hemi_v1_CH_CD <- dados_hemi_v1_CH_CD %>% 
+  pivot_longer(c(K, K_age_decay, logAvgThickness, logAvgThickness_age_decay, S, S_age_decay, I, I_age_decay), names_to = "morphological_parameter", values_to = "morphological_parameter_value")
+
+dados_hemi_v1_CH_CD_behaviour <- filter(dados_hemi_v1_CH_CD, clinical_test == "A7/A5" | clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") 
+
+dados_hemi_v1_CH_CD_biochq <- filter(dados_hemi_v1_CH_CD, clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio"| clinical_test == "Lipoxina")
+
+#frontal lobe
+dados_lobos_v1_F_CD <- dados_lobos_v1_F %>% 
+  pivot_longer(c(COGNITIVE_INDEX, `A7/A5`, `TMT B-A`, MMSE, relogio, `DIGIT SPAN BACK`, `AB1-40`, `AB1-42`, TAU, AB1_ratio, TAU_AB1_42_ratio, TAU_AB1_ratio, Lipoxina), names_to = "clinical_test", values_to = "clinical_test_value")
+
+dados_lobos_v1_F_CD <- dados_lobos_v1_F_CD %>% 
+  pivot_longer(c(K_corrected, K_age_decay, logAvgThickness, logAvgThickness_age_decay, S_corrected, S_age_decay, I_corrected, I_age_decay), names_to = "morphological_parameter", values_to = "morphological_parameter_value")
+
+dados_lobos_v1_F_CD_behaviour <- filter(dados_lobos_v1_F_CD, clinical_test == "A7/A5" | clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") 
+
+dados_lobos_v1_F_CD_biochq <- filter(dados_lobos_v1_F_CD, clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio"| clinical_test == "Lipoxina")
+
+#parietal lobe
+dados_lobos_v1_P_CD <- dados_lobos_v1_P %>% 
+  pivot_longer(c(COGNITIVE_INDEX, `A7/A5`, `TMT B-A`, MMSE, relogio, `DIGIT SPAN BACK`, `AB1-40`, `AB1-42`, TAU, AB1_ratio, TAU_AB1_42_ratio, TAU_AB1_ratio, Lipoxina), names_to = "clinical_test", values_to = "clinical_test_value")
+
+dados_lobos_v1_P_CD <- dados_lobos_v1_P_CD %>% 
+  pivot_longer(c(K_corrected, K_age_decay, logAvgThickness, logAvgThickness_age_decay, S_corrected, S_age_decay, I_corrected, I_age_decay), names_to = "morphological_parameter", values_to = "morphological_parameter_value")
+
+dados_lobos_v1_P_CD_behaviour <- filter(dados_lobos_v1_P_CD, clinical_test == "A7/A5" | clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") 
+
+dados_lobos_v1_P_CD_biochq <- filter(dados_lobos_v1_P_CD, clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio"| clinical_test == "Lipoxina")
+
+#occipital lobe
+dados_lobos_v1_O_CD <- dados_lobos_v1_O %>% 
+  pivot_longer(c(COGNITIVE_INDEX, `A7/A5`, `TMT B-A`, MMSE, relogio, `DIGIT SPAN BACK`, `AB1-40`, `AB1-42`, TAU, AB1_ratio, TAU_AB1_42_ratio, TAU_AB1_ratio, Lipoxina), names_to = "clinical_test", values_to = "clinical_test_value")
+
+dados_lobos_v1_O_CD <- dados_lobos_v1_O_CD %>% 
+  pivot_longer(c(K_corrected, K_age_decay, logAvgThickness, logAvgThickness_age_decay, S_corrected, S_age_decay, I_corrected, I_age_decay), names_to = "morphological_parameter", values_to = "morphological_parameter_value")
+
+dados_lobos_v1_O_CD_behaviour <- filter(dados_lobos_v1_O_CD, clinical_test == "A7/A5" | clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") 
+
+dados_lobos_v1_O_CD_biochq <- filter(dados_lobos_v1_O_CD, clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio"| clinical_test == "Lipoxina")
+
+
+#temporal lobe
+dados_lobos_v1_T_CD <- dados_lobos_v1_T %>% 
+  pivot_longer(c(COGNITIVE_INDEX, `A7/A5`, `TMT B-A`, MMSE, relogio, `DIGIT SPAN BACK`, `AB1-40`, `AB1-42`, TAU, AB1_ratio, TAU_AB1_42_ratio, TAU_AB1_ratio, Lipoxina), names_to = "clinical_test", values_to = "clinical_test_value")
+
+dados_lobos_v1_T_CD <- dados_lobos_v1_T_CD %>% 
+  pivot_longer(c(K_corrected, K_age_decay, logAvgThickness, logAvgThickness_age_decay, S_corrected, S_age_decay, I_corrected, I_age_decay), names_to = "morphological_parameter", values_to = "morphological_parameter_value")
+
+dados_lobos_v1_T_CD_behaviour <- filter(dados_lobos_v1_T_CD, clinical_test == "A7/A5" | clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") 
+
+dados_lobos_v1_T_CD_biochq <- filter(dados_lobos_v1_T_CD, clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio"| clinical_test == "Lipoxina")
+```
+
+
+
+```{r corr cov hemi, include=FALSE}
+
+Corr_cov1 <- dados_hemi_v1_CH_CD_behaviour %>%
+  group_by(morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(Diagnostic = "All", ROI = "Hemisphere", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov2 <- dados_hemi_v1_CH_CD_behaviour %>%
+  group_by(Diagnostic, morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(ROI = "Hemisphere", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov3 <- dados_hemi_v1_CH_CD_biochq %>%
+  group_by(morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(Diagnostic = "All", ROI = "Hemisphere", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov4 <- dados_hemi_v1_CH_CD_biochq %>%
+  group_by(Diagnostic, morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(ROI = "Hemisphere", kind = "biochemical", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov_all <- full_join(Corr_cov1, Corr_cov3)
+Corr_cov_diag <- full_join(Corr_cov2, Corr_cov4)
+
+Corr_cov_all %>% kable(digits = 4) %>% kable_styling()
+Corr_cov_diag %>% kable(digits = 4) %>% kable_styling()
+```
+
+```{r corr cov lobo frontal ,include=FALSE}
+
+Corr_cov5 <- filter(dados_lobos_v1_F_CD_behaviour, clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") %>%
+  group_by(morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(Diagnostic = "All", ROI = "Frontal lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov6 <- filter(dados_lobos_v1_F_CD_behaviour, clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") %>%
+  group_by(Diagnostic, morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(ROI = "Frontal lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+
+Corr_cov_all <- full_join(Corr_cov_all, Corr_cov5)
+Corr_cov_diag <- full_join(Corr_cov_diag, Corr_cov6)
+
+
+filter(Corr_cov_all, ROI == "Frontal lobe") %>% kable(digits = 4) %>% kable_styling()
+filter(Corr_cov_diag, ROI == "Frontal lobe") %>% kable(digits = 4) %>% kable_styling()
+```
+
+```{r corr cov lobo parietal, include=FALSE}
+
+Corr_cov9 <- filter(dados_lobos_v1_P_CD_behaviour, clinical_test == "relogio") %>%
+  group_by(morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(Diagnostic = "All", ROI = "Parietal lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov10 <- filter(dados_lobos_v1_P_CD_behaviour, clinical_test == "relogio") %>%
+  group_by(Diagnostic, morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(ROI = "Parietal lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+
+Corr_cov_all <- full_join(Corr_cov_all, Corr_cov9)
+Corr_cov_diag <- full_join(Corr_cov_diag, Corr_cov10)
+
+filter(Corr_cov_all, ROI == "Parietal lobe") %>% kable(digits = 4) %>% kable_styling()
+
+filter(Corr_cov_diag, ROI == "Parietal lobe") %>% kable(digits = 4) %>% kable_styling()
+```
+
+```{r corr cov lobo ocipital ,include=FALSE}
+
+Corr_cov13 <- filter(dados_lobos_v1_O_CD_behaviour, clinical_test == "relogio") %>%
+  group_by(morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(Diagnostic = "All", ROI = "Occipital lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov14 <- filter(dados_lobos_v1_O_CD_behaviour, clinical_test == "relogio") %>%
+  group_by(Diagnostic, morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(ROI = "Occipital lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+
+Corr_cov_all <- full_join(Corr_cov_all, Corr_cov13)
+Corr_cov_diag <- full_join(Corr_cov_diag, Corr_cov14)
+
+filter(Corr_cov_all, ROI == "Occipital lobe") %>% kable(digits = 4) %>% kable_styling()
+
+filter(Corr_cov_diag, ROI == "Occipital lobe") %>% kable(digits = 4) %>% kable_styling()
+```
+
+```{r corr cov lobo temporal ,include=FALSE}
+
+Corr_cov17 <- filter(dados_lobos_v1_T_CD_behaviour, clinical_test == "A7/A5") %>%
+  group_by(morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(Diagnostic = "All", ROI = "Temporal lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+Corr_cov18 <- filter(dados_lobos_v1_T_CD_behaviour, clinical_test == "A7/A5") %>%
+  group_by(Diagnostic, morphological_parameter, clinical_test) %>%
+  summarise(
+    Correlation = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$estimate,
+    pvalue = cor.test(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")$p.value,
+    Covariance = cov(morphological_parameter_value, clinical_test_value, use = "pairwise.complete.obs", method = "pearson")
+  ) %>% mutate(ROI = "Temporal lobe", kind = "behaviour", age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
+
+
+Corr_cov_all <- full_join(Corr_cov_all, Corr_cov17)
+Corr_cov_diag <- full_join(Corr_cov_diag, Corr_cov18)
+
+filter(Corr_cov_all, ROI == "Temporal lobe") %>% kable(digits = 4) %>% kable_styling()
+
+filter(Corr_cov_diag, ROI == "Temporal lobe") %>% kable(digits = 4) %>% kable_styling()
+```
+
+```{r echo=FALSE, warning=TRUE}
+Corr_cov_all <- Corr_cov_all %>% group_by(morphological_parameter, clinical_test) %>% mutate(pval.adj = p.adjust (pvalue, method='bonferroni'))
+Corr_cov_diag <- Corr_cov_diag %>% group_by(morphological_parameter, clinical_test) %>% mutate(pval.adj = p.adjust (pvalue, method='bonferroni'))
+
+filter(Corr_cov_all, morphological_parameter == "K" | morphological_parameter == "logAvgThickness") %>% kable() %>% kable_styling()
+filter(Corr_cov_diag, morphological_parameter == "K" | morphological_parameter == "logAvgThickness") %>% kable() %>% kable_styling()
+
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "K_corrected"] <- "K"
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "I_corrected"] <- "I"
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "S_corrected"] <- "S"
+
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "K_age_decay"] <- "K"
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "I_age_decay"] <- "I"
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "S_age_decay"] <- "S"
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "S_age_decay"] <- "S"
+Corr_cov_all$morphological_parameter[Corr_cov_all$morphological_parameter == "logAvgThickness_age_decay"] <- "logAvgThickness"
+
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "K_corrected"] <- "K"
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "I_corrected"] <- "I"
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "S_corrected"] <- "S"
+
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "K_age_decay"] <- "K"
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "I_age_decay"] <- "I"
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "S_age_decay"] <- "S"
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "S_age_decay"] <- "S"
+Corr_cov_diag$morphological_parameter[Corr_cov_diag$morphological_parameter == "logAvgThickness_age_decay"] <- "logAvgThickness"
+
+  ggplot(filter(Corr_cov_all, clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "A7/A5" | clinical_test == "relogio", Diagnostic == "All"), aes(x = clinical_test, y = Correlation, color = morphological_parameter, fill = morphological_parameter, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(age_correction ~ ROI, labeller = label_both)
+ 
+ggplot(filter(Corr_cov_all, clinical_test == "Lipoxina" | clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio", Diagnostic == "All"), aes(x = clinical_test, y = Correlation, color = morphological_parameter, fill = morphological_parameter, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(age_correction ~ ROI, labeller = label_both)
+
+  ggplot(filter(Corr_cov_all, clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "A7/A5" | clinical_test == "relogio", Diagnostic == "All"), aes(x = clinical_test, y = Correlation, color = morphological_parameter, fill = morphological_parameter, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(age_correction ~ ROI, labeller = label_both)
+ 
+ggplot(filter(Corr_cov_all, clinical_test == "Lipoxina" | clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio", Diagnostic == "All"), aes(x = clinical_test, y = Correlation, color = morphological_parameter, fill = morphological_parameter, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(age_correction ~ ROI, labeller = label_both)
+
+```
+## modelo multinomial
+
+```{r glm, echo=TRUE, message=FALSE, warning=FALSE}
+require(foreign)
+require(nnet)
+require(ggplot2)
+require(reshape2)
+library(stargazer)
+require(betareg)
+
+dados_hemi_v1_CH$Diagnostic <- factor(dados_hemi_v1_CH$Diagnostic, levels = c("AD", "MCI","CTL"))
+
+set.seed(0)
+
+N_diag <- dados_hemi_v1_CH %>% dplyr::select(SUBJ, Diagnostic) %>% unique() %>% group_by(Diagnostic) %>% summarise(n_DIAG = n_distinct(SUBJ))
+
+dados_hemi_v1_CH_filter <- dados_hemi_v1_CH %>% dplyr::select(SUBJ, Diagnostic) %>% unique()
+
+N_CTL <- as.double(floor(N_diag[3,2]*0.8))
+N_CCL <- as.double(round(N_diag[2,2]*0.8))
+N_ALZ <- as.double(round(N_diag[1,2]*0.8))
+
+test.samples <- c(sample(which(dados_hemi_v1_CH_filter$Diagnostic == "AD"), N_ALZ), sample(which(dados_hemi_v1_CH_filter$Diagnostic == "CTL"), N_CTL), sample(which(dados_hemi_v1_CH_filter$Diagnostic == "MCI"), N_CCL))
+subj.training <- as_tibble(dados_hemi_v1_CH_filter[-test.samples, ]$SUBJ)
+
+colnames(subj.training) <- c("SUBJ")
+
+train.data <- anti_join(dados_hemi_v1_CH, subj.training)
+test.data <- semi_join(dados_hemi_v1_CH, subj.training)
+
+caret::featurePlot(x = dados_hemi_v1_CH[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_hemi_v1_CH$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+caret::featurePlot(x = dados_hemi_v1_CH[, c("K", "I", "S")], y = dados_hemi_v1_CH$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,1))
+caret::featurePlot(x = dados_hemi_v1_CH[, c("K_age_decay", "I_age_decay", "S_age_decay")], y = dados_hemi_v1_CH$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,1))
+
+print(n_distinct(dados_hemi_v1_CH$SUBJ))
+print(n_distinct(train.data$SUBJ))
+print(n_distinct(test.data$SUBJ))
+
+
+caret::featurePlot(x = train.data[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+caret::featurePlot(x = train.data[, c("K", "K_age_decay", "I", "I_age_decay", "S", "S_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,2))
+
+multinom1 <- multinom(Diagnostic ~ K + Age, data = train.data)
+multinom2 <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data)
+multinom3 <- multinom(Diagnostic ~ K + logAvgThickness + Age, data = train.data)
+
+multinom10 <- multinom(Diagnostic ~ S + Age, data = train.data)
+multinom11 <- multinom(Diagnostic ~ I + Age, data = train.data)
+
+multinom0 <- multinom(Diagnostic ~ K + Age + ESC, data = train.data)
+multinom0_2 <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data)
+
+multinom_sex1 <- multinom(Diagnostic ~ K + Age + sex , data = train.data)
+multinom_sex2 <- multinom(Diagnostic ~ logAvgThickness + Age + sex , data = train.data)
+
+multinom0_0 <- multinom(Diagnostic ~ K + S + I + Age, data = train.data)
+
+
+anova(multinom2, multinom1, test = "Chisq")
+anova(multinom0, multinom1, test = "Chisq")
+
+anova(multinom0_0, multinom1, test = "Chisq")
+
+## da estatistica ##
+ 
+m.multi.nova1 <-
+  multinom(Diagnostic ~ K + Age, data = train.data)
+  stargazer(m.multi.nova1, type = "text")
+
+  z1 <-
+    summary(m.multi.nova1)$coefficients / summary(m.multi.nova1)$standard.errors
+    p1 <- (1 - pnorm(abs(z1), 0, 1)) * 2
+    t(p1)
+
+#Para facilitar a interpreta??o:
+coef.multi1 = exp(coef(m.multi.nova1))
+t(coef.multi1)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova1, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova1),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = FALSE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+
+
+m.multi.nova2 <-
+  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data)
+  stargazer(m.multi.nova2, type = "text")
+
+  z2 <-
+    summary(m.multi.nova2)$coefficients / summary(m.multi.nova2)$standard.errors
+    p2 <- (1 - pnorm(abs(z2), 0, 1)) * 2
+    t(p2)
+
+#Para facilitar a interpreta??o:
+coef.multi2 = exp(coef(m.multi.nova2))
+t(coef.multi2)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova2, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova2),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+
+m.multi.nova3 <-
+  multinom(Diagnostic ~ K + logAvgThickness + Age, data = train.data)
+  stargazer(m.multi.nova3, type = "text")
+
+  z3 <-
+    summary(m.multi.nova3)$coefficients / summary(m.multi.nova3)$standard.errors
+    p3 <- (1 - pnorm(abs(z3), 0, 1)) * 2
+    t(p3)
+
+#Para facilitar a interpreta??o:
+coef.multi3 = exp(coef(m.multi.nova3))
+t(coef.multi3)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova3, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova3),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova10 <-
+  multinom(Diagnostic ~ I + Age, data = train.data)
+  stargazer(m.multi.nova10, type = "text")
+
+  z10 <-
+    summary(m.multi.nova10)$coefficients / summary(m.multi.nova10)$standard.errors
+    p10 <- (1 - pnorm(abs(z10), 0, 1)) * 2
+    t(p10)
+
+#Para facilitar a interpreta??o:
+coef.multi10 = exp(coef(m.multi.nova10))
+t(coef.multi10)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova10, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova10),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+
+m.multi.nova11 <-
+  multinom(Diagnostic ~ S + Age, data = train.data)
+  stargazer(m.multi.nova10, type = "text")
+
+  z11 <-
+    summary(m.multi.nova11)$coefficients / summary(m.multi.nova11)$standard.errors
+    p11 <- (1 - pnorm(abs(z11), 0, 1)) * 2
+    t(p11)
+
+#Para facilitar a interpreta??o:
+coef.multi11 = exp(coef(m.multi.nova11))
+t(coef.multi11)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova11, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova11),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova0 <-
+  multinom(Diagnostic ~ K + Age + ESC, data = train.data)
+  stargazer(m.multi.nova0, type = "text")
+  
+  z0 <-
+    summary(m.multi.nova0)$coefficients / summary(m.multi.nova0)$standard.errors
+    p0 <- (1 - pnorm(abs(z0), 0, 1)) * 2
+    t(p0)
+
+#Para facilitar a interpreta??o:
+coef.multi0 = exp(coef(m.multi.nova0))
+t(coef.multi0)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova0_2 <-
+  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data)
+  stargazer(m.multi.nova0_2, type = "text")
+
+  z0_2 <-
+    summary(m.multi.nova0_2)$coefficients / summary(m.multi.nova0_2)$standard.errors
+    p0_2 <- (1 - pnorm(abs(z0_2), 0, 1)) * 2
+    t(p0_2)
+
+#Para facilitar a interpreta??o:
+coef.multi0_2 = exp(coef(m.multi.nova0_2))
+t(coef.multi0_2)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_2, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_2),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova0_0 <-
+  multinom(Diagnostic ~ K + I + S + Age, data = train.data)
+  stargazer(m.multi.nova0_0, type = "text")
+
+  z0_0 <-
+    (summary(m.multi.nova0_0)$coefficients)/(summary(m.multi.nova0_0)$standard.errors)
+    p0_0 <- (1 - pnorm(abs(z0_0), 0, 1)) * 2
+    t(p0_0)
+
+#Para facilitar a interpreta??o:
+coef.multi0_0 = exp(coef(m.multi.nova0_0))
+t(coef.multi0_0)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_0, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_0),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = FALSE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "0_0-Specificity (false positive rate)"
+  )
+
+
+m.multi.nova.sex1 <-
+  multinom(Diagnostic ~ K + Age + sex, data = train.data)
+  stargazer(m.multi.nova.sex1, type = "text")
+
+  z.sex1 <-
+    summary(m.multi.nova.sex1)$coefficients / summary(m.multi.nova.sex1)$standard.errors
+    p.sex1 <- (1 - pnorm(abs(z.sex1), 0, 1)) * 2
+    t(p.sex1)
+
+#Para facilitar a interpreta??o:
+coef.multi.sex1 = exp(coef(m.multi.nova.sex1))
+t(coef.multi.sex1)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova.sex1, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova.sex1),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = FALSE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova.sex2 <-
+  multinom(Diagnostic ~ logAvgThickness_age_decay + Age + sex, data = train.data)
+  stargazer(m.multi.nova.sex2, type = "text")
+
+  z.sex2 <-
+    summary(m.multi.nova.sex2)$coefficients / summary(m.multi.nova.sex2)$standard.errors
+    p.sex2 <- (1 - pnorm(abs(z.sex2), 0, 1)) * 2
+    t(p.sex2)
+
+#Para facilitar a interpreta??o:
+coef.multi.sex2 = exp(coef(m.multi.nova.sex2))
+t(coef.multi.sex2)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova.sex2, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova.sex2),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = FALSE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+## modelo multinomial - deaged
+
+```{r glm deaged, echo=TRUE, message=FALSE, warning=FALSE}
+
+caret::featurePlot(x = train.data[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+
+multinom4 <- multinom(Diagnostic ~ K_age_decay, data = train.data)
+multinom5 <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data)
+multinom6 <- multinom(Diagnostic ~ K_age_decay + logAvgThickness_age_decay, data = train.data)
+
+multinom12 <- multinom(Diagnostic ~ I_age_decay + logAvgThickness_age_decay, data = train.data)
+multinom13 <- multinom(Diagnostic ~ S_age_decay + logAvgThickness_age_decay, data = train.data)
+
+multinom0_0_0 <- multinom(Diagnostic ~ K_age_decay + I_age_decay + S_age_decay, data = train.data)
+
+
+summary(multinom4)
+summary(multinom5)
+summary(multinom6)
+
+summary(multinom12)
+summary(multinom13)
+
+summary(multinom0_0_0)
+
+
+anova(multinom5, multinom4, test = "Chisq")
+
+anova(multinom0_0_0, multinom4, test = "Chisq")
+
+
+## da estatistica ##
+ 
+m.multi.nova4 <-
+  multinom(Diagnostic ~ K_age_decay, data = train.data)
+  stargazer(m.multi.nova4, type = "text")
+
+  z4 <-
+    summary(m.multi.nova4)$coefficients / summary(m.multi.nova4)$standard.errors
+    p4 <- (1 - pnorm(abs(z4), 0, 1)) * 2
+    t(p4)
+
+#Para facilitar a interpreta??o:
+coef.multi4 = exp(coef(m.multi.nova4))
+t(coef.multi4)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova4, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova4),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova5 <-
+  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data)
+  stargazer(m.multi.nova5, type = "text")
+
+  z5 <-
+    summary(m.multi.nova5)$coefficients / summary(m.multi.nova5)$standard.errors
+    p5 <- (1 - pnorm(abs(z5), 0, 1)) * 2
+    t(p5)
+
+#Para facilitar a interpreta??o:
+coef.multi5 = exp(coef(m.multi.nova5))
+t(coef.multi5)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova5, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova5),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova6 <-
+  multinom(Diagnostic ~ K_age_decay + logAvgThickness_age_decay, data = train.data)
+  stargazer(m.multi.nova6, type = "text")
+
+  z6 <-
+    summary(m.multi.nova6)$coefficients / summary(m.multi.nova6)$standard.errors
+    p6 <- (1 - pnorm(abs(z6), 0, 1)) * 2
+    t(p6)
+
+#Para facilitar a interpreta??o:
+coef.multi6 = exp(coef(m.multi.nova6))
+t(coef.multi6)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova6, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova6),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova12 <-
+  multinom(Diagnostic ~ I_age_decay, data = train.data)
+  stargazer(m.multi.nova12, type = "text")
+
+  z12 <-
+    summary(m.multi.nova12)$coefficients / summary(m.multi.nova12)$standard.errors
+    p12 <- (1 - pnorm(abs(z12), 0, 1)) * 2
+    t(p12)
+
+#Para facilitar a interpreta??o:
+coef.multi12 = exp(coef(m.multi.nova12))
+t(coef.multi12)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova12, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova12),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+
+m.multi.nova13 <-
+  multinom(Diagnostic ~ S_age_decay, data = train.data)
+  stargazer(m.multi.nova12, type = "text")
+
+  z13 <-
+    summary(m.multi.nova13)$coefficients / summary(m.multi.nova13)$standard.errors
+    p13 <- (1 - pnorm(abs(z13), 0, 1)) * 2
+    t(p13)
+
+#Para facilitar a interpreta??o:
+coef.multi13 = exp(coef(m.multi.nova13))
+t(coef.multi13)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova13, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova13),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+  
+
+m.multi.nova0_0_0 <-
+  multinom(Diagnostic ~ K_age_decay + I_age_decay + S_age_decay, data = train.data)
+  stargazer(m.multi.nova0_0_0, type = "text")
+
+  z0_0_0 <-
+    summary(m.multi.nova0_0_0)$coefficients / summary(m.multi.nova0_0_0)$standard.errors
+    p0_0_0 <- (1 - pnorm(abs(z0_0_0), 0, 1)) * 2
+    t(p0_0_0)
+
+#Para facilitar a interpreta??o:
+coef.multi0_0_0 = exp(coef(m.multi.nova0_0_0))
+t(coef.multi0_0_0)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_0_0, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_0_0),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )  
+  
+
+m.multi.nova.sex3 <-
+  multinom(Diagnostic ~ K_age_decay + sex, data = train.data)
+  stargazer(m.multi.nova.sex3, type = "text")
+
+  z.sex3 <-
+    summary(m.multi.nova.sex3)$coefficients / summary(m.multi.nova.sex3)$standard.errors
+    p.sex3 <- (1 - pnorm(abs(z.sex3), 0, 1)) * 2
+    t(p.sex3)
+
+#Para facilitar a interpreta??o:
+coef.multi.sex3 = exp(coef(m.multi.nova.sex3))
+t(coef.multi.sex3)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova.sex3, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova.sex3),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = FALSE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova.sex4 <-
+  multinom(Diagnostic ~ logAvgThickness + Age + sex, data = train.data)
+  stargazer(m.multi.nova.sex4, type = "text")
+
+  z.sex4 <-
+    summary(m.multi.nova.sex4)$coefficients / summary(m.multi.nova.sex4)$standard.errors
+    p.sex4 <- (1 - pnorm(abs(z.sex4), 0, 1)) * 2
+    t(p.sex4)
+
+#Para facilitar a interpreta??o:
+coef.multi.sex4 = exp(coef(m.multi.nova.sex4))
+t(coef.multi.sex4)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova.sex4, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova.sex4),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = FALSE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+## modelo multinomial - lobes
+
+### Lobo temporal
+
+```{r glm temporal lobe, echo=TRUE, message=FALSE, warning=FALSE}
+
+dados_lobos_v1_T$Diagnostic <- factor(dados_lobos_v1_T$Diagnostic, levels = c("AD", "MCI","CTL"))
+
+train.data_lobes <- anti_join(dados_lobos_v1_T, subj.training)
+test.data_lobes <- semi_join(dados_lobos_v1_T, subj.training)
+
+caret::featurePlot(x = dados_lobos_v1_T[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_lobos_v1_T$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+print(n_distinct(dados_lobos_v1_T$SUBJ))
+print(n_distinct(train.data_lobes$SUBJ))
+print(n_distinct(test.data_lobes$SUBJ))
+
+caret::featurePlot(x = train.data_lobes[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data_lobes$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+multinom1.l <- multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+multinom2.l <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+
+multinom4.l <- multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+multinom5.l <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+
+multinom0.l <- multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+multinom0_2.l <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+
+## da estatistica ##
+ 
+summary(multinom1.l)
+summary(multinom2.l)
+summary(multinom4.l)
+summary(multinom5.l)
+summary(multinom0.l)
+summary(multinom0_2.l)
+
+# anova(multinom5, multinom4, test = "Chisq")
+
+## da estatistica ##
+
+m.multi.nova1.l <-
+  multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+  stargazer(m.multi.nova1.l, type = "text")
+
+  z1.l <-
+    summary(m.multi.nova1.l)$coefficients / summary(m.multi.nova1.l)$standard.errors
+    p1.l <- (1 - pnorm(abs(z1.l), 0, 1)) * 2
+    t(p1.l)
+
+#Para facilitar a interpreta??o:
+coef.multi1.l = exp(coef(m.multi.nova1.l))
+t(coef.multi1.l)
+
+# Summary
+cM1.l <- confusionMatrix(predicted.classes.multi.nova1.l, test.data_lobes$Diagnostic)
+cM1.l
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova1.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+  stargazer(m.multi.nova2.l, type = "text")
+
+  z2.l <-
+    summary(m.multi.nova2.l)$coefficients / summary(m.multi.nova2.l)$standard.errors
+    p2.l <- (1 - pnorm(abs(z2.l), 0, 1)) * 2
+    t(p2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi2.l = exp(coef(m.multi.nova2.l))
+t(coef.multi2.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+ 
+m.multi.nova4.l <-
+  multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova4.l, type = "text")
+
+  z4.l <-
+    summary(m.multi.nova4.l)$coefficients / summary(m.multi.nova4.l)$standard.errors
+    p4.l <- (1 - pnorm(abs(z4.l), 0, 1)) * 2
+    t(p4.l)
+
+#Para facilitar a interpreta??o:
+coef.multi4.l = exp(coef(m.multi.nova4.l))
+t(coef.multi4.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova4.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova4.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova5.l <-
+  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova5.l, type = "text")
+
+  z5.l <-
+    summary(m.multi.nova5.l)$coefficients / summary(m.multi.nova5.l)$standard.errors
+    p5.l <- (1 - pnorm(abs(z5.l), 0, 1)) * 2
+    t(p5.l)
+
+#Para facilitar a interpreta??o:
+coef.multi5.l = exp(coef(m.multi.nova5.l))
+t(coef.multi5.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova5.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova5.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+
+m.multi.nova0.l <-
+  multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0.l, type = "text")
+
+  z0.l <-
+    summary(m.multi.nova0.l)$coefficients / summary(m.multi.nova0.l)$standard.errors
+    p0.l <- (1 - pnorm(abs(z0.l), 0, 1)) * 2
+    t(p0.l)
+
+#Para facilitar a interpreta??o:
+coef.multi0.l = exp(coef(m.multi.nova0.l))
+t(coef.multi0.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova0_2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0_2.l, type = "text")
+
+  z0_2.l <-
+    summary(m.multi.nova0_2.l)$coefficients / summary(m.multi.nova0_2.l)$standard.errors
+    p0_2.l <- (1 - pnorm(abs(z0_2.l), 0, 1)) * 2
+    t(p0_2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi0_2.l = exp(coef(m.multi.nova0_2.l))
+t(coef.multi0_2.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+### Lobo parietal
+
+```{r glm parietal lobe, echo=TRUE, message=FALSE, warning=FALSE}
+
+dados_lobos_v1_P$Diagnostic <- factor(dados_lobos_v1_P$Diagnostic, levels = c("AD", "MCI","CTL"))
+
+train.data_lobes <- anti_join(dados_lobos_v1_P, subj.training)
+test.data_lobes <- semi_join(dados_lobos_v1_P, subj.training)
+
+caret::featurePlot(x = dados_lobos_v1_P[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_lobos_v1_P$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+print(n_distinct(dados_lobos_v1_P$SUBJ))
+print(n_distinct(train.data_lobes$SUBJ))
+print(n_distinct(test.data_lobes$SUBJ))
+
+
+caret::featurePlot(x = train.data_lobes[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data_lobes$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+multinom1.l <- multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+multinom2.l <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+
+multinom4.l <- multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+multinom5.l <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+
+multinom0.l <- multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+multinom0_2.l <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+
+## da estatistica ##
+ 
+summary(multinom1.l)
+summary(multinom2.l)
+summary(multinom4.l)
+summary(multinom5.l)
+summary(multinom0.l)
+summary(multinom0_2.l)
+
+# anova(multinom5, multinom4, test = "Chisq")
+
+## da estatistica ##
+
+m.multi.nova1.l <-
+  multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+  stargazer(m.multi.nova1.l, type = "text")
+
+  z1.l <-
+    summary(m.multi.nova1.l)$coefficients / summary(m.multi.nova1.l)$standard.errors
+    p1.l <- (1 - pnorm(abs(z1.l), 0, 1)) * 2
+    t(p1.l)
+
+#Para facilitar a interpreta??o:
+coef.multi1.l = exp(coef(m.multi.nova1.l))
+t(coef.multi1.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova1.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova1.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+  stargazer(m.multi.nova2.l, type = "text")
+
+  z2.l <-
+    summary(m.multi.nova2.l)$coefficients / summary(m.multi.nova2.l)$standard.errors
+    p2.l <- (1 - pnorm(abs(z2.l), 0, 1)) * 2
+    t(p2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi2.l = exp(coef(m.multi.nova2.l))
+t(coef.multi2.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+ 
+m.multi.nova4.l <-
+  multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova4.l, type = "text")
+
+  z4.l <-
+    summary(m.multi.nova4.l)$coefficients / summary(m.multi.nova4.l)$standard.errors
+    p4.l <- (1 - pnorm(abs(z4.l), 0, 1)) * 2
+    t(p4.l)
+
+#Para facilitar a interpreta??o:
+coef.multi4.l = exp(coef(m.multi.nova4.l))
+t(coef.multi4.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova4.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova4.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova5.l <-
+  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova5.l, type = "text")
+
+  z5.l <-
+    summary(m.multi.nova5.l)$coefficients / summary(m.multi.nova5.l)$standard.errors
+    p5.l <- (1 - pnorm(abs(z5.l), 0, 1)) * 2
+    t(p5.l)
+
+#Para facilitar a interpreta??o:
+coef.multi5.l = exp(coef(m.multi.nova5.l))
+t(coef.multi5.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova5.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova5.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+
+m.multi.nova0.l <-
+  multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0.l, type = "text")
+
+  z0.l <-
+    summary(m.multi.nova0.l)$coefficients / summary(m.multi.nova0.l)$standard.errors
+    p0.l <- (1 - pnorm(abs(z0.l), 0, 1)) * 2
+    t(p0.l)
+
+#Para facilitar a interpreta??o:
+coef.multi0.l = exp(coef(m.multi.nova0.l))
+t(coef.multi0.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+m.multi.nova0_2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0_2.l, type = "text")
+
+ z0_2.l <-
+    summary(m.multi.nova0_2.l)$coefficients / summary(m.multi.nova0_2.l)$standard.errors
+    p0_2.l <- (1 - pnorm(abs(z0_2.l), 0, 1)) * 2
+    t(p0_2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi0_2.l = exp(coef(m.multi.nova0_2.l))
+t(coef.multi0_2.l)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```

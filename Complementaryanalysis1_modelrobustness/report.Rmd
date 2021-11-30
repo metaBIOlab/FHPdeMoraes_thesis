@@ -1,7 +1,7 @@
 ---
-title: "Relatorio PRJ Girificacao"
+title: "Complementary Analysis 1 from Fernanda Hansen P. de Moraes Thesis - Cortical folding alterations in humans due to aging and diseases"
 author: "Fernanda Hansen Pacheco de Moraes"
-date: "11 de dezembro de 2018"
+date: "30-november-2021"
 output:
   html_document: 
     df_print: kable
@@ -10,17 +10,13 @@ output:
     number_sections: yes
     theme: paper
     toc: yes
-  pdf_document:
-    toc: yes
-    toc_depth: '5'
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
-	warning = FALSE,
-	cache = TRUE
+	warning = FALSE
 )
 ```
 

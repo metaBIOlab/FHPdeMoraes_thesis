@@ -1,0 +1,2 @@
+"0",""
+"0","aggregate(filter(lm_diagnostic_lobe_curv, term == ""logExposedArea_age_decay"")$estimate, by=list(diag=filter(lm_diagnostic_lobe_curv, term == ""logExposedArea_age_decay"")$Diagnostic), mean)"

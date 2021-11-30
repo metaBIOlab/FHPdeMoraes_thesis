@@ -1,0 +1,133 @@
+# CORRIGINDO OS PARAMETROS PELA IDADE ----
+
+source("analises/decay_thickness.R")
+
+source("analises/decay_areatotal.R")
+
+source("analises/decay_areasmooth.R")
+
+source("analises/decay_localgI.R")
+
+# source("analises/decaimento_idade_longcor.R")
+
+dados <-
+  dados %>% mutate(
+    logAvgThickness_age_decay = as.numeric(
+      ifelse(
+        dados$ROI == "hemisphere",
+        dados$logAvgThickness - lambda_t_CTL_hemi * (dados$Age - Idade),
+        ifelse(
+          dados$ROI == "F",
+          dados$logAvgThickness  - lambda_t_CTL_F * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "O",
+            dados$logAvgThickness  - lambda_t_CTL_O * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "P",
+              dados$logAvgThickness  - lambda_t_CTL_P * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "T",
+                dados$logAvgThickness  - lambda_t_CTL_T * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "CC",
+                  dados$logAvgThickness  - lambda_t_CTL_CC * (dados$Age - Idade),
+                  ""
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
+    logTotalArea_age_decay = as.numeric(
+      ifelse(
+        dados$ROI == "hemisphere",
+        dados$logTotalArea_corrected - lambda_At_CTL_hemi * (dados$Age - Idade),
+        ifelse(
+          dados$ROI == "F",
+          dados$logTotalArea_corrected - lambda_At_CTL_F * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "O",
+            dados$logTotalArea_corrected - lambda_At_CTL_O * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "P",
+              dados$logTotalArea_corrected - lambda_At_CTL_P * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "T",
+                dados$logTotalArea_corrected - lambda_At_CTL_T * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "CC",
+                  dados$logTotalArea_corrected - lambda_At_CTL_CC * (dados$Age - Idade),
+                  ""
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
+    localGI_age_decay = as.numeric(
+      ifelse(
+        dados$ROI == "hemisphere",
+        dados$localGI - lambda_lGI_CTL_hemi * (dados$Age - Idade),
+        ifelse(
+          dados$ROI == "F",
+          dados$localGI - lambda_lGI_CTL_F * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "O",
+            dados$localGI - lambda_lGI_CTL_O * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "P",
+              dados$localGI - lambda_lGI_CTL_P * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "T",
+                dados$localGI - lambda_lGI_CTL_T * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "CC",
+                  dados$localGI - lambda_lGI_CTL_CC * (dados$Age - Idade),
+                  ""
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
+    logExposedArea_age_decay = as.numeric(
+      ifelse(
+        dados$ROI == "hemisphere",
+        dados$logExposedArea_corrected - lambda_Ae_CTL_hemi * (dados$Age - Idade),
+        ifelse(
+          dados$ROI == "F",
+          dados$logExposedArea_corrected - lambda_Ae_CTL_F * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "O",
+            dados$logExposedArea_corrected - lambda_Ae_CTL_O * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "P",
+              dados$logExposedArea_corrected - lambda_Ae_CTL_P * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "T",
+                dados$logExposedArea_corrected - lambda_Ae_CTL_T * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "CC",
+                  dados$logExposedArea_corrected - lambda_Ae_CTL_CC * (dados$Age - Idade),
+                  ""
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+# logkteorico ----
+
+dados <- dados %>%
+  mutate(
+    logkteorico_age_decay = (
+      dados$logTotalArea_age_decay + (1 / 2) * dados$logAvgThickness_age_decay -
+        ((5 / 4) * dados$logExposedArea_age_decay)
+    )
+  )

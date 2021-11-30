@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1565389672179.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3638211562",
+    "id" : "CEA28CD5",
+    "lastKnownWriteTime" : 1565384121,
+    "last_content_update" : 1565384121,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/1-call_packages.R",
+    "project_path" : "1-call_packages.R",
+    "properties" : {
+        "cursorPosition" : "17,0",
+        "scrollLine" : "5"
+    },
+    "relative_order" : 9,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

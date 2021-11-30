@@ -1,0 +1,6 @@
+"0",""
+"0","ggplot(data = dados_hemi_v1_CD_behaviour, aes(x = Diagnostic, y = clinical_test_value, color = Diagnostic, fill = Diagnostic, alpha = 0.4))+"
+"0","  geom_boxplot() +"
+"0","  facet_wrap(clinical_test ~ ., scales = ""free"", ncol = 2) +"
+"0","  stat_compare_means(method = ""anova"") +"
+"0","  theme_pubr()"

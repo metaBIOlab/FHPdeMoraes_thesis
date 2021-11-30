@@ -1,0 +1,107 @@
+cpK <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "AD" | Diagnostic == "CTL"),
+    K,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+cpK_MCI <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "MCI" | Diagnostic == "CTL"),
+    K,
+    Diagnostic,
+    pos_class = "MCI",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+cpT <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "AD" | Diagnostic == "CTL"),
+    logAvgThickness,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100)
+cpT_MCI <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "MCI" | Diagnostic == "CTL"),
+    logAvgThickness,
+    Diagnostic,
+    pos_class = "MCI",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100)
+summary(cpK)
+summary(cpK_MCI)
+
+summary(cpT)
+summary(cpT_MCI)
+
+
+cpK <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "AD" | Diagnostic == "CTL"),
+    K_age_decay,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+
+cpK_MCI <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "MCI" | Diagnostic == "CTL"),
+    K_age_decay,
+    Diagnostic,
+    pos_class = "MCI",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+cpT <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "AD" | Diagnostic == "CTL"),
+    logAvgThickness_age_decay,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+cpT_MCI <-
+  cutpointr(
+    filter(dados_hemi_v1, Diagnostic == "MCI" | Diagnostic == "CTL"),
+    logAvgThickness_age_decay,
+    Diagnostic,
+    pos_class = "MCI",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+summary(cpK)
+summary(cpK_MCI)
+
+summary(cpT)
+summary(cpT_MCI)

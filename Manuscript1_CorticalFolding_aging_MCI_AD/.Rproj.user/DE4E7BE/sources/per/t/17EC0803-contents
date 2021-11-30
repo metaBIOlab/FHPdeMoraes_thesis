@@ -1,0 +1,93 @@
+# Tabela dos sujeitos
+
+####informacoes dos sujeitos####
+
+tabela_sujeitos <- as_tibble(
+  read_delim(
+    "data/tabela_sujeitos.csv",
+    ";",
+    escape_double = FALSE,
+    locale = locale(decimal_mark = ",",
+                    grouping_mark = "."),
+    trim_ws = TRUE
+  )
+)
+
+all_sessions <- read_delim(str_c(path_sessions,"all_sessions.tsv"), 
+                           "\t", escape_double = FALSE, trim_ws = TRUE)
+# cria a coluna subj
+
+all_sessions <- mutate(all_sessions, SUBJ = str_sub(all_sessions$participant_id, 5, 11),
+                          Visit = str_sub(all_sessions$session_id, 5, 5),
+                       acq_date = as_date(str_sub(all_sessions$acq_time, 1, 10)))
+all_sessions <- dplyr::select(all_sessions, -c(participant_id, session_id, acq_time))
+
+# vou deixar age com letra minuscula para diferenciare ver a diferenca entre elas
+
+# Age_ <-
+#  as.period(tabela_sujeitos$Data_aquisicao_RM - tabela_sujeitos$Data_nascimento,
+#            unit = "years")
+
+# RENOMEIA AS VARIAVEIS ----
+oldnames = c(
+  "Sexo",
+  "Data_nascimento",
+  "Visita",
+  "Idade",
+  "Diagnostico",
+  "RM  Maquina",
+  "Data_aquisicao_RM"
+  )
+newnames <- c("Gender",
+              "Birthdate",
+              "Visit",
+              "Age",
+              "Diagnostic",
+              "machine",
+              "acq_date")
+
+tabela_sujeitos <-
+  tabela_sujeitos %>% rename_at(vars(oldnames), ~ newnames)
+
+tabela_sujeitos <- dplyr::select(tabela_sujeitos, -c(acq_date, machine))
+
+rm(oldnames)
+rm(newnames)
+
+# SEPARA POR INTERVALO DE IDADE, A CADA 5 ANOS ----
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 40 &
+                               tabela_sujeitos$Age < 45] <- "41-45"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 45 &
+                               tabela_sujeitos$Age < 50] <- "46-50"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 50 &
+                               tabela_sujeitos$Age < 55] <- "51-55"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 55 &
+                               tabela_sujeitos$Age < 60] <- "56-60"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 60 &
+                               tabela_sujeitos$Age < 65] <- "61-65"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 65 &
+                               tabela_sujeitos$Age < 70] <- "66-70"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 70 &
+                               tabela_sujeitos$Age < 75] <- "71-75"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 75 &
+                               tabela_sujeitos$Age < 80] <- "76-80"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 80 &
+                               tabela_sujeitos$Age < 85] <- "81-85"
+tabela_sujeitos$Age_interval[tabela_sujeitos$Age >= 85 &
+                               tabela_sujeitos$Age < 90] <- "86-90"
+
+# SEPARA POR INTERVALO DE IDADE, A CADA 10 ANOS ----
+tabela_sujeitos$Age_interval10[tabela_sujeitos$Age >= 40 &
+                                 tabela_sujeitos$Age < 50] <- "40"
+tabela_sujeitos$Age_interval10[tabela_sujeitos$Age >= 50 &
+                                 tabela_sujeitos$Age < 60] <- "50"
+tabela_sujeitos$Age_interval10[tabela_sujeitos$Age >= 60 &
+                                 tabela_sujeitos$Age < 70] <- "60"
+tabela_sujeitos$Age_interval10[tabela_sujeitos$Age >= 70 &
+                                 tabela_sujeitos$Age < 80] <- "70"
+tabela_sujeitos$Age_interval10[tabela_sujeitos$Age >= 80 &
+                                 tabela_sujeitos$Age < 90] <- "80"
+
+all_sessions$Visit <- as.numeric(all_sessions$Visit)
+
+tabela_sujeitos <- full_join(all_sessions, tabela_sujeitos)

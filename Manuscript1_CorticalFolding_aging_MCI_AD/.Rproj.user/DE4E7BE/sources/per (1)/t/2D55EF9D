@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564424826654.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1904596737",
+    "id" : "2D55EF9D",
+    "lastKnownWriteTime" : 1564585175,
+    "last_content_update" : 1564585174409,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/relatorio_paper_girificacao.Rmd",
+    "project_path" : "relatorio_paper_girificacao.Rmd",
+    "properties" : {
+        "cursorPosition" : "215,24",
+        "last_setup_crc32" : "8E488B8D800ac150",
+        "scrollLine" : "218"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

@@ -1,0 +1,11 @@
+"0",""
+"0","sumario_dados_hemi_v1_diag_CD <-"
+"0","dados_hemi_v1_CD %>%"
+"0","group_by(clinical_test, Diagnostic) %>%"
+"0","summarise("
+"0","N = n_distinct(SUBJ),"
+"0","Mean = mean(clinical_test_value,  na.rm = TRUE),"
+"0","STD = sd(clinical_test_value,  na.rm = TRUE))"
+"1","`summarise()` has grouped output by 'clinical_test'. You can override using the `.groups` argument.
+"
+"0","sumario_dados_hemi_v1_diag_CD %>% kable(digits = 2) %>% kable_styling()"

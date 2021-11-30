@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1590702234945.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3290705122",
+    "id" : "EC0CA7C9",
+    "lastKnownWriteTime" : 1588895523,
+    "last_content_update" : 1588895523,
+    "path" : "~/idor/Gyrification/RRRRRR/aging/V6/analises/decaimento_idade.R",
+    "project_path" : "analises/decaimento_idade.R",
+    "properties" : {
+        "cursorPosition" : "112,18",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

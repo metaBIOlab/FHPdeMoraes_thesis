@@ -1,0 +1,1689 @@
+---
+title: "Relatorio PRJ Girificacao"
+author: "Fernanda Hansen Pacheco de Moraes"
+date: "11 de dezembro de 2018"
+output:
+  html_document:
+    df_print: kable
+    fig_caption: yes
+    fig_width: 8
+    number_sections: yes
+    theme: paper
+    toc: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+ setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+# setwd("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama as funcoes
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+ path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+
+  path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/resultados/")
+# path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+  
+ path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+# path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/resultados/")
+ 
+ path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+ path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/FA_CC/")
+# path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/") 
+ 
+# importa os resultados
+source("03-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+dados_raw <- dados
+
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", localGI != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+
+dados <- dados_all
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+# deixa so Philips
+
+# dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "Control"
+# dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+# dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI                "
+
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("ALZ", "CCL","CONTROLE"))
+
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+
+# separa em arquivo de hemisferios e de lobos
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard")
+
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script") %>% droplevels()
+```
+
+# Metodo
+
+## Verificacao idade
+
+```{r idade, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+part_ses <-
+  part_ses %>% mutate(birthday_date_fromacqdate = acq_date - dyears(age))
+  
+  part_ses %>% filter(str_detect(birthday, "\\|") == TRUE) %>% dplyr::select(participant_id, birthday, birthday_date_fromacqdate) %>% kable() %>% kable_styling()
+  
+  tabela_sujeitos %>% filter(str_detect(birthday, "\\|") == TRUE) %>%
+  dplyr::select(participant_id, session_id, birthday, Birthdate, age , Age) %>% kable() %>% kable_styling()
+  
+  tabela_sujeitos %>% filter(str_detect(birthday, "\\|") == FALSE) %>% mutate(
+  birthday = as.Date(birthday, "%d-%m-%Y"),
+  Birthdate = as.Date(Birthdate, "%d/%m/%Y"),
+  age = year(acq_date) - year(birthday) ,
+  age_Age = age - Age,
+  datas_nascimento_diferentes = ifelse(birthday == Birthdate, "TRUE", "FALSE")
+  ) %>% dplyr::select(
+  participant_id,
+  session_id,
+  birthday,
+  Birthdate,
+  age,
+  Age,
+  age_Age,
+  datas_nascimento_diferentes
+  ) %>% arrange(desc(abs(age_Age))) %>% kable() %>% kable_styling()
+  
+  tabela_sujeitos %>% filter(str_detect(birthday, "\\|") == FALSE) %>% mutate(
+  birthday = as.Date(birthday, "%d-%m-%Y"),
+  Birthdate = as.Date(Birthdate, "%d/%m/%Y"),
+  age = year(acq_date) - year(birthday) ,
+  age_Age = age - Age,
+  datas_nascimento_diferentes = ifelse(birthday == Birthdate, "TRUE", "FALSE")
+  ) %>% dplyr::select(
+  participant_id,
+  session_id,
+  birthday,
+  Birthdate,
+  age,
+  Age,
+  age_Age,
+  datas_nascimento_diferentes
+  ) %>% arrange(desc(abs(age_Age))) %>% filter(datas_nascimento_diferentes == "FALSE") %>% kable() %>% kable_styling()
+  
+  tabela_sujeitos %>% filter(is.na(Birthdate)) %>% dplyr::select(participant_id, session_id, birthday, Birthdate, Age) %>% kable() %>% kable_styling()
+  
+  tabela_sujeitos <-
+  dplyr::select(tabela_sujeitos,-c(Birthdate, Age))
+
+```
+
+## Numero de sujeitos
+
+### Todos da lista
+```{r N sujeitos, echo=FALSE, message=FALSE, warning=FALSE}
+summary_dados_all <- filter(dados_raw, Session == 1) %>%
+  group_by(machine, Diagnostic) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_all %>% kable() %>% kable_styling()
+```
+
+### Todos processados pelo FreeSurfer com sucesso
+```{r N sujeitos FS, echo=FALSE, message=FALSE, warning=FALSE}
+summary_dados_all <- filter(dados_all, Session == 1) %>%
+  group_by(Diagnostic, machine) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_all %>% kable() %>% kable_styling()
+```
+
+### Somente Philips
+
+```{r N sujeitos Philips, echo=FALSE, message=FALSE, warning=FALSE}
+summary_dados_hemi <- filter(dados) %>%
+  group_by(Session, Diagnostic, Gender) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_hemi %>% kable() %>% kable_styling()
+  
+  summary_dados_hemi_v1 <- filter(dados_hemi_v1, Session == 1) %>%
+  group_by(Gender, Diagnostic) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_hemi_v1 %>% kable() %>% kable_styling()
+  
+  summary_dados_hemi_v1_diag <-
+  filter(dados_hemi_v1, Session == 1) %>%
+  group_by(Diagnostic) %>%
+  summarise(
+  N = n_distinct(SUBJ),
+  Mean = mean(Age),
+  Max = max(Age),
+  Min = min(Age),
+  Median = median(Age),
+  Std = sd(Age)
+  )
+  summary_dados_hemi_v1_diag %>% kable() %>% kable_styling()
+  
+```
+
+### Sujeitos excluídos
+
+```{r N sujeitos excluidos, echo=FALSE, message=FALSE, warning=FALSE}
+
+excl <-
+  dados_excluidos %>% dplyr::select(c(SUBJ, age, Diagnostic, machine, ROI, localGI)) %>% filter(ROI == "hemisphere") %>% distinct(SUBJ, .keep_all = TRUE)
+  
+  excl %>% kable() %>% kable_styling()
+
+```
+
+## Comparacao entre modo com correcao longitudinal e sem
+
+```{r comp longitudinal correction, echo=FALSE, warning=TRUE}
+
+dados_long_comp <-
+  dados_all %>% filter( machine == "Philips-Achieva",
+  ROI == "hemisphere", Session == "1", method == "FreeSurferStandard") %>% group_by(SUBJ, hemi) %>% filter(n() > 1)
+
+paste("Para essa verificacao, filtrei os sujeitos que tinham o processamento com e sem correcao. Assim o numero final de sujeitos incluidos é igual a ", n_distinct(dados_long_comp$SUBJ))
+
+ggplot(dados_long_comp, aes(x = Diagnostic, y = AvgThickness, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", label.y = 2.7, paired = TRUE) + theme_pubclean() + ylim(2, 2.8)
+
+ggplot(dados_long_comp, aes(x = Diagnostic, y = eTIV, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", paired = TRUE) + theme_pubclean() 
+                     
+ggplot(dados_long_comp, aes(x = Diagnostic, y = TotalArea, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", paired = TRUE) + theme_pubclean()       
+
+ggplot(dados_long_comp, aes(x = Diagnostic, y = GMvolume, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", paired = TRUE) + theme_pubclean()   
+
+ggplot(dados_long_comp, aes(x = Diagnostic, y = WhiteSurfArea, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", paired = TRUE) + theme_pubclean()   
+
+ggplot(dados_long_comp, aes(x = Diagnostic, y = localGI, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", paired = TRUE) + theme_pubclean()
+
+ggplot(dados_long_comp, aes(x = Diagnostic, y = ExposedArea, color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", paired = TRUE) + theme_pubclean()
+
+lm_long <- dados_long_comp %>%
+  group_by(Longitudinal_correction) %>%
+  do(fit_long = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+long_Coef = tidy(lm_long,
+                    fit_long,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+long_Pred = augment(lm_long, fit_long)
+long_R2 = glance(lm_long, fit_long)
+
+ggplot(dados_long_comp, aes(log(ExposedArea), 1/2*log(AvgThickness) + log(TotalArea), color = Longitudinal_correction, fill = Longitudinal_correction, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_long_comp$SUBJ))) 
+
+long_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(long_Coef, term == "logExposedArea"),
+  aes(x = reorder(Longitudinal_correction, estimate), y = estimate, color = Longitudinal_correction)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope")
+
+
+lm_long_diag <- dados_long_comp %>%
+  group_by(Longitudinal_correction, Diagnostic) %>%
+  do(fit_long_diag = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+long_Coef_diag = tidy(lm_long_diag,
+                    fit_long_diag,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+ggplot(
+  data = filter(long_Coef_diag, term == "logExposedArea"),
+  aes(x = Diagnostic, y = estimate, color = Longitudinal_correction)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope")
+
+long_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_long_comp, Longitudinal_correction == "yes"), na.action = na.omit)
+no_long_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_long_comp, Longitudinal_correction == "no"))
+
+paste("Verificando a diferenca entre o coeficiente obtido com a correcao longitudinal e sem, qual o valor p deste teste?", test_coef(long_cor, 2, coef(no_long_cor)[2]))
+
+```
+
+## Comparing extraction script
+
+```{r}
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard", Longitudinal_correction == "yes") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,
+  Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+
+dados_hemi_v1_CH <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  logTotalFullArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  ConvexHullArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+
+dados_hemi_v1_CH_20_40 <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script_020_40") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  logTotalFullArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  ConvexHullArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+
+dados_hemi_v1_CH_30_40 <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script_030_40") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  logTotalFullArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  ConvexHullArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+
+dados_hemi_v1_CH_50_40 <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script_050_40") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  logTotalFullArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  ConvexHullArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+
+dados_hemi_v1_CH_75_40 <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script_075_40") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  logTotalFullArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  ConvexHullArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+
+dados_hemi_v1_CH_100_40 <-
+  filter(dados,
+  ROI == "hemisphere",
+  Session == 1,
+  method == "Yujiang_script_100_40") %>% dplyr::select(
+  SUBJ,
+  acq_date,
+  hemi,
+  method,
+  Age,Age_interval,
+  Gender,
+  Diagnostic,
+  AvgThickness,
+  logAvgThickness,
+  TotalArea,
+  logTotalArea,
+  logTotalFullArea,
+  ExposedArea,
+  logExposedArea,
+  WhiteSurfArea,
+  ConvexHullArea,
+  logWhiteSurfArea,
+  logConvexHullArea,
+  localGI ,
+  logkteorico,
+  Amostra,
+  logAvgThickness_age_decay,
+  logTotalArea_age_decay,
+  logExposedArea_age_decay,
+  logkteorico_age_decay
+  ) %>% filter(!str_detect(SUBJ, 'SUBJ091'))
+  
+
+dados_hemi_extrac_Comp <- full_join(dados_hemi_v1, dados_hemi_v1_CH)
+dados_hemi_extrac_Comp <- full_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_20_40)
+dados_hemi_extrac_Comp <- full_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_30_40)
+dados_hemi_extrac_Comp <- full_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_50_40)
+dados_hemi_extrac_Comp <- full_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_75_40)
+dados_hemi_extrac_Comp <- full_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_100_40)
+
+paste("number of subjects in dados_hemi_extract_comp is ", n_distinct(dados_hemi_extrac_Comp$SUBJ))
+
+dados_hemi_extrac_Comp <- semi_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH, by = "SUBJ", "acq_date", "hemi", "Diagnostic")
+dados_hemi_extrac_Comp <- semi_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_20_40, by = "SUBJ", "acq_date", "hemi", "Diagnostic")
+dados_hemi_extrac_Comp <- semi_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_30_40, by = "SUBJ", "acq_date", "hemi", "Diagnostic")
+dados_hemi_extrac_Comp <- semi_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_50_40, by = "SUBJ", "acq_date", "hemi", "Diagnostic")
+dados_hemi_extrac_Comp <- semi_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_75_40, by = "SUBJ", "acq_date", "hemi", "Diagnostic")
+dados_hemi_extrac_Comp <- semi_join(dados_hemi_extrac_Comp, dados_hemi_v1_CH_100_40, by = "SUBJ", "acq_date", "hemi", "Diagnostic")
+
+paste("N de subjects in the next plots", n_distinct(dados_hemi_extrac_Comp$SUBJ), ".")
+
+ggplot(dados_hemi_extrac_Comp, aes(x = Diagnostic, y = AvgThickness, color = method, fill = method, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "kruskal") + theme_pubclean()
+
+ggplot(dados_hemi_extrac_Comp, aes(x = Diagnostic, y = TotalArea, color = method, fill = method, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "kruskal") + theme_pubclean()       
+
+ggplot(dados_hemi_extrac_Comp, aes(x = Diagnostic, y = ExposedArea, color = method, fill = method, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "kruskal") + theme_pubclean()
+
+ggplot(dados_hemi_extrac_Comp, aes(x = Diagnostic, y = logkteorico, color = method, fill = method, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "kruskal") + theme_pubclean()
+
+dados_hemi_extract_Comp_wide <- right_join(dados_hemi_v1, dados_hemi_v1_CH, by = c("SUBJ", "hemi", "acq_date", "Diagnostic", "Gender"))
+
+ggplot(dados_hemi_extract_Comp_wide, aes(x = logAvgThickness.x, y = logAvgThickness.y, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(intercept = 0, slope = 1) + 
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_hemi_extract_Comp_wide$SUBJ))) 
+
+ggplot(dados_hemi_extract_Comp_wide, aes(x = logTotalArea.x, y = logTotalArea.y, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(intercept = 0, slope = 1) + 
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_hemi_extract_Comp_wide$SUBJ))) 
+
+ggplot(dados_hemi_extract_Comp_wide, aes(x = logTotalArea.x, y = logTotalFullArea, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(intercept = 0, slope = 1) + 
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_hemi_extract_Comp_wide$SUBJ)))
+
+ggplot(dados_hemi_extract_Comp_wide, aes(x = logExposedArea.x, y = logExposedArea.y, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(intercept = 0, slope = 1) + 
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_hemi_extract_Comp_wide$SUBJ))) 
+
+
+
+lm_method <- dados_hemi_extrac_Comp %>%
+  group_by(method) %>%
+  do(fit_method = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+method_Coef = tidy(lm_method,
+                    fit_method,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+method_Pred = augment(lm_method, fit_method)
+method_R2 = glance(lm_method, fit_method)
+
+ggplot(dados_hemi_extrac_Comp, aes(logExposedArea, 1/2*logAvgThickness + logTotalArea, color = method, fill = method)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_hemi_extrac_Comp$SUBJ))) + theme(legend.title = element_blank())
+
+method_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(method_Coef, term == "logExposedArea"),
+  aes(x = reorder(method, estimate), y = estimate, color = method)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope") + theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = 'none')
+
+
+lm_method_diag <- dados_hemi_extrac_Comp %>%
+  group_by(method, Diagnostic) %>%
+  do(fit_method_diag = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+method_Coef_diag = tidy(lm_method_diag,
+                    fit_method_diag,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+method_Coef_diag %>% kable(digits = 4) %>% kable_styling()
+
+
+ggplot(
+  data = filter(method_Coef_diag, term == "logExposedArea"),
+  aes(x = Diagnostic, y = estimate, color = Diagnostic)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope") + facet_grid(. ~ method) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+Yujiang_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script"), na.action = na.omit)
+FreeSurfer_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "FreeSurferStandard"))
+
+paste("Verificando a diferenca entre o coeficiente obtido com a extracao de dados pelo script e pelo modo tradicional do Freesurfer, qual o valor p deste teste?", test_coef(Yujiang_cor, 2, coef(FreeSurfer_cor)[2]))
+
+Yujiang_20_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_020_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (20 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_20_40_cor, 2, coef(Yujiang_cor)[2]))
+
+Yujiang_30_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_030_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (30 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_30_40_cor, 2, coef(Yujiang_cor)[2]))
+
+Yujiang_50_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_050_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (50 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_50_40_cor, 2, coef(Yujiang_cor)[2]))
+
+Yujiang_75_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_075_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (75 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_75_40_cor, 2, coef(Yujiang_cor)[2]))
+
+# Yujiang_100_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_100_40"), na.action = na.omit)
+
+# paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (100 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_100_40_cor, 2, coef(Yujiang_cor)[2]))
+
+
+lm_method_CH <- filter(dados_hemi_extrac_Comp, method != "FreeSurferStandard") %>%
+  group_by(method) %>%
+  do(fit_method_CH = lm(1/2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = .))
+
+method_Coef_CH = tidy(lm_method_CH,
+                    fit_method_CH,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+ggplot(filter(dados_hemi_extrac_Comp, method != "FreeSurferStandard"), aes(logConvexHullArea, 1/2*logAvgThickness + logTotalArea, color = method, fill = method, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(dados_hemi_extrac_Comp$SUBJ))) 
+
+method_Coef_CH %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(method_Coef_CH, term == "logConvexHullArea"),
+  aes(x = reorder(method, estimate), y = estimate, color = method)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+lm_method_diag_CH <- filter(dados_hemi_extrac_Comp, method != "FreeSurferStandard") %>%
+  group_by(method, Diagnostic) %>%
+  do(fit_method_diag_CH = lm(1/2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = .))
+
+method_Coef_diag_CH = tidy(lm_method_diag_CH,
+                    fit_method_diag_CH,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+method_Coef_diag_CH %>% kable(digits = 4) %>% kable_styling()
+
+
+ggplot(
+  data = filter(method_Coef_diag_CH, term == "logConvexHullArea"),
+  aes(x = Diagnostic, y = estimate, color = Diagnostic)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope") + facet_grid(. ~ method) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+Yujiang_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script"), na.action = na.omit)
+
+Yujiang_20_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_020_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (20 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_20_40_cor, 2, coef(Yujiang_cor)[2]))
+
+Yujiang_30_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_030_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (30 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_30_40_cor, 2, coef(Yujiang_cor)[2]))
+
+
+Yujiang_50_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_050_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (50 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_50_40_cor, 2, coef(Yujiang_cor)[2]))
+
+
+Yujiang_75_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_075_40"), na.action = na.omit)
+
+paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (75 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_75_40_cor, 2, coef(Yujiang_cor)[2]))
+
+
+# Yujiang_100_40_cor <- lm(1 / 2 * logAvgThickness + logTotalArea ~ logConvexHullArea, data = filter(dados_hemi_extrac_Comp, method == "Yujiang_script_100_40"), na.action = na.omit)
+
+# paste("Verificando a diferenca entre o coeficiente obtido com as alteracoes de parametro do FreeSurfer (100 e 40) e com o script, qual o valor p deste teste?", test_coef(Yujiang_100_40_cor, 2, coef(Yujiang_cor)[2]))
+
+```
+
+# Resultados - com correcao longitudinal
+
+## Aplicacao do modelo
+
+Todos os sujeitos
+```{r model Mota & Houzel, echo=FALSE}
+
+dados_datasetscomp$Diagnostic[dados_datasetscomp$Diagnostic == "CONTROLE"] <- "Control"
+dados_datasetscomp$Diagnostic[dados_datasetscomp$Diagnostic == "ALZ"] <- "AD"
+dados_datasetscomp$Diagnostic[dados_datasetscomp$Diagnostic == "CCL"] <- "CCL"
+
+lm_amostra <- (filter(dados_datasetscomp, Amostra == "Mota&Houzel2015" | Amostra == "IDOR")) %>%
+  group_by(Amostra) %>%
+  do(fit_amostra = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+amostra_Coef = tidy(lm_amostra,
+                    fit_amostra,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+amostra_Pred = augment(lm_amostra, fit_amostra)
+amostra_R2 = glance(lm_amostra, fit_amostra)
+
+ggplot(filter(dados_datasetscomp, Amostra == "Mota&Houzel2015" | Amostra == "IDOR"), aes(logExposedArea, 1/2*logAvgThickness + logTotalArea)) +
+  geom_point(aes(color = Amostra)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_pubclean()
+
+amostra_Coef %>% kable(digits = 4) %>% kable_styling()
+
+```
+
+### Apenas humanos IDOR
+
+```{r modelo_humanos, echo=FALSE, message=FALSE, warning=FALSE}
+# dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script")
+
+lm_fit_comp_idor <- dados_hemi_v1 %>%
+  group_by(Diagnostic) %>%
+  do(fit_comp_idor = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+fit_comp_idor_Coef = tidy(lm_fit_comp_idor, fit_comp_idor,
+                          conf.int = TRUE,
+                          conf.level = 0.95)
+
+fit_comp_idor_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  dados_hemi_v1,
+  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic )
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_hemi_v1$SUBJ)
+  ))
+
+paste("Verificando a diferenca entre o coeficiente obtido para a amostra e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit), 2, 1.25))
+
+```
+
+#### SLOPE?
+
+```{r slope, echo=FALSE, message=FALSE, warning=FALSE}
+ggplot(dados_datasetscomp, aes(logExposedArea, 1/2*logAvgThickness + logTotalArea)) +
+  geom_point(aes(color = Amostra)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"), aes(log(ExposedArea), 1/2*logAvgThickness + logTotalArea, color = Amostra, fill = Amostra)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+lm_amostras <- dados_datasetscomp %>%
+  group_by(Amostra) %>%
+  do(fit_amostras = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+amostras_Coef = tidy(lm_amostras,
+                    fit_amostras,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+ amostras_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(amostras_Coef, term == "logExposedArea"),
+  aes(
+  x = reorder(Amostra, estimate),
+  y = estimate,
+  color = Amostra
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope")
+
+# Separa o grupo IDOR por diagnosticos
+
+dados_datasetscomp$Amostra[dados_datasetscomp$Amostra == "IDOR" &
+                                  dados_datasetscomp$Diagnostic == "Control"] <- "IDORControl"
+dados_datasetscomp$Amostra[dados_datasetscomp$Amostra == "IDOR" &
+                                  dados_datasetscomp$Diagnostic == "AD"] <- "IDORAD"
+dados_datasetscomp$Amostra[dados_datasetscomp$Amostra == "IDOR" &
+                                  dados_datasetscomp$Diagnostic == "CCL"] <- "IDORMCI"
+
+
+ggplot(data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"), aes(log(ExposedArea), 1/2*logAvgThickness + logTotalArea, color = Amostra, fill = Amostra, alpha)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+lm_amostras <- dados_datasetscomp %>%
+  group_by(Amostra) %>%
+  do(fit_amostras = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+amostras_Coef = tidy(lm_amostras,
+                    fit_amostras,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+# amostras_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(amostras_Coef, term == "logExposedArea"),
+  aes(
+  x = reorder(Amostra, estimate),
+  y = estimate,
+  color = Amostra
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope")
+
+kruskal_amostras <- kruskal.test(estimate ~ Amostra,
+  data = filter(amostras_Coef, term == "logExposedArea"))
+
+# tidy(kruskal_amostras) %>% kable(digits = 4) %>% kable_styling()
+
+lm_amostras_age <-
+  filter(
+  dados_datasetscomp,
+  Amostra == "HCP500r" |
+  Amostra == "NKI" |
+  Amostra == "OASIS_healthy" |
+  Amostra == "IDORControl" |
+  Amostra == "IDORMCI" | Amostra == "IDORAD"
+  ) %>%
+  group_by(Amostra, Age_interval) %>%
+  do(
+  fit_amostras_age = lm(
+  1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea,
+  data = .,
+  na.action = na.omit
+  )
+  )
+  
+amostras_age_Coef = tidy(lm_amostras_age,
+  fit_amostras_age)
+
+# amostras_age_Coef %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(amostras_age_Coef, term == "logExposedArea"),
+  aes(x = Age_interval,
+  y = estimate,
+  color = Amostra)
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed") + theme_pubclean() + labs(y = "slope") + geom_line((aes(group = Amostra, linetype = Amostra)))
+
+```
+
+##### Qual a diferenca entre essas populacoes?
+
+```{r populacoes, echo=FALSE, message=FALSE, warning=FALSE}
+
+dados_datasetscomp$Age <- as.numeric(dados_datasetscomp$Age)
+
+res.aov.age <- aov(Age ~ Amostra, data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.age
+summary(res.aov.age)
+#TukeyHSD(res.aov.age)
+
+ggplot(data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"), aes(x = Age, color = Amostra, fill = Amostra, alpha = 0.4)) + geom_density() + theme_pubclean()
+
+ggplot(data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"), aes(x = Amostra, y = Age, color = Amostra, fill = Amostra, alpha = 0.4)) + 
+  geom_boxplot() + theme_pubclean() +
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDORControl", hide.ns = TRUE, label.y = 98) + 
+  stat_compare_means(method = "kruskal.test", label.y = 105) + ylim(0, 110)
+
+res.aov.thick <- aov(logAvgThickness ~ Amostra, data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.thick
+summary(res.aov.thick)
+#TukeyHSD(res.aov.thick)
+
+ggplot(
+  filter(dados_datasetscomp, Age_interval > 51 &
+           Age_interval < 91),
+  aes(
+    x = Amostra,
+    y = logAvgThickness,
+    fill = Amostra,
+    color = Amostra
+  )
+) +
+  geom_boxplot(aes(alpha = 0.5)) + 
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDORControl", hide.ns = TRUE, label.y = 0.45, method.args = list(alternative = "greater")) + 
+  stat_compare_means(method = "kruskal.test", label.y = 0.50) +
+  facet_wrap(vars(Age_interval)) +
+  theme_pubclean() +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank()) + ylim(0.25, 0.53)
+
+res.aov.at <- aov(logTotalArea ~ Amostra, filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.at
+summary(res.aov.at)
+#TukeyHSD(res.aov.at)
+
+ggplot(
+  filter(dados_datasetscomp, Age_interval > 51 &
+           Age_interval < 91),
+  aes(
+    x = Amostra,
+    y = logTotalArea,
+    fill = Amostra,
+    color = Amostra
+  )
+)  +
+  geom_boxplot(aes(alpha = 0.5)) +
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDORControl" , hide.ns = TRUE, label.y = 5.2, method.args = list(alternative = "greater")) + 
+  stat_compare_means(method = "kruskal.test", label.y = 5.5) +
+  facet_wrap(vars(Age_interval)) +
+  theme_pubclean() +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank()) + ylim(4.7, 5.8)
+
+res.aov.ae <- aov(logExposedArea ~ Amostra, filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.ae
+summary(res.aov.ae)
+#TukeyHSD(res.aov.ae)
+
+ggplot(
+  filter(dados_datasetscomp, Age_interval > 51 &
+           Age_interval < 91),
+  aes(
+    x = Amostra,
+    y = logExposedArea,
+    fill = Amostra,
+    color = Amostra
+  )
+)  +
+  geom_boxplot(aes(alpha = 0.48)) +
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDORControl" , hide.ns = TRUE, label.y = 4.75, method.args = list(alternative = "smaller")) + 
+  stat_compare_means(method = "kruskal.test", label.y = 5.2) +
+  facet_wrap(vars(Age_interval)) +
+  theme_pubclean() +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+
+```
+
+###### SLOPE? - age decay
+
+```{r slope age decay, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"), aes(logExposedArea_age_decay, 1/2*logAvgThickness_age_decay + logTotalArea_age_decay, color = Amostra, fill = Amostra)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() 
+
+lm_amostras_agedecay <- filter(dados_datasetscomp, Amostra != "Mota&Houzel2015") %>%
+  group_by(Amostra) %>%
+  do(fit_amostras_agedecay = lm(1/2 * logAvgThickness_age_decay + logTotalArea_age_decay ~ logExposedArea_age_decay, data = ., na.action = na.omit))
+
+amostras_Coef_agedecay = tidy(lm_amostras_agedecay,
+                    fit_amostras_agedecay,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+#amostras_Coef_agedecay %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(
+  data = filter(amostras_Coef_agedecay, term == "logExposedArea_age_decay"),
+  aes(
+  x = reorder(Amostra, estimate),
+  y = estimate,
+  color = Amostra
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope")
+
+# kruskal_amostras <-  kruskal.test(estimate ~ Amostra,   data = filter(amostras_Coef, term == "logExposedArea"))
+# tidy(kruskal_amostras) %>% kable(digits = 4) %>% kable_styling()
+
+```
+
+###### Qual a diferenca entre essas populacoes? - age decay
+
+```{r populacoes age decay, echo=FALSE, message=FALSE, warning=FALSE}
+# 
+res.aov.thick <- aov(logExposedArea_age_decay ~ Amostra, data = filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.thick
+summary(res.aov.thick)
+#TukeyHSD(res.aov.thick)
+
+ggplot(
+  filter(dados_datasetscomp, Age_interval > 51 &
+           Age_interval < 91),
+  aes(
+    x = Amostra,
+    y = logAvgThickness_age_decay,
+    fill = Amostra,
+    color = Amostra
+  )
+) +
+  geom_boxplot(aes(alpha = 0.5)) +
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDOR" , hide.ns = TRUE, method.args = list(alternative = "greater")) + 
+  stat_compare_means(method = "kruskal.test") +
+  facet_wrap(vars(Age_interval)) +
+  theme_pubclean() +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+
+res.aov.at <- aov(logTotalArea_age_decay ~ Amostra, filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.at
+summary(res.aov.at)
+#TukeyHSD(res.aov.at)
+
+ggplot(
+  filter(dados_datasetscomp, Age_interval > 51 &
+           Age_interval < 91),
+  aes(
+    x = Amostra,
+    y = logTotalArea_age_decay,
+    fill = Amostra,
+    color = Amostra
+  )
+) +
+  geom_boxplot(aes(alpha = 0.5)) +
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDOR" , hide.ns = TRUE, method.args = list(alternative = "greater")) + 
+  stat_compare_means(method = "kruskal.test") +
+  facet_wrap(vars(Age_interval)) +
+  theme_pubclean() +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+
+res.aov.ae <- aov(logExposedArea_age_decay ~ Amostra, filter(dados_datasetscomp, Amostra != "Mota&Houzel2015"))
+res.aov.ae
+summary(res.aov.ae)
+#TukeyHSD(res.aov.ae)
+
+ggplot(
+  filter(dados_datasetscomp, Age_interval > 51 &
+           Age_interval < 91),
+  aes(
+    x = Amostra,
+    y = logExposedArea_age_decay,
+    fill = Amostra,
+    color = Amostra
+  )
+) +
+  geom_boxplot(aes(alpha = 0.5)) +
+  stat_compare_means(label = "p.signif", method = "t.test", ref.group = "IDOR" , hide.ns = TRUE, method.args = list(alternative = "smaller")) + 
+  stat_compare_means(method = "kruskal.test") +
+  facet_wrap(vars(Age_interval)) +
+  theme_pubclean() +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+
+```
+
+## Influencia do envelhecimento e diagnostico na girificacao
+### Envelhecimento saudavel
+```{r envelhecimento, echo=FALSE, message=FALSE, warning=FALSE}
+
+# dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script")
+
+ggplot(data = dados_hemi_v1, aes(Diagnostic, Age, color = Diagnostic, fill = Diagnostic, alpha = 0.2)) +
+  geom_boxplot() +
+  theme_pubclean() + stat_compare_means(method = "kruskal.test", label.y = 88) +
+  stat_compare_means(method = "t.test", label = "p.signif") + ylim(40, 90)
+
+ggplot(data = dados_hemi_v1, aes(Age, AvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logAvgThickness_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, TotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logTotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logTotalArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, ExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logExposedArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = filter(dados_hemi_v1, Diagnostic == "CONTROLE"), aes(logExposedArea, 1/2*logAvgThickness + logTotalArea, color = Age_interval, fill = Age_interval)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_hemi_v1$SUBJ)))
+
+lm_age <- filter(dados_hemi_v1, Diagnostic == "CONTROLE") %>%
+  group_by(Age_interval) %>%
+  do(fit_age = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+age_Coef = tidy(lm_age,
+                    fit_age,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+age_augment = augment(lm_age, fit_age)
+
+ggplot(
+  data = filter(age_Coef, term == "logExposedArea"),
+  aes(
+  x = Age_interval,
+  y = estimate
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope") + labs(caption = paste(
+  "Controles, apenas 1 visita, N = ",
+  n_distinct(filter(dados_hemi_v1, Diagnostic == "CONTROLE")$SUBJ)))
+
+lm_age <- dados_hemi_v1 %>%
+  group_by(Diagnostic, 
+           Age_interval) %>%
+  do(fit_age = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+age_Coef = tidy(lm_age,
+                    fit_age,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+ggplot(
+  data = filter(age_Coef, term == "logExposedArea"),
+  aes(
+  x = Age_interval,
+  y = estimate, color = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope") + facet_grid(Diagnostic ~ . )  + labs(caption = paste(
+  "Todos, apenas 1 visita, N = ",
+  n_distinct(dados_hemi_v1$SUBJ)))
+```
+
+#### Envelhecimento saudavel - lobes
+```{r envelhecimento - lobes, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(data = dados_lobos_v1, aes(Age, AvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, logAvgThickness_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, TotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, logTotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, logTotalArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, ExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, logExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+ggplot(data = dados_lobos_v1, aes(Age, logExposedArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_grid(ROI ~ .)
+
+lm_age <- dados_lobos_v1 %>%
+  group_by(ROI, Diagnostic, 
+           Age_interval) %>%
+  do(fit_age = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+age_Coef = tidy(lm_age,
+                    fit_age,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+ggplot(
+  data = filter(age_Coef, term == "logExposedArea"),
+  aes(
+  x = Age_interval,
+  y = estimate, color = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope") + facet_grid(ROI ~ Diagnostic) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+### Girifcacao e envelhecimento
+
+```{r girificacao e envelhecimento, echo=FALSE, message=FALSE, warning=FALSE}
+
+lm_diagnostic <- dados_hemi_v1 %>%
+  group_by(Diagnostic) %>%
+  do(fit_diagnostic = lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit))
+
+diagnostic_Coef = tidy(lm_diagnostic,
+                    fit_diagnostic,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+
+diagnostic_Coef %>% kable(digits = 4) %>% kable_styling()
+
+
+ggplot(
+  data = filter(diagnostic_Coef, term == "logExposedArea"),
+  aes(
+  x = Diagnostic,
+  y = estimate, color = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope")
+
+#diag_kt <- kruskal.test(estimate, Diagnostic, data = filter(diagnostic_Coef, term == "logExposedArea"))
+
+ggplot(data = dados_hemi_v1, aes(logExposedArea, 1/2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(dados_hemi_v1, aes(x = Diagnostic, y = logkteorico, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test", label.y = -0.51) + theme_pubclean()
+
+ggplot(dados_hemi_v1, aes(x = Diagnostic, y = logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test") + theme_pubclean()
+```
+
+#### Reduzindo o efeito da idade
+
+```{r girificacao e envelhecimento - age decay, echo=FALSE, message=FALSE, warning=FALSE}
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard")
+
+lm_diagnostic_agedecay <- dados_hemi_v1 %>%
+  group_by(Diagnostic) %>%
+  do(fit_diagnostic_agedecay = lm(1/2 * logAvgThickness_age_decay + logTotalArea_age_decay ~ logExposedArea_age_decay, data = ., na.action = na.omit))
+
+diagnostic_Coef_agedecay = tidy(lm_diagnostic_agedecay,
+                    fit_diagnostic_agedecay,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+diagnostic_Coef_agedecay %>% kable(digits = 4) %>% kable_styling()
+
+
+ggplot(
+  data = filter(diagnostic_Coef_agedecay, term == "logExposedArea_age_decay"),
+  aes(
+  x = Diagnostic,
+  y = estimate, color = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope")
+
+ggplot(data = dados_hemi_v1, aes(logExposedArea_age_decay, 1/2 * logAvgThickness_age_decay + logTotalArea_age_decay , color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+ggplot(data = dados_hemi_v1, aes(Age, logkteorico_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean()
+
+```
+
+### Diferenca entre diagnosticos
+
+```{r diag - age decay}
+ggplot(dados_hemi_v1, aes(x = Diagnostic, y = logkteorico_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test", label.y = 0.04) + theme_pubclean()
+
+ggplot(dados_hemi_v1, aes(x = Diagnostic, y = logAvgThickness_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test") + theme_pubclean()
+```
+
+
+### Podemos localizar partes com maior detrimento por idade e doenca?
+
+```{r girificacao e lobos, echo=FALSE, message=FALSE, warning=FALSE}
+
+
+lm_diagnostic_lobe <- dados_lobos_v1 %>%
+  group_by(ROI, Diagnostic) %>%
+  do(
+  fit_diagnostic_lobe = lm(
+  1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea,
+  data = .,
+  na.action = na.omit
+  )
+  )
+  
+diagnostic_Coef_lobe = tidy(
+  lm_diagnostic_lobe,
+  fit_diagnostic_lobe,
+  conf.int = TRUE,
+  conf.level = 0.95
+  )
+  
+# diagnostic_Coef_lobe %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(data = filter(dados_lobos_v1, Diagnostic == "CONTROLE"), aes(logExposedArea, 1/2 * logAvgThickness + logTotalArea, color = ROI, fill = ROI)) +
+  geom_point() + geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = filter(diagnostic_Coef_lobe, term == "logExposedArea", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_lobe, term == "(Intercept)", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() +
+  theme_pubclean()
+
+ggplot(
+  data = dados_lobos_v1,
+  aes(
+  logExposedArea,
+  1 / 2 * logAvgThickness + logTotalArea,
+  color = Diagnostic,
+  fill = Diagnostic
+  )
+  ) +
+  geom_point() +
+  geom_abline(slope = filter(diagnostic_Coef_lobe, term == "logExposedArea", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_lobe, term == "(Intercept)", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() + 
+  facet_wrap(ROI ~ .) +
+  theme_pubclean() 
+
+ggplot(
+  data = filter(diagnostic_Coef_lobe, term == "logExposedArea"),
+  aes(
+  x = reorder(Diagnostic, estimate),
+  y = estimate,
+  color = Diagnostic
+  )
+  ) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + 
+  geom_hline(yintercept = 1.25, linetype = "dashed")  + 
+  stat_compare_means(method = "kruskal.test") + 
+  labs(y = "slope") + 
+  facet_wrap(ROI ~. ) + 
+  theme_pubclean()
+
+```
+
+#### Corrigindo pela curvatura
+
+```{r girificaca e lobos - corrigido pela curvatura, echo=FALSE, message=FALSE, warning=FALSE}
+lm_diagnostic_lobe_curv <- dados_lobos_v1 %>%
+  group_by(ROI, Diagnostic) %>%
+  do(fit_diagnostic_lobe_curv = lm(1/2 * logAvgThickness + logTotalArea_corrected ~ logExposedArea_corrected, data = ., na.action = na.omit))
+
+diagnostic_Coef_lobe_curv = tidy(lm_diagnostic_lobe_curv,
+                    fit_diagnostic_lobe_curv,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+# diagnostic_Coef_lobe_curv %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(data = filter(dados_lobos_v1, Diagnostic == "CONTROLE"), aes(logExposedArea_corrected, 1/2 * logAvgThickness + logTotalArea_corrected, color = ROI, fill = ROI)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = filter(diagnostic_Coef_lobe_curv, term == "logExposedArea_corrected", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_lobe_curv, term == "(Intercept)", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate) + 
+  stat_regline_equation() + 
+  theme_pubclean()
+
+ggplot(data = dados_lobos_v1, aes(logExposedArea_corrected, 1/2 * logAvgThickness + logTotalArea_corrected, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE)  +
+  geom_abline(slope = filter(diagnostic_Coef_lobe_curv, term == "logExposedArea_corrected", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_lobe_curv, term == "(Intercept)", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() + 
+  theme_pubclean() + facet_wrap(ROI ~. )
+
+ggplot(
+  data = filter(diagnostic_Coef_lobe_curv, term == "logExposedArea_corrected"),
+  aes(
+  x = reorder(Diagnostic, estimate),
+  y = estimate,
+  color = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope") + facet_wrap(ROI ~. )
+
+ggplot(data = dados_lobos_v1, aes(Age, logkteorico_corrected,color = Diagnostic, fill = Diagnostic)) +
+  geom_smooth(method = "lm", se = TRUE) + stat_cor() +
+  theme_pubclean() + facet_wrap(ROI ~. )
+
+
+ggplot(dados_lobos_v1, aes(x = Diagnostic, y = logkteorico_corrected, color = Diagnostic, fill = Diagnostic)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test", label.y = -0.25) + theme_pubclean() + facet_wrap(ROI ~ . )
+
+ggplot(dados_lobos_v1, aes(x = Diagnostic, y = logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test") + theme_pubclean() + facet_wrap(ROI ~ . )
+```
+
+#### Corrigindo pela idade 
+
+```{r girificaca e lobos - age decay, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+lm_diagnostic_agedecay_lobe <- dados_lobos_v1 %>%
+  group_by(ROI, Diagnostic) %>%
+  do(fit_diagnostic_agedecay_lobe = lm(1/2 * logAvgThickness_age_decay + logTotalArea_age_decay ~ logExposedArea_age_decay, data = ., na.action = na.omit))
+
+diagnostic_Coef_agedecay_lobe = tidy(lm_diagnostic_agedecay_lobe,
+                    fit_diagnostic_agedecay_lobe,
+                    conf.int = TRUE,
+                    conf.level = 0.95)
+
+# diagnostic_Coef_agedecay_lobe %>% kable(digits = 4) %>% kable_styling()
+
+ggplot(data = filter(dados_lobos_v1, Diagnostic == "CONTROLE"), aes(logExposedArea_age_decay, 1/2 * logAvgThickness_age_decay + logTotalArea_age_decay, color = ROI, fill = ROI)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = filter(diagnostic_Coef_agedecay_lobe, term == "logExposedArea_age_decay", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_agedecay_lobe, term == "(Intercept)", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() + 
+  theme_pubclean()
+
+ggplot(data = dados_lobos_v1, aes(logExposedArea_age_decay, 1/2 * logAvgThickness_age_decay + logTotalArea_age_decay, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = filter(diagnostic_Coef_agedecay_lobe, term == "logExposedArea_age_decay", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate, linetype = "dashed", intercept = filter(diagnostic_Coef_agedecay_lobe, term == "(Intercept)", Diagnostic == "CONTROLE", ROI == "hemisphere")$estimate) +
+  stat_regline_equation() + 
+  theme_pubclean() + facet_wrap(ROI ~. )
+
+ggplot(
+  data = filter(diagnostic_Coef_agedecay_lobe, term == "logExposedArea_age_decay"),
+  aes(
+  x = reorder(Diagnostic, estimate),
+  y = estimate,
+  color = Diagnostic
+  )
+  ) +
+  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubclean() + labs(y = "slope") + facet_wrap(ROI ~. )
+
+ggplot(data = filter(dados_lobos_v1, Diagnostic == "CONTROLE"), aes(Age, logkteorico_corrected, alpha = 0.3)) +
+  geom_smooth(se = TRUE) +
+  stat_regline_equation() +
+  theme_pubclean() + facet_wrap(ROI ~ . )
+
+ggplot(data = filter(dados_lobos_v1, Diagnostic == "CONTROLE"), aes(Age, logkteorico_age_decay, alpha = 0.3)) +
+  geom_smooth(se = TRUE) +
+  stat_regline_equation() +
+  theme_pubclean() + facet_wrap(ROI ~ . )
+
+ggplot(data = dados_lobos_v1, aes(Age, logkteorico_age_decay, color = Diagnostic, fill = Diagnostic)) +
+  stat_regline_equation() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + facet_wrap(ROI ~ . )
+
+ggplot(dados_lobos_v1, aes(x = Diagnostic, y = logkteorico_age_decay, color = Diagnostic, fill = Diagnostic)) +
+  geom_boxplot() +
+  stat_compare_means(method = "t.test", ref.group = "CONTROLE", label = "p.signif") + stat_compare_means(method = "kruskal.test", label.y = 0.25) + theme_pubclean() + facet_wrap(ROI ~ . )
+```
+
+## Clinical data
+
+```{r clincal data, echo=FALSE}
+
+ggplot(data = filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina)), aes(Lipoxina, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina))$SUBJ))) 
+
+ggplot(data = filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE)), aes(MMSE, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `A7/A5` != 0 | !is.na(`A7/A5`)), aes(`A7/A5`, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `A7/A5` != 0 | !is.na(`A7/A5`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `TMT B-A` != 0 | !is.na(`TMT B-A`)), aes(`TMT B-A`, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `TMT B-A` != 0 | !is.na(`TMT B-A`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, relogio != 0 | !is.na(relogio)), aes(relogio, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, relogio != 0 | !is.na(relogio))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `DIGIT SPAN BACK` != 0 | !is.na(`DIGIT SPAN BACK`)), aes(`DIGIT SPAN BACK`, logkteorico, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `DIGIT SPAN BACK` != 0 | !is.na(`DIGIT SPAN BACK`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `AB1-40` != 0 | !is.na(`AB1-40`)), aes(`AB1-40`, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `AB1-40` != 0 | !is.na(`AB1-40`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `AB1-42` != 0 | !is.na(`AB1-42`)), aes(`AB1-42`, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `AB1-42` != 0 | !is.na(`AB1-42`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, TAU != 0 | !is.na(TAU)), aes(TAU, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, TAU != 0 | !is.na(TAU))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, AB1_ratio != 0 | !is.na(AB1_ratio)), aes(AB1_ratio, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, AB1_ratio != 0 | !is.na(AB1_ratio))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, TAU_AB1_42_ratio != 0 | !is.na(TAU_AB1_42_ratio)), aes(TAU_AB1_42_ratio, logkteorico, color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, TAU_AB1_42_ratio != 0 | !is.na(TAU_AB1_42_ratio))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, TAU_AB1_ratio != 0 | !is.na(TAU_AB1_ratio)), aes(TAU_AB1_ratio, logkteorico, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, TAU_AB1_ratio != 0 | !is.na(TAU_AB1_ratio))$SUBJ)))
+```
+
+### and age
+
+```{r clincal data and age, echo=FALSE}
+
+ggplot(data = filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina), Diagnostic == "CONTROLE"), aes(Age, log10(Lipoxina), color = Diagnostic, fill = Diagnostic)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina))$SUBJ))) 
+
+ggplot(data = filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE), Diagnostic == "CONTROLE"), aes(Age, log10(MMSE), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `A7/A5` != 0 | !is.na(`A7/A5`), Diagnostic == "CONTROLE"), aes(Age, log10(`A7/A5`),color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `A7/A5` != 0 | !is.na(`A7/A5`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `TMT B-A` != 0 | !is.na(`TMT B-A`), Diagnostic == "CONTROLE"), aes(Age, log10(`TMT B-A`), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `TMT B-A` != 0 | !is.na(`TMT B-A`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, relogio != 0 | !is.na(relogio), Diagnostic == "CONTROLE"), aes(Age, log10(relogio), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, relogio != 0 | !is.na(relogio))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `DIGIT SPAN BACK` != 0 | !is.na(`DIGIT SPAN BACK`), Diagnostic == "CONTROLE"), aes(Age, log10(`DIGIT SPAN BACK`), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `DIGIT SPAN BACK` != 0 | !is.na(`DIGIT SPAN BACK`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `AB1-40` != 0 | !is.na(`AB1-40`), Diagnostic == "CONTROLE"), aes(Age, log10(`AB1-40`), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `AB1-40` != 0 | !is.na(`AB1-40`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, `AB1-42` != 0 | !is.na(`AB1-42`), Diagnostic == "CONTROLE"), aes(Age, log10(`AB1-42`), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, `AB1-42` != 0 | !is.na(`AB1-42`))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, TAU != 0 | !is.na(TAU), Diagnostic == "CONTROLE"), aes(Age, log10(TAU), Age, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, TAU != 0 | !is.na(TAU))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, AB1_ratio != 0 | !is.na(AB1_ratio), Diagnostic == "CONTROLE"), aes(Age, log10(AB1_ratio), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, AB1_ratio != 0 | !is.na(AB1_ratio))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, TAU_AB1_42_ratio != 0 | !is.na(TAU_AB1_42_ratio), Diagnostic == "CONTROLE"), aes(Age, log10(TAU_AB1_42_ratio), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, TAU_AB1_42_ratio != 0 | !is.na(TAU_AB1_42_ratio))$SUBJ)))
+
+ggplot(data = filter(dados_hemi_v1, TAU_AB1_ratio != 0 | !is.na(TAU_AB1_ratio), Diagnostic == "CONTROLE"), aes(Age, log10(TAU_AB1_ratio), color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, TAU_AB1_ratio != 0 | !is.na(TAU_AB1_ratio))$SUBJ)))
+```
+
+### deaging
+
+```{r clincal data - deaging, eval=FALSE, include=FALSE}
+
+ggplot(data = filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina)), aes(logLipoxina_age_decay, logkteorico, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina))$SUBJ))) 
+
+ggplot(data = filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE)), aes(logMMSE_age_decay, logkteorico_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE))$SUBJ)))
+
+```
+
+### normalizado
+
+```{r clinical data - normalizado, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+ggplot(data = filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE)), aes(logMMSE_age_decay, logkteorico_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.3)) +
+  geom_point() + stat_cor() + 
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubclean() + labs(caption = paste("N = ", n_distinct(filter(dados_hemi_v1, MMSE != 0 | !is.na(MMSE))$SUBJ)))
+```
+

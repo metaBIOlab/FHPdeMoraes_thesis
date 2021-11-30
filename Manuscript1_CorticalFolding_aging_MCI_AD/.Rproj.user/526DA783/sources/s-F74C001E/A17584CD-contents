@@ -1,0 +1,322 @@
+dados_volume_CC <-
+  dados_neuroquant %>% mutate(
+    WM_volume_CC = (
+      dados_neuroquant$CC_Posterior + dados_neuroquant$CC_Anterior + dados_neuroquant$CC_Central +
+        dados_neuroquant$CC_Mid_Anterior + dados_neuroquant$CC_Mid_Posterior
+    )
+  )
+
+
+dados_volume_CC <-
+  dplyr::select(dados_volume_CC,
+                c(SUBJ, SUBJ_clean, Visit, WM_volume_CC))
+
+dados_volume_CC$Visit <- as.factor(dados_volume_CC$Visit)
+dados$Visit <- as.factor(dados$Visit)
+dados <- left_join(dados, dados_volume_CC)
+
+dados_area_CC <-
+  dados %>% filter(ROI == "CC") %>% dplyr::select(
+    SUBJ,
+    SUBJ_clean,
+    hemi,
+    TotalArea_corrected,
+    SmoothArea_corrected,
+    log_TotalArea_corr_decay,
+    log_SmoothArea_corr_decay
+  )
+
+colnames(dados_area_CC)[which(names(dados_area_CC) == "TotalArea_corrected")] <-
+  "TotalArea_corrected_CC"
+
+colnames(dados_area_CC)[which(names(dados_area_CC) == "SmoothArea_corrected")] <-
+  "SmoothArea_corrected_CC"
+
+colnames(dados_area_CC)[which(names(dados_area_CC) == "log_TotalArea_corr_decay")] <-
+  "log_TotalArea_corr_decay_CC"
+
+colnames(dados_area_CC)[which(names(dados_area_CC) == "log_SmoothArea_corr_decay")] <-
+  "log_SmoothArea_corr_decay_CC"
+
+dados <- left_join(dados, dados_area_CC)
+
+#### COMPARAR HEMIFERIOS ####
+
+dados_hemi_comp <-
+  reshape(
+    as.data.frame(filter(dados, ROI == "hemisphere")),
+    idvar = 'SUBJ_clean',
+    timevar = 'hemi',
+    direction = 'wide'
+  )
+
+dados_hemi_comp <-
+  dplyr::select(
+    dados_hemi_comp,-c(
+      K_ds.L,
+      SmoothArea_ds.L,
+      K_CHwoB.L,
+      SmoothArea_CHwoB.L,
+      c.L,
+      SUBJ.R,
+      ROI.R,
+      Sex.R,
+      Birthdate.R,
+      Visit.R,
+      Age.R,
+      Diagnostic.R,
+      ESC.R,
+      RM_Maquina.R,
+      Data_aquisicao_RM.R,
+      NeuroQuant.R,
+      Lipoxina.R,
+      Age_interval.R,
+      Age_interval10.R,
+      K_ds.R,
+      SmoothArea_ds.R,
+      K_CHwoB.R,
+      SmoothArea_CHwoB.R,
+      c.R,
+      WM_volume_CC.R,
+      TotalArea_corrected_CC.R,
+      SmoothArea_corrected_CC.R,
+      log_TotalArea_corr_decay_CC.R,
+      log_SmoothArea_corr_decay_CC.R
+    )
+  )
+
+# dados_hemi_comp <-
+#   dplyr::select(
+#     dados_hemi_comp,-c(
+#       K_ds.L,
+#       SmoothArea_ds.L,
+#       K_CHwoB.L,
+#       SmoothArea_CHwoB.L,
+#       c.L,
+#       SUBJ.R,
+#       ROI.R,
+#       Sex.R,
+#       Birthdate.R,
+#       Visit.R,
+#       Age.R,
+#       Diagnostic.R,
+#       ESC.R,
+#       RM_Maquina.R,
+#       Data_aquisicao_RM.R,
+#       NeuroQuant.R,
+#       Lipoxina.R,
+#       Age_interval.R,
+#       Age_interval10.R,
+#       K_ds.R,
+#       SmoothArea_ds.R,
+#       K_CHwoB.R,
+#       SmoothArea_CHwoB.R,
+#       c.R,
+#       LeftLateralVentricle.R,
+#       LeftInferiorLateralVentricle.R,
+#       LeftCerebellarWhiteMatter.R,
+#       LeftCerebellarGrayMatter.R,
+#       LeftThalamus.R,
+#       LeftCaudate.R,
+#       LeftPutamen.R,
+#       LeftPallidum.R,
+#       `3rd_Ventricle.R`,
+#       `4thVentricle.R`,
+#       Brainstem.R,
+#       LeftHippocampus.R,
+#       LeftAmygdala.R,
+#       CSF.R,
+#       LeftAccumbensarea.R,
+#       LeftVentralDiencephalon.R,
+#       Leftvessel.R,
+#       Leftchoroidplexus.R,
+#       RightLateralVentricle.R,
+#       RightInferiorLateralVentricle.R,
+#       RightCerebellarWhiteMatter.R,
+#       RightCerebellarGrayMatter.R,
+#       RightThalamus.R,
+#       RightCaudate.R,
+#       RightPutamen.R,
+#       RightPallidum.R,
+#       RightHippocampus.R,
+#       RightAmygdala.R,
+#       RightAccumbensarea.R,
+#       RightVentralDiencephalon.R,
+#       Rightvessel.R,
+#       Rightchoroidplexus.R,
+#       `5thVentricle.R`,
+#       WM_hypointensities.R,
+#       Left_WM_hypointensities.R,
+#       Right_WM_hypointensities.R,
+#       non_WM_hypointensities.R,
+#       Left_non_WM_hypointensities.R,
+#       Right_non_WM_hypointensities.R,
+#       Optic_Chiasm.R,
+#       CC_Posterior.R,
+#       CC_Mid_Posterior.R,
+#       CC_Central.R,
+#       CC_Mid_Anterior.R,
+#       CC_Anterior.R,
+#       BrainSegVol.R,
+#       BrainSegVolNotVentSurf.R,
+#       lhCortexVol.R,
+#       rhCortexVol.R,
+#       CortexVol.R,
+#       LeftCorticalWhiteMatter.R,
+#       RightCorticalWhiteMatter.R,
+#       CerebralWhiteMatterVol.R,
+#       SubCortGrayVol.R,
+#       TotalGrayVol.R,
+#       SupraTentorialVol.R,
+#       ForebrainParenchyma.R,
+#       SupraTentorialVolNotVentVox.R,
+#       MaskVol.R,
+#       BrainSegVol_to_eTIV.R,
+#       MaskVol_to_eTIV.R,
+#       lhSurfaceHoles.R,
+#       rhSurfaceHoles.R,
+#       SurfaceHoles.R,
+#       IntraCranialVolume.R,
+#       CorticalGrayMatter.R,
+#       LeftCerebellum.R,
+#       RightCerebellum.R,
+#       `3rdVentricle.R`,
+#       TotalCerebrospinalFluid.R,
+#       LeftLateralVentricle.L,
+#       LeftInferiorLateralVentricle.L,
+#       LeftCerebellarWhiteMatter.L,
+#       LeftCerebellarGrayMatter.L,
+#       LeftThalamus.L,
+#       LeftCaudate.L,
+#       LeftPutamen.L,
+#       LeftPallidum.L,
+#       `3rd_Ventricle.L`,
+#       `4thVentricle.L`,
+#       Brainstem.L,
+#       LeftHippocampus.L,
+#       LeftAmygdala.L,
+#       CSF.L,
+#       LeftAccumbensarea.L,
+#       LeftVentralDiencephalon.L,
+#       Leftvessel.L,
+#       Leftchoroidplexus.L,
+#       RightLateralVentricle.L,
+#       RightInferiorLateralVentricle.L,
+#       RightCerebellarWhiteMatter.L,
+#       RightCerebellarGrayMatter.L,
+#       RightThalamus.L,
+#       RightCaudate.L,
+#       RightPutamen.L,
+#       RightPallidum.L,
+#       RightHippocampus.L,
+#       RightAmygdala.L,
+#       RightAccumbensarea.L,
+#       RightVentralDiencephalon.L,
+#       Rightvessel.L,
+#       Rightchoroidplexus.L,
+#       `5thVentricle.L`,
+#       WM_hypointensities.L,
+#       Left_WM_hypointensities.L,
+#       Right_WM_hypointensities.L,
+#       non_WM_hypointensities.L,
+#       Left_non_WM_hypointensities.L,
+#       Right_non_WM_hypointensities.L,
+#       Optic_Chiasm.L,
+#       CC_Posterior.L,
+#       CC_Mid_Posterior.L,
+#       CC_Central.L,
+#       CC_Mid_Anterior.L,
+#       CC_Anterior.L,
+#       BrainSegVol.L,
+#       BrainSegVolNotVentSurf.L,
+#       lhCortexVol.L,
+#       rhCortexVol.L,
+#       CortexVol.L,
+#       LeftCorticalWhiteMatter.L,
+#       RightCorticalWhiteMatter.L,
+#       CerebralWhiteMatterVol.L,
+#       SubCortGrayVol.L,
+#       TotalGrayVol.L,
+#       SupraTentorialVol.L,
+#       ForebrainParenchyma.L,
+#       SupraTentorialVolNotVentVox.L,
+#       MaskVol.L,
+#       BrainSegVol_to_eTIV.L,
+#       MaskVol_to_eTIV.L,
+#       lhSurfaceHoles.L,
+#       rhSurfaceHoles.L,
+#       SurfaceHoles.L,
+#       IntraCranialVolume.L,
+#       CorticalGrayMatter.L,
+#       LeftCerebellum.L,
+#       RightCerebellum.L,
+#       `3rdVentricle.L`,
+#       TotalCerebrospinalFluid.L,
+#       WM_volume_CC.R,
+#       TotalArea_corrected_CC.R,
+#       SmoothArea_corrected_CC.R,
+#       log_TotalArea_corr_decay_CC.R,
+#       log_SmoothArea_corr_decay_CC.R
+#     )
+#   )
+
+oldnames2 = c(
+  "SUBJ.L",
+  "ROI.L",
+  "Sex.L",
+  "Birthdate.L",
+  "Visit.L",
+  "Age.L",
+  "Diagnostic.L",
+  "ESC.L",
+  "RM_Maquina.L",
+  "Data_aquisicao_RM.L",
+  "NeuroQuant.L",
+  "Lipoxina.L",
+  "Age_interval.L",
+  "Age_interval10.L",
+  "WM_volume_CC.L",
+  "TotalArea_corrected_CC.L",
+  "SmoothArea_corrected_CC.L",
+  "log_TotalArea_corr_decay_CC.L",
+  "log_SmoothArea_corr_decay_CC.L"
+)
+newnames2 <-
+  c(
+    "SUBJ",
+    "ROI",
+    "Sex",
+    "Birthdate",
+    "Visit",
+    "Age",
+    "Diagnostic",
+    "ESC",
+    "RM_Maquina",
+    "Data_aquisicao_RM",
+    "NeuroQuant",
+    "Lipoxina",
+    "Age_interval",
+    "Age_interval10",
+    "WM_volume_CC",
+    "TotalArea_corrected_CC",
+    "SmoothArea_corrected_CC",
+    "log_TotalArea_corr_decay_CC",
+    "log_SmoothArea_corr_decay_CC"
+  )
+
+
+dados_hemi_comp <- dados_hemi_comp %>% dplyr::rename_at(vars(oldnames2), ~ newnames2)
+# retira os sujeitos com outros diagnosticos
+
+##### DESVIO INTERHEMISFERICO #####
+
+dados_hemi_comp <- mutate(left_minus_right = dados_hemi_comp$log_kteorico.L - dados_hemi_comp$log_kteorico.R, dados_hemi_comp)
+dados_hemi_comp <- mutate(l = dados_hemi_comp$WM_volume_CC/dados_hemi_comp$TotalArea_corrected_CC, dados_hemi_comp)
+
+#### COMPRIMENTO AXONAL MEDIO PONDERADO ####
+
+dados <- mutate(l = dados$WM_volume_CC/dados$TotalArea_corrected_CC, dados)
+
+#### FRACAO CALOSA ####
+
+dados <- mutate(fC = dados$WhiteSurfArea_corrected/dados$TotalArea_corrected_CC, dados)

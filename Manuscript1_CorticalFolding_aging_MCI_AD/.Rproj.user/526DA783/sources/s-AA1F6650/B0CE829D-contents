@@ -1,0 +1,13 @@
+source("import_files/import_subjects.R") # arquivos dos sujeitos
+
+#source("import_files/import_vol_asegstats_FS.R") # resultado volume
+
+#source("import_files/import_aseg_vol.R") # resultado volume
+
+#source("import_files/import_pialstats.R") # resultado mris_anatomical_stats
+
+source("import_files/import_pial.R") # resultado mris_anatomical_stats
+
+#source("import_files/import_whitematter.R") # arquivos dos sujeitos
+
+source("import_files/import_lobesresults.R") # resultado mris_anatomical_stats

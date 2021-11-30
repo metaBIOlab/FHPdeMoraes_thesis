@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564428075583.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1048271284",
+    "id" : "F30B88A4",
+    "lastKnownWriteTime" : 1564439010,
+    "last_content_update" : 1564439008368,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/organiza/rotina_arquivos_hemisferio.R",
+    "project_path" : "organiza/rotina_arquivos_hemisferio.R",
+    "properties" : {
+        "cursorPosition" : "3,36",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 10,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

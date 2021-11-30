@@ -1,0 +1,4 @@
+"0",""
+"0","ggplot(dados_hemi_v1, aes(x= S_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
+"0","  geom_density() + theme_pubr()"
+"0",""

@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1567080126233.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "FA095A10",
+    "lastKnownWriteTime" : 1567080405,
+    "last_content_update" : 1567080405582,
+    "path" : "C:/Users/fernanda.hansen/Desktop/aging/V6/00-codigomestre.R",
+    "project_path" : "00-codigomestre.R",
+    "properties" : {
+        "cursorPosition" : "60,0",
+        "scrollLine" : "47"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

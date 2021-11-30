@@ -1,0 +1,63 @@
+# PREPARO --------
+
+# define a area de trabalho ----
+ setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+# setwd("C:/Users/ferna/Desktop/aging/V6/") # se no computador
+
+# carrega os pacotes utilizados ----
+source("01-call_packages.R")
+
+# Chama as funcoes ----
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+ path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Desktop/aging/V6/data/resultados/")
+
+ path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+ # path <- str_c("C:/Users/ferna/Desktop/aging/V6/data/resultados/")
+ 
+ path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+# path_sessions <- str_c("C:/Users/ferna/Desktop/aging/V6/data/")
+
+# importa os resultados ----
+source("03-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos ----
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+dados_raw <- dados
+
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", localGI != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+
+dados <- dados_all
+
+Idade <- 25
+
+# Prepara os dados para analise ----
+source("05-analises_prep.R")
+
+# deixa so Philips
+
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "no")
+
+# separa em arquivo de hemisferios e de lobos ----
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1)
+
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1)
+
+dados_CC <- filter(dados, ROI == "CC", Session == 1)

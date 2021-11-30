@@ -1,0 +1,5 @@
+"0",""
+"0","excl <-"
+"0","  dados_excluidos %>% dplyr::select(c(SUBJ, Age, Diagnostic, machine, ROI, localGI)) %>% filter(ROI == ""hemisphere"") %>% distinct(SUBJ, .keep_all = TRUE)"
+"0","  "
+"0","  excl %>% kable(digits = 2) %>% kable_styling()"

@@ -1,0 +1,718 @@
+---
+title: "Relatorio PRJ Girificacao"
+author: "Fernanda Hansen Pacheco de Moraes"
+date: "11 de dezembro de 2018"
+output:
+  html_document: 
+    df_print: kable
+    fig_caption: yes
+    fig_width: 8
+    number_sections: yes
+    theme: paper
+    toc: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '5'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	cache = TRUE
+)
+```
+
+Description of the procedures and analysis present in Complementary Analysis 1, Methodological robustness of image processing, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree
+
+Part of the data used here cannot be shared due to restrictions of the Ethic Comittee. Data can be shared upon reasonable request to the corresponding author. To fullfil these limitation, we will generate (in next versions) random data to simulate the results.
+
+Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our aim is to improve the code as needed!
+
+```{r packages}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(ggpubr)
+library(kableExtra)
+library(broom)
+```
+
+```{r wd}
+## set working directory
+setwd("~/GitHub/FHPdeMoraes_thesis/Complementaryanalysis1_modelrobustness")
+
+# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/data/resultados/")
+```
+
+```{r functions}
+## define functions
+
+# test angular coeficinet versus theoretical value
+test_coef <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+}
+
+# wrap text
+wrapper <- function(x, ...) paste(strwrap(x, ...), collapse = "\n")
+
+```
+
+# Import and organize files
+
+```{r import files}
+# import subjs
+tabela_sujeitos <- read_csv("tabela_sujeitos.csv", 
+    col_types = cols(...1 = col_skip()))
+
+# subjs age interval
+tabela_sujeitos$Age_interval <- cut(tabela_sujeitos$Age,
+                                       breaks = c(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100),
+                                       right = FALSE,
+                                       include.lowest = TRUE)
+
+tabela_sujeitos$Age_interval10 <- cut(tabela_sujeitos$Age,
+                                         breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+                                         right = FALSE,
+                                         include.lowest = TRUE)
+
+# Select session 1
+tabela_sujeitos <- tabela_sujeitos %>%
+  filter(Session == "1") %>%
+  dplyr::select(-c(Session))
+
+```
+
+```{r}
+# import results with default config EE = 15mm
+data_longcor_ses1 <- read_csv("data_longcor_ses1.txt") 
+```
+
+```{r}
+## new surfaces ----
+# import results with other config EE = 5; 20; 30; 50; 75 and 100mm
+data_longcor_ses1_5 <- read_csv("data_longcor_ses1_5mm.txt")
+data_longcor_ses1_20 <- read_csv("data_longcor_ses1_20mm.txt")
+data_longcor_ses1_30 <- read_csv("data_longcor_ses1_30mm.txt")
+data_longcor_ses1_50 <- read_csv("data_longcor_ses1_50mm.txt")
+data_longcor_ses1_75 <- read_csv("data_longcor_ses1_75mm.txt")
+data_longcor_ses1_100 <- read_csv("data_longcor_ses1_100mm.txt")
+
+# create variable EE diameter
+data_longcor_ses1 <- data_longcor_ses1 %>%
+  mutate(EEdiameter = 15)
+data_longcor_ses1_5 <- data_longcor_ses1_5 %>%
+  mutate(EEdiameter = 5)
+data_longcor_ses1_20 <- data_longcor_ses1_20 %>%
+  mutate(EEdiameter = 20)
+data_longcor_ses1_30 <- data_longcor_ses1_30 %>%
+  mutate(EEdiameter = 30)
+data_longcor_ses1_50 <- data_longcor_ses1_50 %>%
+  mutate(EEdiameter = 50)
+data_longcor_ses1_75 <- data_longcor_ses1_75 %>%
+  mutate(EEdiameter = 75)
+data_longcor_ses1_100 <- data_longcor_ses1_100 %>%
+  mutate(EEdiameter = 100)
+
+# combine dataframes
+
+data <- full_join(data_longcor_ses1, data_longcor_ses1_5) %>% # combine files
+  full_join(data_longcor_ses1_20) %>%
+  full_join(data_longcor_ses1_30) %>%
+  full_join(data_longcor_ses1_50) %>%
+  full_join(data_longcor_ses1_75) %>%
+  full_join(data_longcor_ses1_100) %>%
+  mutate( # create new variables
+  SUBJ = SubjectID,
+  hemi = Hemisphere,
+  ROI = "hemisphere",
+  method = "CorticalFoldingTool",
+  Longitudinal_correction = "yes",
+  AvgThickness = AvgCortThickness,
+  ExposedArea = SmoothPialArea,
+  TotalArea = PialArea,
+  TotalFullArea = PialFullArea,
+  WhiteSurfArea = WhiteArea,
+  GMvolume = GreymatterVol
+) %>% dplyr::select( # delete unwanted variables
+  -c(
+    SubjectID,
+    Hemisphere,
+    AvgCortThickness,
+    PialArea,
+    SmoothPialArea,
+    WhiteArea,
+    GreymatterVol
+  )
+)
+```
+
+```{r}
+## FS Standard ----
+data_h <- read_csv("data_h.csv", col_types = cols(...1 = col_skip()))
+
+data_h <- data_h %>%
+  mutate(
+    SUBJ = str_sub(SUBJ_ID, 1, 7),
+    Session = str_sub(SUBJ_ID, 21, 21),
+    Longitudinal_correction = ifelse(str_sub(SUBJ_ID, 23, 26) == "long", "yes", "no"),
+    SUBJ_ID = str_sub(SUBJ_ID, 9, 38),
+    method = "FreeSurferStandard",
+    EEdiameter = 15) %>%
+  filter(ROI == "hemisphere", Session == "1") %>%
+  dplyr::select(-c(Session))
+```
+
+```{r organize files}
+
+# combine files
+dados <- full_join(data, data_h) %>%
+  mutate( # create new variables
+  logAvgThickness = log10(AvgThickness),
+  logTotalArea = log10(TotalArea),
+  logTotalFullArea = log10(TotalFullArea),
+  logExposedArea = log10(ExposedArea),
+  logConvexHullArea = log10(ConvexHullArea),
+  logWhiteSurfArea = log10(WhiteSurfArea),
+  logGMvolume = log10(GMvolume),
+  logConvexHullArea = log10(ConvexHullArea),
+  localGI = TotalArea / ExposedArea,
+  k = sqrt(AvgThickness) * TotalArea / (ExposedArea ^ 1.25),
+  K = 1 / 4 * log10(AvgThickness^2)  + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+  S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^2) ,
+  I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^2) ,
+) %>% 
+  dplyr::select(-c(PialFullArea, WhiteFullArea, SmoothPialFullArea, ConvexHullFullArea, PialFullVol, WhiteFullVol, SmoothPialFullVol, BrainSegVolNotVent, SUBJ_ID)) %>%
+  unique() # delete duplicates
+
+# rename hemispheres
+dados$hemi[dados$hemi == "left"] <- "L"
+dados$hemi[dados$hemi == "right"] <- "R"
+
+# combine tables through subject if and selected only Session 1
+dados <- inner_join(tabela_sujeitos, dados)
+
+#rename variables
+colnames(dados)[which(names(dados) == "Sexo")] <- "Gender"
+colnames(dados)[which(names(dados) == "Idade")] <- "Age"
+colnames(dados)[which(names(dados) == "Diagnostico")] <- "Diagnostic"
+
+dados$Age <- as.numeric(dados$Age)
+dados$Diagnostic <- as.factor(dados$Diagnostic)
+dados$Gender <- as.factor(dados$Gender)
+
+```
+
+```{r data cleanup, echo=FALSE}
+dados_raw <- dados
+
+# clear data from unwanted diagnostics, subjs with no acquisition equipment defined, subjs with Avg Thickness 0...
+dados_all <- dados %>% filter(
+  Diagnostic == "CTL" |
+    Diagnostic == "MCI" |
+    Diagnostic == "AD",
+  !is.na(logAvgThickness),
+  ExposedArea != 0 |
+    !is.na(localGI),
+  !is.infinite(logExposedArea)
+) %>%
+  droplevels()
+
+# see which subjects were excluded
+dados_excluidos <- anti_join(dados_raw, dados_all)
+dados_excluidos %>% dplyr::select(c(SUBJ, Age, Gender, Diagnostic))
+
+# use the filtered data
+dados <- dados_all
+```
+
+```{r data cleaunp 2, echo=FALSE, warning=FALSE, messAge=FALSE}
+# remove subjects who are not in all samples
+
+dados <- dados %>%
+  filter(
+    SUBJ != "SUBJ211",
+    SUBJ != "SUBJ223",
+    SUBJ != "SUBJ231",
+    SUBJ != "SUBJ136",
+    SUBJ != "SUBJ014",
+    SUBJ != "SUBJ128",
+    SUBJ != "SUBJ157"
+  ) %>%
+  droplevels()
+
+# write.csv(dados, "dados_compmethods.csv")
+```
+
+```{r}
+# rename diagnostics
+dados$Diagnostic <- as.character(dados$Diagnostic)
+
+dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "CTL"
+dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI"
+dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("CTL", "MCI", "AD")) # transform into levels of factors
+```
+
+
+```{r N subjects methods, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+dados %>%
+  group_by(Longitudinal_correction, method, EEdiameter) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    Mean = mean(Age),
+    Max = max(Age),
+    Min = min(Age),
+    Median = median(Age),
+    Std = sd(Age)
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+lista_subjs_FS_no <- as.data.frame(filter(dados, method == "FreeSurferStandard", Longitudinal_correction == "no")$SUBJ) %>% unique()
+
+colnames(lista_subjs_FS_no )[1] <- "SUBJ"
+
+dados <- inner_join(dados, lista_subjs_FS_no)
+
+lista_subjs_FS_yes <- as.data.frame(filter(dados, method == "FreeSurferStandard", Longitudinal_correction == "yes")$SUBJ) %>% unique()
+
+colnames(lista_subjs_FS_yes)[1] <- "SUBJ"
+
+dados <- inner_join(dados, lista_subjs_FS_yes)
+
+dados %>%
+  group_by(method, Longitudinal_correction, EEdiameter) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    Mean = mean(Age),
+    Max = max(Age),
+    Min = min(Age),
+    Median = median(Age),
+    Std = sd(Age)
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+dados %>%
+  group_by(Diagnostic) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    Mean = mean(Age),
+    Max = max(Age),
+    Min = min(Age),
+    Median = median(Age),
+    Std = sd(Age)
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+```
+
+```{r data summary, eval=FALSE, include=FALSE}
+dados %>%
+  group_by(Diagnostic, Longitudinal_correction, method, EEdiameter)  %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    T = paste(signif(mean(AvgThickness, na.rm = TRUE), 2), "±", signif(sd(AvgThickness, na.rm = TRUE), 2)),
+    AT = paste(signif(mean(TotalArea, na.rm = TRUE), 2), "±", signif(sd(TotalArea, na.rm = TRUE), 2)),
+    AE = paste(signif(mean(ExposedArea, na.rm = TRUE), 2), "±", signif(sd(ExposedArea, na.rm = TRUE), 2)),
+    k = paste(signif(mean(k, na.rm = TRUE), 2), "±", signif(sd(k, na.rm = TRUE), 2)),
+    K = paste(signif(mean(K, na.rm = TRUE), 2), "±", signif(sd(K, na.rm = TRUE), 2)),
+    S = paste(signif(mean(S, na.rm = TRUE), 2), "±", signif(sd(S, na.rm = TRUE), 2)),
+    I = paste(signif(mean(I, na.rm = TRUE), 2), "±", signif(sd(I, na.rm = TRUE), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+```
+
+# Results
+
+## Comparacao com e sem correcao longitudinal
+
+```{r}
+long_comp <- filter(dados, method == "FreeSurferStandard", !is.na(TotalArea), !is.infinite(ExposedArea))
+
+lm_fit_comp_idor <- long_comp %>%
+  group_by(Diagnostic, Longitudinal_correction) %>%
+  do(fit_comp_idor = tidy(lm(log10(TotalArea*sqrt(AvgThickness)) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
+
+lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
+
+N_subj_diag <- long_comp %>%
+  group_by(Diagnostic, Longitudinal_correction) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+
+LC_status <- c(
+  yes = "With longitudinal correction",
+  no = "Without longitudinal correction"
+)
+
+ggplot(
+  data = filter(lm_fit_comp_idor, term == "log10(ExposedArea)"),
+  aes(
+  x = Diagnostic,
+  y = estimate, color = Longitudinal_correction,
+  )
+  ) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_hline(yintercept = 1.25, linetype = "dashed") +
+  theme_pubr() +
+  labs(y = expression(alpha))
+```
+
+```{r}
+
+## Thesis Figure 9 
+
+longcor1 <- ggplot(
+  long_comp,
+  aes(
+    ExposedArea,
+    sqrt(AvgThickness)*TotalArea,
+    color = Diagnostic,
+    fill = Diagnostic)
+) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = 1.25,
+              intercept = coef(
+                lm(
+                  log10(TotalArea*sqrt(AvgThickness)) ~ log10(ExposedArea),
+                  data = dados,
+                  na.action = na.omit
+                )
+              )[1],
+              color = "black") +
+  theme_pubr() +
+  facet_grid(
+    Longitudinal_correction ~ . ,
+    labeller = labeller(Longitudinal_correction = LC_status)) +
+  labs(color = "Diagnostic",
+           fill = "Diagnostic") +
+  scale_x_log10() +
+  scale_y_log10()
+
+# ggsave("longcor1.png", plot = longcor1, dpi=1200, width = 11, height = 11, units = "cm", device = "png")
+
+longcor1 <- annotate_figure(longcor1,
+                bottom = text_grob(wrapper("Cortical Folding model with and without the use of longitudinal correction.", width = 125), face = "italic", size = 13))
+
+longcor1
+```
+
+
+### Comparacao entre medidas
+```{r}
+long_comp_long <-
+  dplyr::select(
+    long_comp,
+    -c(
+      ConvexHullArea,
+      logConvexHullArea,
+      WhiteSurfArea,
+      logWhiteSurfArea,
+      GMvolume,
+      logGMvolume,
+      Age_interval,
+      Age_interval10
+    )
+  ) %>%
+  pivot_wider(
+    names_from = Longitudinal_correction,
+    values_from = c(
+      AvgThickness,
+      logAvgThickness,
+      TotalArea,
+      logTotalArea,
+      TotalFullArea,
+      logTotalFullArea,
+      ExposedArea,
+      logExposedArea,
+      localGI,
+      K,
+      S,
+      I
+    )
+  )
+
+longcor_T <-
+  ggplot(data = long_comp_long, aes(x = AvgThickness_yes, y = AvgThickness_no)) +
+  geom_point(aes(color = Diagnostic)) +
+  geom_smooth(method = "lm", color = "gray") +
+  theme_pubr() +
+  labs(x = "AvgCortThickness (with longcor) [mm]", y = "AvgCortThickness [mm]", color = "Diagnostic") 
+
+longcor_AT <-
+  ggplot(data = long_comp_long, aes(x = TotalArea_yes, y = TotalArea_no)) +
+  geom_point(aes(color = Diagnostic)) +
+  geom_smooth(method = "lm", color = "gray") +
+  theme_pubr() +
+  labs(x = "TotalArea (with longcor) [mm²]", y = "TotalArea [mm²]", color = "Diagnostic") 
+
+longcor_AE <-
+  ggplot(data = long_comp_long, aes(x = ExposedArea_yes, y = ExposedArea_no)) + geom_point(aes(color = Diagnostic)) +
+  geom_smooth(method = "lm", color = "gray") +
+  theme_pubr() +
+  labs(x = "ExposedArea (with longcor) [mm²]", y = "ExposedArea [mm²]", color = "Diagnostic")
+
+longcor <-
+  ggarrange(
+    longcor_T,
+    longcor_AT,
+    longcor_AE,
+    labels = c("A", "B", "C"),
+    ncol = 1,
+    nrow = 3,
+    font.label = list(size = 11),
+    common.legend = TRUE,
+    legend = "top"
+  )
+
+longcor
+
+#ggsave("longcor.pdf", plot = longcor, dpi=1200, width = 18, height = 22, units = "cm", device = "pdf")
+ggsave(
+  "longcor.png",
+  plot = longcor,
+  dpi = 1200,
+  width = 18,
+  height = 22,
+  units = "cm",
+  device = "png"
+)
+
+ggplot(data = long_comp_long, aes(x = localGI_yes, y = localGI_no)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") +
+  stat_cor() +
+  theme_pubr() +
+  labs(x = "localGI (with longcor)", y = "localGI", color = "Diagnostic")
+
+ggplot(data = long_comp_long, aes(x = K_yes, y = K_no)) + geom_point(aes(color = Diagnostic)) +
+  geom_smooth(method = "lm", color = "gray") +
+  stat_cor() +
+  theme_pubr() +
+  labs(x = "K (with longcor) []", y = "K []", color = "Diagnostic")
+
+ggplot(data = long_comp_long, aes(x = S_yes, y = S_no)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + stat_cor()  + theme_pubr() + labs(x = "S (with longcor)", y = "S", color = "Diagnostic")
+
+ggplot(data = long_comp_long, aes(x = I_yes, y = I_no)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + stat_cor()  + theme_pubr() + labs(x = "I (with longcor)", y = "I", color = "Diagnostic")
+```
+
+## FreeSurfer vs CFT
+```{r}
+method_comp <- filter(dados, Longitudinal_correction == "yes", EEdiameter == "15")
+
+lm_fit_comp_idor <- method_comp %>%
+  group_by(Diagnostic, method) %>%
+  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
+
+lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
+
+N_subj_diag <- method_comp %>%
+  group_by(Diagnostic, method) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+
+FS_CFT1 <- ggplot(
+  method_comp,
+  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic )
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados, na.action = na.omit))[1], color = "black") +
+  theme_pubr() + facet_grid(method ~ .) + labs(y = "1 / 2 * logAvgCortThickness + logTotalArea",
+           x = "logExposedArea",
+           color = "Diagnostic",
+           fill = "Diagnostic")
+
+FS_CFT1
+ggsave("FS_CFT1.png", plot = FS_CFT1, dpi=1200, width = 11, height = 11, units = "cm", device = "png")
+
+ggplot(
+  data = filter(lm_fit_comp_idor, term == "logExposedArea"),
+  aes(
+  x = Diagnostic,
+  y = estimate, color = method
+  )
+  ) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_hline(yintercept = 1.25, linetype = "dashed") +
+  theme_pubr() +
+  labs(y = expression(alpha))
+```
+
+### Comparacao entre medidas
+```{r}
+method_comp_long <- dplyr::select(method_comp, -c(ConvexHullArea,logConvexHullArea, WhiteSurfArea, logWhiteSurfArea, GMvolume, logGMvolume, Age_interval, Age_interval10)) %>%
+  pivot_wider(names_from = method, values_from = c(AvgThickness, logAvgThickness, TotalArea, logTotalArea, TotalFullArea, logTotalFullArea, ExposedArea, logExposedArea, localGI, K, S, I))
+
+FS_CFT_T <- ggplot(data = method_comp_long, aes(x = AvgThickness_CorticalFoldingTool, y = AvgThickness_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + theme_pubr() + labs(x = "AvgCortThickness - CFT [mm]", y = "AvgCortThickness [mm]", color = "Diagnostic")
+
+FS_CFT_AT <- ggplot(data = method_comp_long, aes(x = TotalArea_CorticalFoldingTool, y = TotalArea_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + theme_pubr()+ labs(x = "TotalArea - CFT [mm²]", y = "TotalArea [mm²]", color = "Diagnostic")
+
+FS_CFT_AE <- ggplot(data = method_comp_long, aes(x = ExposedArea_CorticalFoldingTool, y = ExposedArea_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + theme_pubr()+ labs(x = "ExposedArea - CFT [mm²]", y = "ExposedArea [mm²]", color = "Diagnostic")
+
+FS_CFT <- ggarrange(FS_CFT_T, FS_CFT_AT, FS_CFT_AE,labels = c("A", "B", "C"), ncol = 1, nrow = 3, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+FS_CFT
+ggsave("FS_CFT.png", plot = FS_CFT, dpi=1200, width = 18, height = 22, units = "cm", device = "png")
+
+ggplot(data = method_comp_long, aes(x = localGI_CorticalFoldingTool, y = localGI_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + stat_cor()  + theme_pubr()
+
+ggplot(data = method_comp_long, aes(x = K_CorticalFoldingTool, y = K_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + stat_cor()  + theme_pubr()
+
+ggplot(data = method_comp_long, aes(x = S_CorticalFoldingTool, y = S_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + stat_cor()  + theme_pubr()
+
+ggplot(data = method_comp_long, aes(x = I_CorticalFoldingTool, y = I_FreeSurferStandard)) + geom_point(aes(color = Diagnostic)) + geom_smooth(method = "lm", color = "gray") + stat_cor()  + theme_pubr()
+
+ggplot(data = method_comp_long, aes(x = AvgThickness_CorticalFoldingTool -AvgThickness_FreeSurferStandard, color = Diagnostic )) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+
+ggplot(data = method_comp_long, aes(x = TotalArea_CorticalFoldingTool - TotalArea_FreeSurferStandard, color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+
+ggplot(data = method_comp_long, aes(x = ExposedArea_CorticalFoldingTool - ExposedArea_FreeSurferStandard,color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+
+ggplot(data = method_comp_long, aes(x = localGI_CorticalFoldingTool- localGI_FreeSurferStandard, color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+
+ggplot(data = method_comp_long, aes(x = K_CorticalFoldingTool - K_FreeSurferStandard, color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+
+ggplot(data = method_comp_long, aes(x = S_CorticalFoldingTool- S_FreeSurferStandard, color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+
+ggplot(data = method_comp_long, aes(x = I_CorticalFoldingTool- I_FreeSurferStandard, color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
+```
+
+#### Diferenca
+```{r}
+ggplot(data = method_comp_long,
+       aes(x = TotalFullArea_CorticalFoldingTool, y = TotalArea_FreeSurferStandard)) +
+  geom_point(aes(color = Diagnostic)) +
+  geom_smooth(method = "lm", color = "gray") +
+  stat_cor() +
+  theme_pubr()
+
+ggplot(
+  data = method_comp_long,
+  aes(x = TotalFullArea_CorticalFoldingTool - TotalArea_FreeSurferStandard, color = Diagnostic)
+) +
+  geom_density() +
+  theme_pubr() +
+  labs(color = "Diagnostic")
+```
+
+## diferentes superfícies
+```{r}
+diameter_comp <- filter(dados, Longitudinal_correction == "yes", method == "CorticalFoldingTool")
+
+lm_fit_comp_idor <- diameter_comp %>%
+  group_by(Diagnostic, EEdiameter) %>%
+  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest(cols = c(fit_comp_idor))
+
+
+#lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
+
+N_subj_diag <- diameter_comp %>%
+  group_by(Diagnostic, EEdiameter) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+
+ggplot(
+  diameter_comp,
+  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic )
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados, na.action = na.omit))[1], color = "black") +
+  theme_pubr() +
+  facet_grid(EEdiameter ~ .)
+
+EEdiameter <- ggplot(
+  data = filter(lm_fit_comp_idor, term == "logExposedArea"),
+  aes(
+  x = EEdiameter,
+  y = estimate
+  )
+  ) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_smooth(se = TRUE, color = "black") +
+  geom_hline(yintercept = 1.25, linetype = "dashed") +
+  theme_pubr() +
+  labs(y = expression('Slope ('*alpha*')'), x = "se sphere diameter [mm]") +
+  facet_grid(Diagnostic ~ .) +
+  scale_x_continuous(breaks = c(5, 15, 20, 30, 50, 75, 100))
+
+EEdiameter
+
+ggsave("EEdiameter.png", plot = EEdiameter, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
+
+EEdiameter2 <- ggplot(
+  data = diameter_comp,
+  aes(
+  x = EEdiameter,
+  y = ExposedArea,
+  group = EEdiameter
+  )
+  ) +
+  geom_boxplot() +
+  theme_pubr() +
+  labs(y = "ExposedArea [mm²]", x = "se sphere diameter [mm]") +
+  scale_x_continuous(breaks = c(5, 15, 20, 30, 50, 75, 100))
+
+ggsave("EEdiameter2.png", plot = EEdiameter2, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
+```
+
+### Com Convex Hull
+```{r}
+diameter_comp$EEdiameter <- as.factor(diameter_comp$EEdiameter)
+
+CH <-
+  diameter_comp %>% filter(EEdiameter == 15) %>% mutate(EEdiameter = as.factor("CH-15"), ExposedArea = ConvexHullArea, logExposedArea = logConvexHullArea, K = 1 / 2 * logAvgThickness + logTotalArea - 5 / 4 * logConvexHullArea ,
+  I = logTotalArea + logConvexHullArea  + logAvgThickness ^ 2,
+  S = 3 / 2 * logTotalArea + 3 / 4 * logConvexHullArea  - 9 / 4 * logAvgThickness ^ 2)
+
+diameter_comp <- full_join(diameter_comp, CH)
+
+lm_fit_comp_idor <- diameter_comp %>%
+  group_by(Diagnostic, EEdiameter) %>%
+  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest(cols = c(fit_comp_idor))
+
+
+#lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
+
+N_subj_diag <- diameter_comp %>%
+  group_by(Diagnostic, EEdiameter) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+
+ggplot(
+  diameter_comp,
+  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic )
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados, na.action = na.omit))[1], color = "black") +
+  theme_pubr() + facet_grid(EEdiameter ~ .) 
+
+ggplot(
+  data = filter(lm_fit_comp_idor, term == "logExposedArea"),
+  aes(
+  x = EEdiameter,
+  y = estimate
+  )
+  ) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_hline(yintercept = 1.25, linetype = "dashed") +
+  theme_pubr() +
+  labs(y = expression(alpha), x = "se sphere diameter [mm]") + facet_grid(Diagnostic ~ .)
+
+ggplot(
+  data = diameter_comp,
+  aes(
+  x = EEdiameter,
+  y = ExposedArea,
+  group = EEdiameter
+  )
+  ) +
+  geom_boxplot() +
+  theme_pubr() +
+  labs(y = "ExposedArea [mm²]", x = "se sphere diameter [mm]")
+```
+

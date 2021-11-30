@@ -1,0 +1,4 @@
+"0","ggplot(data = dados_hemi_v1, aes(Diagnostic, Age, color = Diagnostic, fill = Diagnostic, alpha = 0.2)) +"
+"0","  geom_boxplot() +"
+"0","  theme_pubr() + stat_compare_means(method = ""anova"", label.y = 88) +"
+"0","  stat_compare_means(method = ""t.test"", label = ""p.signif"") + ylim(40, 90)"

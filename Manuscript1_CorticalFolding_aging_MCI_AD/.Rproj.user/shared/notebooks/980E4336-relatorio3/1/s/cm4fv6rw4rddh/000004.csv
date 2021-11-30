@@ -1,0 +1,11 @@
+"0",""
+"0","ggplot("
+"0","  data = filter(lm_diagnostic, term == ""logExposedArea""),"
+"0","  aes("
+"0","  x = Diagnostic,"
+"0","  y = estimate, color = Diagnostic"
+"0","  )"
+"0","  ) +"
+"0","  geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = ""lm"", se = TRUE) + geom_hline(yintercept = 1.25, linetype = ""dashed"") + theme_pubr() + labs(y = ""slope"")+ theme(legend.position = ""none"")"
+"2","`geom_smooth()` using formula 'y ~ x'
+"

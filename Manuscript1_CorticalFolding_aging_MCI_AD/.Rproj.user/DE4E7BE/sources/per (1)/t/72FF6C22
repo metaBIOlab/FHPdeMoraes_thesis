@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564436962207.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3160175730",
+    "id" : "72FF6C22",
+    "lastKnownWriteTime" : 1564437008,
+    "last_content_update" : 1564437006579,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/organiza/lobeextract_variables.R",
+    "project_path" : "organiza/lobeextract_variables.R",
+    "properties" : {
+        "cursorPosition" : "280,114",
+        "scrollLine" : "252"
+    },
+    "relative_order" : 11,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

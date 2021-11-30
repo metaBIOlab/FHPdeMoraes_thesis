@@ -1,0 +1,9 @@
+"0",""
+"0","ggplot(data = filter(dados_lobos_v1, Diagnostic == ""CTL""), aes(logExposedArea_corrected, 1/2 * logAvgThickness + logTotalArea_corrected, color = ROI, fill = ROI)) +"
+"0","  geom_point() +"
+"0","  geom_smooth(method = ""lm"", se = TRUE) +"
+"0","  geom_abline(slope = filter(lm_diagnostic_lobe_curv, term == ""logExposedArea_corrected"", Diagnostic == ""CTL"", ROI == ""hemisphere"")$estimate, linetype = ""dashed"", intercept = filter(lm_diagnostic_lobe_curv, term == ""(Intercept)"", Diagnostic == ""CTL"", ROI == ""hemisphere"")$estimate) + "
+"0","  stat_regline_equation() + "
+"0","  theme_pubr()"
+"2","`geom_smooth()` using formula 'y ~ x'
+"

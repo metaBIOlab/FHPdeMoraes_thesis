@@ -1,0 +1,9 @@
+# reading alpha, beta and tau values from session 1
+
+
+alpha_beta <- read_excel(str_c(path_yujiangscript, "alpha_beta.xlsx"), 
+                        sheet = "Sheet1")
+
+alpha_beta <- alpha_beta %>% mutate(Diagnostic_full = Diagnostic, Session = 1, AB1_ratio = `AB1-42`/`AB1-40`, TAU_AB1_42_ratio = TAU / `AB1-42`, TAU_AB1_ratio = TAU/AB1_ratio) %>% dplyr::select(-c(Diagnostic))
+
+dados <- full_join(dados, alpha_beta)

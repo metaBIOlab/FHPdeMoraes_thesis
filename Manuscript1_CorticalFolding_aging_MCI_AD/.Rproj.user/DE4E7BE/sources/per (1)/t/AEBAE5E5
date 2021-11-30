@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564437330781.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1419682856",
+    "id" : "AEBAE5E5",
+    "lastKnownWriteTime" : 1564437942,
+    "last_content_update" : 1564437940853,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/preparo/import_files/import_lobesresults.R",
+    "project_path" : "preparo/import_files/import_lobesresults.R",
+    "properties" : {
+        "cursorPosition" : "82,35",
+        "scrollLine" : "64"
+    },
+    "relative_order" : 11,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

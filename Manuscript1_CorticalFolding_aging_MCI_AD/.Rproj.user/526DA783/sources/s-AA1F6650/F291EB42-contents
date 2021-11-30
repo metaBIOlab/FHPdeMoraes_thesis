@@ -1,0 +1,33 @@
+# DADOS CLINICOS
+
+library(readxl)
+clinic_data <-
+  read_excel("data/SUBJ FERNANDA H.xlsx", sheet = "Planilha1", na = "NA")
+
+#View(clinic_data)
+
+colnames(clinic_data)[which(names(clinic_data) == "SUBJ_clean")] <-
+  "SUBJ"
+
+clinic_data <- mutate(clinic_data, Visit = 1)
+
+clinic_data$relogio <- as.integer(clinic_data$relogio)
+
+
+clinic_data$Visit <- as.integer(clinic_data$Visit)
+dados$Visit <- as.integer(dados$Visit)
+dados_hemi_v1$Visit <- as.integer(dados_hemi_v1$Visit)
+dados_lobos_v1$Visit <- as.integer(dados_lobos_v1$Visit)
+
+dados <- left_join(dados, clinic_data)
+dados_hemi_v1 <- left_join(dados_hemi_v1, clinic_data)
+dados_lobos_v1 <- left_join(dados_lobos_v1, clinic_data)
+
+# NORMALIZACAO ----
+
+dados <- dados %>%
+  mutate(z_MMSE = (dados$MMSE - mean(dados$MMSE[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) / sd(dados$MMSE[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) %>%
+  mutate(z_A7_A5 = (dados$`A7/A5` - mean(dados$`A7/A5`[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) / sd(dados$`A7/A5`[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) %>%
+  mutate(z_TMT_B_A = (dados$`TMT B-A` - mean(dados$`TMT B-A`[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) / sd(dados$`TMT B-A`[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) %>%
+  mutate(z_relogio = (dados$relogio - mean(dados$relogio[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) / sd(dados$relogio[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) %>%
+  mutate(z_DIGIT_SPAN_BACK = (dados$`DIGIT SPAN BACK` - mean(dados$`DIGIT SPAN BACK`[dados$Diagnostic == "CONTROLE"], na.rm = TRUE)) / sd(dados$`DIGIT SPAN BACK`[dados$Diagnostic == "CONTROLE"], na.rm = TRUE))

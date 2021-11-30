@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1566944531186.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3966062592",
+    "id" : "374BE2A1",
+    "lastKnownWriteTime" : 1566949834,
+    "last_content_update" : 1566949833973,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/relatorio.Rmd",
+    "project_path" : "relatorio.Rmd",
+    "properties" : {
+        "cursorPosition" : "317,56",
+        "scrollLine" : "307"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564522043179.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "487344275",
+    "id" : "46CFD5EC",
+    "lastKnownWriteTime" : 1564522961,
+    "last_content_update" : 1564522961517,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/analises/comp_samples/comp_stats.R",
+    "project_path" : "analises/comp_samples/comp_stats.R",
+    "properties" : {
+        "cursorPosition" : "219,0",
+        "scrollLine" : "200",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

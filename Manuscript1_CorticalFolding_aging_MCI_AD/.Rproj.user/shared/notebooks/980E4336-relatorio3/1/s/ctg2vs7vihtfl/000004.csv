@@ -1,0 +1,6 @@
+"0","  "
+"0","  paste(""N sujeitos = "",n_distinct(filter(dados_all, Session == 1)$SUBJ))  "
+"1","[1]"
+"1"," ""N sujeitos =  130"""
+"1","
+"

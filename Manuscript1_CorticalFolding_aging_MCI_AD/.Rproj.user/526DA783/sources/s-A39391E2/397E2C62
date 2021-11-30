@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1567080408616.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "25|59|80|0|\n86|69|102|0|\n104|21|186|0|\n106|18|120|0|\n121|49|135|0|\n189|61|253|0|\n257|22|522|0|\n282|23|522|0|\n307|11|522|0|\n347|59|436|0|\n437|48|522|0|\n",
+    "hash" : "47937197",
+    "id" : "397E2C62",
+    "lastKnownWriteTime" : 1567088794,
+    "last_content_update" : 1567088794590,
+    "path" : "C:/Users/fernanda.hansen/Desktop/aging/V6/relatorio.Rmd",
+    "project_path" : "relatorio.Rmd",
+    "properties" : {
+        "cursorPosition" : "527,0",
+        "last_setup_crc32" : "87D265C4800ac150",
+        "scrollLine" : "20"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

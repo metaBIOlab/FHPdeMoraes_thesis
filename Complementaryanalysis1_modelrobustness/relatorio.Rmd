@@ -204,6 +204,12 @@ dados$Age <- as.numeric(dados$Age)
 dados$Diagnostic <- as.factor(dados$Diagnostic)
 dados$Gender <- as.factor(dados$Gender)
 
+# rename diagnostics
+dados$Diagnostic <- as.character(dados$Diagnostic)
+
+dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "CTL"
+dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI"
+dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
 ```
 
 ```{r data cleanup, echo=FALSE}
@@ -227,6 +233,8 @@ dados_excluidos %>% dplyr::select(c(SUBJ, Age, Gender, Diagnostic))
 
 # use the filtered data
 dados <- dados_all
+
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("CTL", "MCI", "AD")) # transform into levels of factors
 ```
 
 ```{r data cleaunp 2, echo=FALSE, warning=FALSE, messAge=FALSE}
@@ -246,18 +254,6 @@ dados <- dados %>%
 
 # write.csv(dados, "dados_compmethods.csv")
 ```
-
-```{r}
-# rename diagnostics
-dados$Diagnostic <- as.character(dados$Diagnostic)
-
-dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "CTL"
-dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI"
-dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
-
-dados$Diagnostic <- factor(dados$Diagnostic, levels = c("CTL", "MCI", "AD")) # transform into levels of factors
-```
-
 
 ```{r N subjects methods, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 dados %>%

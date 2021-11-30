@@ -1,0 +1,5 @@
+"0","lm_amostras_Gender <- dados_hemi_v1 %>%"
+"0","  group_by(Gender, Diagnostic) %>%"
+"0","  do(fit_amostras_Gender = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()"
+"0",""
+"0","lm_amostras_Gender %>% kable(digits = 2) %>% kable_styling()"

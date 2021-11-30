@@ -1,0 +1,7 @@
+"0",""
+"0","fig2 <- ggarrange(fig2a, ggarrange(fig2b, fig2c, labels = c(""B"",""C""), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c(""A""),  ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = ""top"")"
+"2","`geom_smooth()` using formula 'y ~ x'
+"
+"2","`geom_smooth()` using formula 'y ~ x'
+"
+"0","ggsave(""fig2.pdf"", plot = fig2, dpi=1200, width = 8.7, height = 11, units = ""cm"", device = ""pdf"")"

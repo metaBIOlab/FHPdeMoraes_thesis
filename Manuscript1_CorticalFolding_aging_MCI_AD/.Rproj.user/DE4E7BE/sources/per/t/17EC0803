@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1565388840854.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1440956893",
+    "id" : "17EC0803",
+    "lastKnownWriteTime" : 1565388888,
+    "last_content_update" : 1565388887373,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/import_files/import_subjects.R",
+    "project_path" : "import_files/import_subjects.R",
+    "properties" : {
+        "cursorPosition" : "92,59",
+        "scrollLine" : "28"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

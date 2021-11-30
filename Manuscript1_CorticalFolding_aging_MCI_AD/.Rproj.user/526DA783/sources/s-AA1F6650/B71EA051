@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1566240313976.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "B71EA051",
+    "lastKnownWriteTime" : 1568160896,
+    "last_content_update" : 1568160896,
+    "path" : "C:/Users/fernanda.hansen/Desktop/aging/V6/04-organiza.R",
+    "project_path" : "04-organiza.R",
+    "properties" : {
+        "cursorPosition" : "23,27",
+        "scrollLine" : "10"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

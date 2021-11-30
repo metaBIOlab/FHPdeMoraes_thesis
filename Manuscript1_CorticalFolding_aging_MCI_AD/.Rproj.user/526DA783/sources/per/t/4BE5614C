@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1575641590570.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "909061864",
+    "id" : "4BE5614C",
+    "lastKnownWriteTime" : 1575641657,
+    "last_content_update" : 1575641657497,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/05-analises_prep.R",
+    "project_path" : "05-analises_prep.R",
+    "properties" : {
+        "cursorPosition" : "54,0",
+        "scrollLine" : "46"
+    },
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

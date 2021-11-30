@@ -1,0 +1,6 @@
+"0","# ggsave(""fig_cutpoint.jpeg"", plot = fig_cutpoint, dpi=1200, width = 8.7, height = 11, units = ""cm"", device = ""jpeg"")"
+"0","# ggsave(""fig_cutpoint_deaged.eps"", plot = fig_cutpoint_deaged, dpi=1200, width = 8.7, height = 11, units = ""cm"", device = cairo_ps)"
+"0",""
+"0","fig_cutpoint_deaged_alt <- ggarrange(cutpoint_a, cutpoint_a_deaged, cutpoint_b, cutpoint_b_deaged, labels = c(""A"", ""B"", ""C"", ""D""),  ncol = 1, nrow = 4, font.label = list(size = 11), common.legend = TRUE, legend = ""top"")"
+"0",""
+"0","fig_cutpoint_deaged_alt"

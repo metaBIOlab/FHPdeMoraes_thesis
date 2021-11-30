@@ -1,0 +1,110 @@
+# PREPARO --------
+
+# define a area de trabalho ----
+setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+#setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/ferna/Desktop/aging/V6") # se no computador
+
+# onde estao os arquivos de resultados:
+path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+# path <- str_c("C:/Users/ferna/Desktop/aging/")
+
+path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+ 
+# PREPARO ----
+# carrega os pacotes utilizados ----
+source("1-call_packages.R")
+
+# Chama as funcoes ----
+source("2-funcoes.R")
+
+# importa os resultados ----
+source("3-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos ----
+source("4-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+# retira os outros diagnosticos e deixa so Philips
+dados_raw <- dados
+
+dados <-
+  filter(
+    dados,
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" | Diagnostic == "ALZ",
+    machine == "Philips"
+  )
+
+dados_excluidos <- anti_join(dados_raw, dados)
+
+# organiza para calculo dos follows
+#source("organiza/wide_organizer.R")
+
+# FOLLOW UP - ve as diferencas entre a ultima e a primeira visita ----
+#source("analises/analise_follow/evolucao.R")
+
+# separa em arquivo de hemisferios e de lobos ----
+
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Visit == 1,
+                        Longitudinal_correction == "no", localGI != 0)
+
+dados_lobos_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Visit == 1, localGI != 0)
+
+dados_CC <- filter(dados, ROI == "CC", Visit == 1, localGI != 0)
+
+
+dados$Diagnostic <- as.factor(dados$Diagnostic)
+dados$Age_interval10 <- as.factor(dados$Age_interval10)
+dados$Gender <- as.factor(dados$Gender)
+dados$ROI <- as.factor(dados$ROI)
+
+
+dados_hemi_v1$Diagnostic <- as.factor(dados_hemi_v1$Diagnostic)
+dados_hemi_v1$Age_interval10 <- as.factor(dados_hemi_v1$Age_interval10)
+dados_hemi_v1$Gender <- as.factor(dados_hemi_v1$Gender)
+
+dados_lobos_v1$Diagnostic <- as.factor(dados_lobos_v1$Diagnostic)
+dados_lobos_v1$Age_interval10 <- as.factor(dados_lobos_v1$Age_interval10)
+dados_lobos_v1$Gender <- as.factor(dados_lobos_v1$Gender)
+dados_lobos_v1$ROI <- as.factor(dados_lobos_v1$ROI)
+
+# Analises exploratorias ----
+# basic_eda(dados)
+# basic_eda(filter(dados_hemi_v1))
+# basic_eda(filter(dados_lobos_v1))
+
+# teste de normalidade ----
+#source("teste_normalidade.R")
+
+# analises estatisticas ----
+## hemisferios
+source("analises/analise_regressao.R")
+
+# COMPARACAO COM OS DADOS DO ARTIGO ORIGINAL MOTTA&HOUZEL 2015 ----
+source("analises/comp_samples/comp_slope.R")
+source("analises/comp_samples/comp_paper.R")
+
+# INFLUENCIA DO GENERO, IDADE e DIAGNOSTICO ----
+
+source("analises/influencia_hemi.R")
+source("analises/influencia_Gender.R")
+source("analises/influencia_idade.R")
+source("analises/influencia_diag.R")
+source("analises/influencia_Gender_diag.R")
+source("analises/influencia_diag_age.R")
+
+## TAXA DE DECAIMENTO DA GIRIFICACAO comparando o "decaimento"da girificacao com a idade ----
+# corrigindo as medidas pela idade ----
+Idade <- 25
+
+source("analises/decaimento_idade/decaimento_grafico.R")
+
+
+decay_log_kteorico_Coef %>% pander
+model_age_corr_decay
+
+# LOBOS ----
+
+source("analises/lobos/analise_lobos.R")

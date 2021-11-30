@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1591388977359.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4016286711",
+    "id" : "E2B0AEF",
+    "lastKnownWriteTime" : 1578660033,
+    "last_content_update" : 1578660033,
+    "path" : "~/idor/Gyrification/RRRRRR/aging/V6/import_files/import_subjects.R",
+    "project_path" : "import_files/import_subjects.R",
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 8,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

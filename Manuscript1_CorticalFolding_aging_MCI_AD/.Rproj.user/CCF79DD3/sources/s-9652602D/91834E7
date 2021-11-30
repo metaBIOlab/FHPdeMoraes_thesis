@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1578524315624.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2782049699",
+    "id" : "91834E7",
+    "lastKnownWriteTime" : 1576018067,
+    "last_content_update" : 1576018067,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/relatorio_CH.Rmd",
+    "project_path" : "relatorio_CH.Rmd",
+    "properties" : {
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 4,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

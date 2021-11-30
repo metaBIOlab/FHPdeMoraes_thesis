@@ -1,0 +1,5 @@
+"0"," "
+"0",""
+"0"," ggplot(dados_hemi_v1, aes(x = Gender, y = I, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
+"0","         geom_boxplot() + stat_compare_means(method = ""anova"") + theme_pubr()"
+"0",""

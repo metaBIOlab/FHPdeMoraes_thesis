@@ -1,0 +1,5 @@
+"0","lm_fit_comp_idor <- dados_hemi_v1 %>%"
+"0","  group_by(Diagnostic) %>%"
+"0","  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()"
+"0",""
+"0","lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()"

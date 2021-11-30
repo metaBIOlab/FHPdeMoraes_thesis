@@ -1,0 +1,59 @@
+"0","require(foreign)"
+"2","Loading required package: foreign
+"
+"0","require(nnet)"
+"0","require(reshape2)"
+"2","Loading required package: reshape2
+"
+"2","
+Attaching package: ‘reshape2’
+
+"
+"2","The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+"
+"0","library(stargazer)"
+"2","
+Please cite as: 
+
+"
+"2"," Hlavac, Marek (2018). stargazer: Well-Formatted Regression and Summary Statistics Tables.
+"
+"2"," R package version 5.2.2. https://CRAN.R-project.org/package=stargazer 
+
+"
+"0","require(betareg)"
+"2","Loading required package: betareg
+"
+"0","#Diagnostic <- factor(dados_hemi_v1$Diagnostic, levels = c(""AD"", ""MCI"",""CTL""))"
+"0","dados_hemi_v1$Diagnostic <- relevel(dados_hemi_v1$Diagnostic, ""CTL"")"
+"0",""
+"0","set.seed(0)"
+"0",""
+"0","N_diag <- dados_hemi_v1 %>% dplyr::select(SUBJ, Diagnostic) %>% unique() %>% group_by(Diagnostic) %>% summarise(n_DIAG = n_distinct(SUBJ))"
+"0",""
+"0","dados_hemi_v1_filter <- dados_hemi_v1 %>% dplyr::select(SUBJ, Diagnostic) %>% unique()"
+"0",""
+"0","N_CTL <- as.double(floor(N_diag[1,2]*0.8))"
+"0","N_CCL <- as.double(round(N_diag[3,2]*0.8))"
+"0","N_ALZ <- as.double(round(N_diag[2,2]*0.8))"
+"0",""
+"0","test.samples <- c(sample(which(dados_hemi_v1_filter$Diagnostic == ""AD""), N_ALZ), sample(which(dados_hemi_v1_filter$Diagnostic == ""CTL""), N_CTL), sample(which(dados_hemi_v1_filter$Diagnostic == ""MCI""), N_CCL))"
+"0","subj.training <- as_tibble(dados_hemi_v1_filter[-test.samples, ]$SUBJ)"
+"0",""
+"0","colnames(subj.training) <- c(""SUBJ"")"
+"0",""
+"0","# filter(dados_hemi_v1, SUBJ == subj.training)"
+"0",""
+"0","train.data <- anti_join(dados_hemi_v1, subj.training)"
+"1","Joining, by = ""SUBJ""
+"
+"0","test.data <- semi_join(dados_hemi_v1, subj.training)"
+"1","Joining, by = ""SUBJ""
+"
+"0","#train.data  <- dados_hemi_v1[-test.samples, ]"
+"0","#test.data <- dados_hemi_v1[test.samples, ]"
+"0",""
+"0","caret::featurePlot(x = dados_hemi_v1[, c(""K"", ""logAvgThickness"", ""K_age_decay"", ""logAvgThickness_age_decay"")], y = dados_hemi_v1$Diagnostic, plot = ""box"", scales = list(y = list(relation = ""free""), x = list(rot = 90)), layout = c(4, 1))"

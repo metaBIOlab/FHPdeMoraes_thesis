@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<style>body{background-color:white;}</style>
+<script src="lib/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="lib/bootstrap-3.3.5/css/cosmo.min.css" rel="stylesheet" />
+<script src="lib/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="lib/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="lib/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="lib/kePrint-0.0.1/kePrint.js"></script>
+<link href="lib/lightable-0.0.1/lightable.css" rel="stylesheet" />
+
+</head>
+<body>
+<table class="table" style="margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:left;"> Diagnostic </th>
+   <th style="text-align:right;"> N </th>
+   <th style="text-align:right;"> Mean_COGNITIVE_INDEX </th>
+   <th style="text-align:right;"> STD_COGNITIVE_INDEX </th>
+   <th style="text-align:right;"> Mean_A7_A5 </th>
+   <th style="text-align:right;"> STD_A7_A5 </th>
+   <th style="text-align:right;"> Mean_TMT_B_A </th>
+   <th style="text-align:right;"> STD_TMT_B_A </th>
+   <th style="text-align:right;"> Mean_relogio </th>
+   <th style="text-align:right;"> STD_relogio </th>
+   <th style="text-align:right;"> Mean_DIGIT_SPAN_BACK </th>
+   <th style="text-align:right;"> STD_DIGIT_SPAN_BACK </th>
+   <th style="text-align:right;"> Mean_Lipoxina </th>
+   <th style="text-align:right;"> STD_Lipoxina </th>
+   <th style="text-align:right;"> Mean_AB1_40 </th>
+   <th style="text-align:right;"> STD_AB1_40 </th>
+   <th style="text-align:right;"> Mean_AB1_42 </th>
+   <th style="text-align:right;"> STD_AB1_42 </th>
+   <th style="text-align:right;"> Mean_TAU </th>
+   <th style="text-align:right;"> STD_TAU </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;width: 10cm; "> AD </td>
+   <td style="text-align:right;"> 13 </td>
+   <td style="text-align:right;"> -3.35 </td>
+   <td style="text-align:right;"> 1.48 </td>
+   <td style="text-align:right;"> 0.24 </td>
+   <td style="text-align:right;"> 0.31 </td>
+   <td style="text-align:right;"> 226.69 </td>
+   <td style="text-align:right;"> 131.29 </td>
+   <td style="text-align:right;"> 8.92 </td>
+   <td style="text-align:right;"> 1.64 </td>
+   <td style="text-align:right;"> 3.77 </td>
+   <td style="text-align:right;"> 1.39 </td>
+   <td style="text-align:right;"> 79.10 </td>
+   <td style="text-align:right;"> 73.64 </td>
+   <td style="text-align:right;"> 5664.22 </td>
+   <td style="text-align:right;"> 1665.88 </td>
+   <td style="text-align:right;"> 279.71 </td>
+   <td style="text-align:right;"> 60.00 </td>
+   <td style="text-align:right;"> 632.00 </td>
+   <td style="text-align:right;"> 278.83 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;width: 10cm; "> MCI </td>
+   <td style="text-align:right;"> 33 </td>
+   <td style="text-align:right;"> -1.48 </td>
+   <td style="text-align:right;"> 1.28 </td>
+   <td style="text-align:right;"> 0.54 </td>
+   <td style="text-align:right;"> 0.30 </td>
+   <td style="text-align:right;"> 129.73 </td>
+   <td style="text-align:right;"> 105.03 </td>
+   <td style="text-align:right;"> 8.61 </td>
+   <td style="text-align:right;"> 1.84 </td>
+   <td style="text-align:right;"> 4.70 </td>
+   <td style="text-align:right;"> 1.60 </td>
+   <td style="text-align:right;"> 120.24 </td>
+   <td style="text-align:right;"> 49.46 </td>
+   <td style="text-align:right;"> 4557.04 </td>
+   <td style="text-align:right;"> 2559.94 </td>
+   <td style="text-align:right;"> 413.35 </td>
+   <td style="text-align:right;"> 306.30 </td>
+   <td style="text-align:right;"> 444.21 </td>
+   <td style="text-align:right;"> 196.85 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;width: 10cm; "> CTL </td>
+   <td style="text-align:right;"> 77 </td>
+   <td style="text-align:right;"> 0.21 </td>
+   <td style="text-align:right;"> 0.65 </td>
+   <td style="text-align:right;"> 0.82 </td>
+   <td style="text-align:right;"> 0.18 </td>
+   <td style="text-align:right;"> 58.53 </td>
+   <td style="text-align:right;"> 48.00 </td>
+   <td style="text-align:right;"> 9.29 </td>
+   <td style="text-align:right;"> 1.21 </td>
+   <td style="text-align:right;"> 5.84 </td>
+   <td style="text-align:right;"> 1.74 </td>
+   <td style="text-align:right;"> 127.15 </td>
+   <td style="text-align:right;"> 61.52 </td>
+   <td style="text-align:right;"> 4192.04 </td>
+   <td style="text-align:right;"> 1915.04 </td>
+   <td style="text-align:right;"> 533.92 </td>
+   <td style="text-align:right;"> 242.82 </td>
+   <td style="text-align:right;"> 354.87 </td>
+   <td style="text-align:right;"> 194.95 </td>
+  </tr>
+</tbody>
+</table> <script type="text/x-mathjax-config">MathJax.Hub.Config({tex2jax: {inlineMath: [["$","$"]]}})</script><script async src="https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+</body>
+</html>

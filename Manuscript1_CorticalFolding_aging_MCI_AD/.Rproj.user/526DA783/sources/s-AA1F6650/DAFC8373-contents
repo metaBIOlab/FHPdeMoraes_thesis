@@ -1,0 +1,240 @@
+# PIAL DATA - THICKNESS ####
+
+# DATA IMPORT ####
+
+### THICKNESS ####
+lh_pial_thickness <-
+  read_delim(str_c(path,"lh_pial_thickness.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+rh_pial_thickness <-
+  read_delim(str_c(path,"rh_pial_thickness.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+### TOTAL AREA ####
+lh_pial_surfarea <-
+  read_delim(str_c(path,"lh_pial_surfarea.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+rh_pial_surfarea <-
+  read_delim(str_c(path,"rh_pial_surfarea.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+###  GREY MATTER VOLUME ####
+
+lh_pial_volume <-
+  read_delim(str_c(path,"lh_pial_volume.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+rh_pial_volume <-
+  read_delim(str_c(path,"rh_pial_volume.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+### WHITE MATTER AREA ####
+
+lh_white_surfarea <-
+  read_delim(str_c(path,"lh_white_surfarea.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+rh_white_surfarea <-
+  read_delim(str_c(path,"rh_white_surfarea.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+### LOCAL GYRIFICATION INDEX ####
+
+lh_lgi <-
+  read_delim(str_c(path,"lh_lgi.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+rh_lgi <-
+  read_delim(str_c(path,"rh_lgi.txt"),
+    "\t",
+    escape_double = FALSE,
+    trim_ws = TRUE
+  )
+
+# DATA ORGANIZING ####
+## INSERT CORRECTION + HEMI + ROI INFO ####
+### THICKNESS ####
+
+lh_pial_thickness <-
+  mutate(
+    lh_pial_thickness,
+    hemi = "L",
+    ROI = "hemisphere"
+  )
+
+rh_pial_thickness <-
+  mutate(
+    rh_pial_thickness,
+    hemi = "R",
+    ROI = "hemisphere"
+  )
+
+names(lh_pial_thickness)[1] <- "SUBJ_ID"
+names(rh_pial_thickness)[1] <- "SUBJ_ID"
+colnames(lh_pial_thickness)[which(names(lh_pial_thickness) == "lh.pial")] <-
+  "AvgThickness"
+colnames(rh_pial_thickness)[which(names(rh_pial_thickness) == "rh.pial")] <-
+  "AvgThickness"
+
+### TOTAL AREA ####
+
+lh_pial_surfarea <-
+  mutate(
+    lh_pial_surfarea,
+    hemi = "L",
+    ROI = "hemisphere"
+  )
+
+rh_pial_surfarea <-
+  mutate(
+    rh_pial_surfarea,
+    hemi = "R",
+    ROI = "hemisphere"
+  )
+
+names(lh_pial_surfarea)[1] <- "SUBJ_ID"
+names(rh_pial_surfarea)[1] <- "SUBJ_ID"
+colnames(lh_pial_surfarea)[which(names(lh_pial_surfarea) == "lh.pial")] <-
+  "TotalArea"
+colnames(rh_pial_surfarea)[which(names(rh_pial_surfarea) == "rh.pial")] <-
+  "TotalArea"
+
+### GREY MATTER VOLUME ####
+lh_pial_volume <-
+  mutate(
+    lh_pial_volume,
+    hemi = "L",
+    ROI = "hemisphere"
+  )
+
+rh_pial_volume <-
+  mutate(
+    rh_pial_volume,
+    hemi = "R",
+    ROI = "hemisphere"
+  )
+
+names(lh_pial_volume)[1] <- "SUBJ_ID"
+names(rh_pial_volume)[1] <- "SUBJ_ID"
+colnames(lh_pial_volume)[which(names(lh_pial_volume) == "lh.pial")] <-
+  "GMvolume"
+colnames(rh_pial_volume)[which(names(rh_pial_volume) == "rh.pial")] <-
+  "GMvolume"
+
+### WHITE MATTER AREA ####
+lh_white_surfarea <- lh_white_surfarea %>%
+  dplyr::select(lh.aparc.area, WhiteSurfArea, BrainSegVolNotVent, eTIV) %>%
+  mutate(hemi = "L",
+         ROI = "hemisphere")
+
+rh_white_surfarea <- rh_white_surfarea %>%
+  dplyr::select(rh.aparc.area, WhiteSurfArea, BrainSegVolNotVent, eTIV) %>%
+  mutate(hemi = "R",
+         ROI = "hemisphere")
+
+
+names(lh_white_surfarea)[1] <- "SUBJ_ID"
+names(rh_white_surfarea)[1] <- "SUBJ_ID"
+colnames(lh_white_surfarea)[which(names(lh_white_surfarea) == "lh.aparc.area")] <-
+  "WM_area"
+colnames(rh_white_surfarea)[which(names(rh_white_surfarea) == "rh.aparc.area")] <-
+  "WM_area"
+
+### LOCAL GYRIFICATION INDEX ####
+lh_lgi <-
+  mutate(
+    lh_lgi,
+    hemi = "L",
+    ROI = "hemisphere"
+  )
+
+rh_lgi <-
+  mutate(
+    rh_lgi,
+    hemi = "R",
+    ROI = "hemisphere"
+  )
+
+names(lh_lgi)[1] <- "SUBJ_ID"
+names(rh_lgi)[1] <- "SUBJ_ID"
+colnames(lh_lgi)[which(names(lh_lgi) == "lh.white")] <-
+  "localGI"
+colnames(rh_lgi)[which(names(rh_lgi) == "rh.white")] <-
+  "localGI"
+
+## BIND ALL TABLES #####
+thickness <- unique(
+  full_join(lh_pial_thickness,
+            rh_pial_thickness))
+
+totalarea <- unique(
+  full_join(lh_pial_surfarea,
+            rh_pial_surfarea))
+
+gmvolume <- unique(
+  full_join(lh_pial_volume,
+            rh_pial_volume))
+
+wmarea <- unique(
+  full_join(lh_white_surfarea,
+            rh_white_surfarea))
+
+localGI <- unique(
+  full_join(lh_lgi,
+            rh_lgi))
+
+## FULL_JOIN ALL TABLES ####
+data_h <-
+  full_join(thickness, totalarea) %>% full_join(gmvolume) %>% full_join(wmarea) %>% full_join(localGI)
+
+data_h <- mutate(
+  data_h,
+  SUBJ = str_sub(data_h$SUBJ_ID, 1, 7),
+  Visit = str_sub(data_h$SUBJ_ID, 21, 21),
+  Longitudinal_correction = ifelse(str_sub(data_h$SUBJ_ID, 23, 26) == "long", "yes", "no")
+)
+
+data_h$Visit <- as.double(data_h$Visit)
+# inclui as variaveis em forma de log, a area exposta e o log do kteorico
+
+data_h <-
+  data_h %>% mutate(
+    ExposedArea = TotalArea / localGI,
+    logAvgThickness = log10(AvgThickness),
+    logTotalArea = log10(TotalArea),
+    logGMvolume = log10(GMvolume),
+    logWhiteSurfArea = log10(WhiteSurfArea),
+    logExposedArea = log10(ExposedArea),
+    logkteorico = 1 / 2 * logAvgThickness + logTotalArea - 5 / 4 * logExposedArea
+  )
+
+rm(lh_pial_surfarea, lh_pial_thickness, lh_pial_volume, lh_white_surfarea, lh_lgi, rh_pial_surfarea, rh_pial_thickness, rh_pial_volume, rh_white_surfarea, rh_lgi, gmvolume, localGI, thickness, totalarea, wmarea)

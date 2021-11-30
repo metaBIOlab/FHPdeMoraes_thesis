@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1591388775103.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "802751717",
+    "id" : "BBA57D48",
+    "lastKnownWriteTime" : 1591564994,
+    "last_content_update" : 1591564994,
+    "path" : "~/idor/Gyrification/RRRRRR/aging/V6/analises/comp_samples.R",
+    "project_path" : "analises/comp_samples.R",
+    "properties" : {
+        "cursorPosition" : "189,18",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 10,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

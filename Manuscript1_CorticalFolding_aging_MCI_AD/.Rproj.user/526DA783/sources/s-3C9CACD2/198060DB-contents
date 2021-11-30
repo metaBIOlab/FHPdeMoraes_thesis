@@ -1,0 +1,196 @@
+# COM CORRECAO LONGITUDINAL
+
+dados <-
+  dados %>% if (Longitudinal_correction == "yes") {
+    mutate(
+      logAvgThickness_age_decay = as.numeric(
+        ifelse(
+          dados$ROI == "hemisphere",
+          dados$logAvgThickness - lambda_t_CTL_hemi_longcor * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "F",
+            dados$logAvgThickness  - lambda_t_CTL_F_longcor * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "O",
+              dados$logAvgThickness  - lambda_t_CTL_O_longcor * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "P",
+                dados$logAvgThickness  - lambda_t_CTL_P_longcor * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "T",
+                  dados$logAvgThickness  - lambda_t_CTL_T_longcor * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "CC",
+                    dados$logAvgThickness  - lambda_t_CTL_CC_longcor * (dados$Age - Idade),
+                    ""
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+      logTotalArea_age_decay = as.numeric(
+        ifelse(
+          dados$ROI == "hemisphere",
+          dados$logTotalArea_corrected - lambda_At_CTL_hemi_longcor * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "F",
+            dados$logTotalArea_corrected - lambda_At_CTL_F_longcor * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "O",
+              dados$logTotalArea_corrected - lambda_At_CTL_O_longcor * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "P",
+                dados$logTotalArea_corrected - lambda_At_CTL_P_longcor * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "T",
+                  dados$logTotalArea_corrected - lambda_At_CTL_T_longcor * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "CC",
+                    dados$logTotalArea_corrected - lambda_At_CTL_CC_longcor * (dados$Age - Idade),
+                    ""
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+      localGI_age_decay = as.numeric(
+        ifelse(
+          dados$ROI == "hemisphere",
+          dados$localGI - lambda_lGI_CTL_hemi_longcor * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "F",
+            dados$localGI - lambda_lGI_CTL_F_longcor * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "O",
+              dados$localGI - lambda_lGI_CTL_O_longcor * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "P",
+                dados$localGI - lambda_lGI_CTL_P_longcor * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "T",
+                  dados$localGI - lambda_lGI_CTL_T_longcor * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "CC",
+                    dados$localGI - lambda_lGI_CTL_CC_longcor * (dados$Age - Idade),
+                    ""
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+      logExposedArea_age_decay = as.numeric(
+        ifelse(
+          dados$ROI == "hemisphere",
+          dados$logExposedArea_corrected - lambda_Ae_CTL_hemi_longcor * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "F",
+            dados$logExposedArea_corrected - lambda_Ae_CTL_F_longcor * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "O",
+              dados$logExposedArea_corrected - lambda_Ae_CTL_O_longcor * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "P",
+                dados$logExposedArea_corrected - lambda_Ae_CTL_P_longcor * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "T",
+                  dados$logExposedArea_corrected - lambda_Ae_CTL_T_longcor * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "CC",
+                    dados$logExposedArea_corrected - lambda_Ae_CTL_CC_longcor * (dados$Age - Idade),
+                    ""
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )} else {
+      mutate(
+        logTotalArea_age_decay = as.numeric(
+          ifelse(
+            dados$ROI == "hemisphere",
+            dados$logTotalArea_corrected - lambda_At_CTL_hemi * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "F",
+              dados$logTotalArea_corrected - lambda_At_CTL_F * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "O",
+                dados$logTotalArea_corrected - lambda_At_CTL_O * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "P",
+                  dados$logTotalArea_corrected - lambda_At_CTL_P * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "T",
+                    dados$logTotalArea_corrected - lambda_At_CTL_T * (dados$Age - Idade),
+                    ifelse(
+                      dados$ROI == "CC",
+                      dados$logTotalArea_corrected - lambda_At_CTL_CC * (dados$Age - Idade),
+                      ""
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+        localGI_age_decay = as.numeric(ifelse(
+          dados$ROI == "hemisphere",
+          dados$localGI - lambda_lGI_CTL_hemi * (dados$Age - Idade),
+          ifelse(
+            dados$ROI == "F",
+            dados$localGI - lambda_lGI_CTL_F * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "O",
+              dados$localGI - lambda_lGI_CTL_O * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "P",
+                dados$localGI - lambda_lGI_CTL_P * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "T",
+                  dados$localGI - lambda_lGI_CTL_T * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "CC",
+                    dados$localGI - lambda_lGI_CTL_CC * (dados$Age - Idade),
+                    ""
+                  )
+                )
+              )
+            )
+          )
+        )),
+        logExposedArea_age_decay = as.numeric(
+          ifelse(
+            dados$ROI == "hemisphere",
+            dados$logExposedArea_corrected - lambda_Ae_CTL_hemi * (dados$Age - Idade),
+            ifelse(
+              dados$ROI == "F",
+              dados$logExposedArea_corrected - lambda_Ae_CTL_F * (dados$Age - Idade),
+              ifelse(
+                dados$ROI == "O",
+                dados$logExposedArea_corrected - lambda_Ae_CTL_O * (dados$Age - Idade),
+                ifelse(
+                  dados$ROI == "P",
+                  dados$logExposedArea_corrected - lambda_Ae_CTL_P * (dados$Age - Idade),
+                  ifelse(
+                    dados$ROI == "T",
+                    dados$logExposedArea_corrected - lambda_Ae_CTL_T * (dados$Age - Idade),
+                    ifelse(
+                      dados$ROI == "CC",
+                      dados$logExposedArea_corrected - lambda_Ae_CTL_CC * (dados$Age - Idade),
+                      ""
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    }

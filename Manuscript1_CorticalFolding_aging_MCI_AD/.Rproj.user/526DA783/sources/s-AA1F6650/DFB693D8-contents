@@ -1,0 +1,105 @@
+## DATA JOIN ####
+
+dados_datasetscomp <- dplyr::select(dados_hemi_v1, SUBJ, Gender, Age, AvgThickness, TotalArea, ExposedArea, localGI, logkteorico,  hemi, Age_interval, Amostra, Diagnostic, logAvgThickness, logTotalArea, logExposedArea)
+
+dados_datasetscomp$Gender <- as.factor(dados_datasetscomp$Gender)
+dados_datasetscomp$Age <- as.character(dados_datasetscomp$Age)
+
+dados_datasetscomp <- full_join(dados_datasetscomp, datasets_yujiang)
+
+dados_datasetscomp <- dplyr::select(dados_datasetscomp, -c(ROI))
+ 
+
+### YUJIANG DATA - AGE INTERVAL ####
+
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "22-25"] <- "21-25"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "26-30"] <- "26-30"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "31-35"] <- "31-35"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "36+"] <- "36-40"
+# 
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 10 &
+#                                 dados_datasetscomp$Age < 15] <- "11-15"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 15 &
+#                                 dados_datasetscomp$Age < 20] <- "16-20"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 20 &
+#                                 dados_datasetscomp$Age < 25] <- "21-25"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 25 &
+#                                 dados_datasetscomp$Age < 30] <- "26-30"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 30 &
+#                                 dados_datasetscomp$Age < 35] <- "31-35"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 35 &
+#                                 dados_datasetscomp$Age < 40] <- "36-40"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 40 &
+#                                 dados_datasetscomp$Age < 45] <- "41-45"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 45 &
+#                                dados_datasetscomp$Age < 50] <- "46-50"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 50 &
+#                                dados_datasetscomp$Age < 55] <- "51-55"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 55 &
+#                                dados_datasetscomp$Age < 60] <- "56-60"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 60 &
+#                                dados_datasetscomp$Age < 65] <- "61-65"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 65 &
+#                                dados_datasetscomp$Age < 70] <- "66-70"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 70 &
+#                                dados_datasetscomp$Age < 75] <- "71-75"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 75 &
+#                                dados_datasetscomp$Age < 80] <- "76-80"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 80 &
+#                                dados_datasetscomp$Age < 85] <- "81-85"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 85 &
+#                                dados_datasetscomp$Age < 90] <- "86-90"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 90 &
+#                                 dados_datasetscomp$Age < 95] <- "91-95"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 95 &
+#                                 dados_datasetscomp$Age < 100] <- "96-100"
+# dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "95"] <- "91-95"
+
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "22-25"] <- "21"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "26-30"] <- "26"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "31-35"] <- "31"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "36+"] <- "36"
+
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 10 &
+                                  dados_datasetscomp$Age < 15] <- "11"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 15 &
+                                  dados_datasetscomp$Age < 20] <- "16"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 20 &
+                                  dados_datasetscomp$Age < 25] <- "21"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 25 &
+                                  dados_datasetscomp$Age < 30] <- "26"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 30 &
+                                  dados_datasetscomp$Age < 35] <- "31"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 35 &
+                                  dados_datasetscomp$Age < 40] <- "36"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 40 &
+                                  dados_datasetscomp$Age < 45] <- "41"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 45 &
+                                  dados_datasetscomp$Age < 50] <- "46"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 50 &
+                                  dados_datasetscomp$Age < 55] <- "51"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 55 &
+                                  dados_datasetscomp$Age < 60] <- "56"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 60 &
+                                  dados_datasetscomp$Age < 65] <- "61"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 65 &
+                                  dados_datasetscomp$Age < 70] <- "66"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 70 &
+                                  dados_datasetscomp$Age < 75] <- "71"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 75 &
+                                  dados_datasetscomp$Age < 80] <- "76"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 80 &
+                                  dados_datasetscomp$Age < 85] <- "81"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 85 &
+                                  dados_datasetscomp$Age < 90] <- "86"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 90 &
+                                  dados_datasetscomp$Age < 95] <- "91"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age >= 95 &
+                                  dados_datasetscomp$Age < 100] <- "96"
+dados_datasetscomp$Age_interval[dados_datasetscomp$Age == "95"] <- "91"
+
+### WITH MOTA&HOUZEL DATA ####
+dados_datasetscomp <- full_join(dados_datasetscomp, dados_MH2015)
+dados_datasetscomp <- filter(dados_datasetscomp, localGI != 0)
+
+rm(ADNIAD_NonLongitudinal, ADNIAD_NonLongitudinal_lh, ADNIAD_NonLongitudinal_rh, ADNIControl_NonLongitudinal, ADNIControl_NonLongitudinal_lh, ADNIControl_NonLongitudinal_rh, HCP500r, HCP500r_lh, HCP500r_rh, NKI, NKI_lh, NKI_rh, OASIS_healthy, OASIS_healthy_lh, OASIS_healthy_rh)

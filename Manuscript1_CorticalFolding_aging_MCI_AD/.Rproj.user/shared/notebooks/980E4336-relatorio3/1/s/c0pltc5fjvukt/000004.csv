@@ -1,0 +1,4 @@
+"0",""
+"0","dados_lobos_v1 %>%"
+"0","  group_by(Diagnostic) %>%"
+"0","  summarise(N_SUBJ = n_distinct(SUBJ))"

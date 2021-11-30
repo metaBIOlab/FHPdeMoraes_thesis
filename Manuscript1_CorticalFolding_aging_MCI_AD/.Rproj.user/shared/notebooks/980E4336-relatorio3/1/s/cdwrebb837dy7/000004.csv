@@ -1,0 +1,8 @@
+"0",""
+"0","ggplot(dados_hemi_v1, aes(logExposedArea, 1/2*logAvgThickness + logTotalArea, color = Gender, fill = Gender)) +"
+"0","  geom_point() +"
+"0","  geom_smooth(method = ""lm"", se = FALSE) +"
+"0","  facet_wrap(Diagnostic ~ .) + stat_regline_equation() +"
+"0","  theme_pubr()"
+"2","`geom_smooth()` using formula 'y ~ x'
+"

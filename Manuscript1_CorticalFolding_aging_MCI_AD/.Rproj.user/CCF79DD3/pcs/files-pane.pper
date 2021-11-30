@@ -1,0 +1,13 @@
+{
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6",
+    "sortOrder" : [
+        {
+            "ascending" : false,
+            "columnIndex" : 4
+        },
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}

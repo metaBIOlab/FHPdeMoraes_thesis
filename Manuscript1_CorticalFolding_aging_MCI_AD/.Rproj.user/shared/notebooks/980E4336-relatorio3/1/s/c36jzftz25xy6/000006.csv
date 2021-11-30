@@ -1,0 +1,6 @@
+"0","ggplot(data = dados_hemi_v1, aes(logExposedArea_age_decay, 1/2 * logAvgThickness_age_decay + logTotalArea_age_decay , color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
+"0","  geom_point() + "
+"0","  geom_smooth(method = ""lm"", se = TRUE) +"
+"0","  theme_pubr()+ labs(y = ""1/2 log(AvgThickness) + log(TotalArea) (after age correction)"", x = ""log(ExposedArea) (after age correction)"" )"
+"2","`geom_smooth()` using formula 'y ~ x'
+"

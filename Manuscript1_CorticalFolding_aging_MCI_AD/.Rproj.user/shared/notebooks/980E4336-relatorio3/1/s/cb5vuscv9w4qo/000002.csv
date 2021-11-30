@@ -1,0 +1,583 @@
+"0","# PREPARO"
+"0",""
+"0","# define a area de trabalho"
+"0","# setwd(""Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/"")# se no idor"
+"0","# setwd(""E:/idor/Gyrification/"") # se no pendrive"
+"0","# setwd(""C:/Users/fernanda.hansen/Desktop/aging/V6/"") # se no pendrive"
+"0","setwd(""~/idor/Gyrification/RRRRRR/aging/V6"")"
+"0",""
+"0","# carrega os pacotes utilizados"
+"0","source(""01-call_packages.R"")"
+"2","Registered S3 methods overwritten by 'dbplyr':
+  method         from
+  print.tbl_lazy     
+  print.tbl_sql      
+"
+"2","[30m-- [1mAttaching packages[22m ------------------------------------------------------------------------------------------------------------------------------------------ tidyverse 1.3.1 --[39m
+"
+"2","[30m[32mv[30m [34mggplot2[30m 3.3.5     [32mv[30m [34mpurrr  [30m 0.3.4
+[32mv[30m [34mtibble [30m 3.1.5     [32mv[30m [34mdplyr  [30m 1.0.7
+[32mv[30m [34mtidyr  [30m 1.1.4     [32mv[30m [34mstringr[30m 1.4.0
+[32mv[30m [34mreadr  [30m 2.0.2     [32mv[30m [34mforcats[30m 0.5.1[39m
+"
+"2","[30m-- [1mConflicts[22m --------------------------------------------------------------------------------------------------------------------------------------------- tidyverse_conflicts() --
+[31mx[30m [34mtidyr[30m::[32mexpand()[30m masks [34mMatrix[30m::expand()
+[31mx[30m [34mdplyr[30m::[32mfilter()[30m masks [34mstats[30m::filter()
+[31mx[30m [34mdplyr[30m::[32mlag()[30m    masks [34mstats[30m::lag()
+[31mx[30m [34mtidyr[30m::[32mpack()[30m   masks [34mMatrix[30m::pack()
+[31mx[30m [34mtidyr[30m::[32munpack()[30m masks [34mMatrix[30m::unpack()[39m
+"
+"2","Loading required package: Hmisc
+"
+"2","Loading required package: lattice
+"
+"2","Loading required package: survival
+"
+"2","Loading required package: Formula
+"
+"2","Registered S3 method overwritten by 'htmlwidgets':
+  method           from         
+  print.htmlwidget tools:rstudio
+"
+"2","
+Attaching package: ‘Hmisc’
+
+"
+"2","The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+"
+"2","funModeling v.1.9.4 :)
+Examples and tutorials at livebook.datascienceheroes.com
+ / Now in Spanish: librovivodecienciadedatos.ai
+"
+"2","
+Attaching package: ‘lubridate’
+
+"
+"2","The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+"
+"2","
+Attaching package: ‘magrittr’
+
+"
+"2","The following object is masked from ‘package:purrr’:
+
+    set_names
+
+"
+"2","The following object is masked from ‘package:tidyr’:
+
+    extract
+
+"
+"2","Loading required package: plyr
+"
+"2","---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+"
+"2","You have loaded plyr after dplyr - this is likely to cause problems.
+If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+library(plyr); library(dplyr)
+"
+"2","---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+"
+"2","
+Attaching package: ‘plyr’
+
+"
+"2","The following objects are masked from ‘package:Hmisc’:
+
+    is.discrete, summarize
+
+"
+"2","The following object is masked from ‘package:ggpubr’:
+
+    mutate
+
+"
+"2","The following objects are masked from ‘package:dplyr’:
+
+    arrange, count, desc, failwith, id, mutate, rename, summarise, summarize
+
+"
+"2","The following object is masked from ‘package:purrr’:
+
+    compact
+
+"
+"2","Loading required package: carData
+"
+"2","
+Attaching package: ‘car’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    recode
+
+"
+"2","The following object is masked from ‘package:purrr’:
+
+    some
+
+"
+"2","
+Attaching package: ‘kableExtra’
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+"
+"2","
+Attaching package: ‘plotly’
+
+"
+"2","The following objects are masked from ‘package:plyr’:
+
+    arrange, mutate, rename, summarise
+
+"
+"2","The following object is masked from ‘package:Hmisc’:
+
+    subplot
+
+"
+"2","The following object is masked from ‘package:ggplot2’:
+
+    last_plot
+
+"
+"2","The following object is masked from ‘package:stats’:
+
+    filter
+
+"
+"2","The following object is masked from ‘package:graphics’:
+
+    layout
+
+"
+"2","Registered S3 methods overwritten by 'parameters':
+  method                           from      
+  as.double.parameters_kurtosis    datawizard
+  as.double.parameters_skewness    datawizard
+  as.double.parameters_smoothness  datawizard
+  as.numeric.parameters_kurtosis   datawizard
+  as.numeric.parameters_skewness   datawizard
+  as.numeric.parameters_smoothness datawizard
+  print.parameters_distribution    datawizard
+  print.parameters_kurtosis        datawizard
+  print.parameters_skewness        datawizard
+  summary.parameters_kurtosis      datawizard
+  summary.parameters_skewness      datawizard
+"
+"2","
+Attaching package: ‘sjstats’
+
+"
+"2","The following objects are masked from ‘package:modelr’:
+
+    bootstrap, mse, rmse
+
+"
+"2","
+Attaching package: ‘MASS’
+
+"
+"2","The following object is masked from ‘package:plotly’:
+
+    select
+
+"
+"2","The following object is masked from ‘package:dplyr’:
+
+    select
+
+"
+"2","
+Attaching package: ‘broom’
+
+"
+"2","The following object is masked from ‘package:sjstats’:
+
+    bootstrap
+
+"
+"2","The following object is masked from ‘package:modelr’:
+
+    bootstrap
+
+"
+"2","
+Attaching package: ‘caret’
+
+"
+"2","The following object is masked from ‘package:survival’:
+
+    cluster
+
+"
+"2","The following object is masked from ‘package:purrr’:
+
+    lift
+
+"
+"2","Type 'citation(""pROC"")' for a citation.
+"
+"2","
+Attaching package: ‘pROC’
+
+"
+"2","The following object is masked from ‘package:sjstats’:
+
+    ci
+
+"
+"2","The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+"
+"2","
+Attaching package: ‘ellipse’
+
+"
+"2","The following object is masked from ‘package:car’:
+
+    ellipse
+
+"
+"2","The following object is masked from ‘package:graphics’:
+
+    pairs
+
+"
+"2","Loaded glmnet 4.1-2
+"
+"2","
+arm (Version 1.11-2, built: 2020-7-27)
+
+"
+"2","Working directory is C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6
+
+"
+"2","
+Attaching package: ‘arm’
+
+"
+"2","The following object is masked from ‘package:car’:
+
+    logit
+
+"
+"2","
+Attaching package: ‘Epi’
+
+"
+"2","The following object is masked from ‘package:funModeling’:
+
+    status
+
+"
+"2","The following object is masked from ‘package:lme4’:
+
+    factorize
+
+"
+"2","
+Attaching package: ‘rstatix’
+
+"
+"2","The following object is masked from ‘package:MASS’:
+
+    select
+
+"
+"2","The following object is masked from ‘package:dabestr’:
+
+    cohens_d
+
+"
+"2","The following objects are masked from ‘package:plyr’:
+
+    desc, mutate
+
+"
+"2","The following object is masked from ‘package:stats’:
+
+    filter
+
+"
+"2","Use the command
+    lattice::trellis.par.set(effectsTheme())
+  to customize lattice options for effects plots.
+See ?effectsTheme for details.
+"
+"2","Loading required package: abind
+"
+"2","The 'lsmeans' package is now basically a front end for 'emmeans'.
+Users are encouraged to switch the rest of the way.
+See help('transition') for more information, including how to
+convert old 'lsmeans' objects and scripts to work with 'emmeans'.
+"
+"2","
+Attaching package: ‘modelsummary’
+
+"
+"2","The following object is masked from ‘package:Hmisc’:
+
+    Mean
+
+"
+"2","Loading required package: sysfonts
+"
+"2","Loading required package: showtextdb
+"
+"2","
+Attaching package: ‘patchwork’
+
+"
+"2","The following object is masked from ‘package:MASS’:
+
+    area
+
+"
+"2","You can cite this package as:
+     Patil, I. (2021). Visualizations with statistical details: The 'ggstatsplot' approach.
+     Journal of Open Source Software, 6(61), 3167, doi:10.21105/joss.03167
+"
+"2","
+Attaching package: ‘psych’
+
+"
+"2","The following object is masked from ‘package:matlib’:
+
+    tr
+
+"
+"2","The following object is masked from ‘package:modelsummary’:
+
+    SD
+
+"
+"2","The following objects are masked from ‘package:arm’:
+
+    logit, rescale, sim
+
+"
+"2","The following object is masked from ‘package:sjstats’:
+
+    phi
+
+"
+"2","The following object is masked from ‘package:effsize’:
+
+    cohen.d
+
+"
+"2","The following object is masked from ‘package:car’:
+
+    logit
+
+"
+"2","The following object is masked from ‘package:Hmisc’:
+
+    describe
+
+"
+"2","The following objects are masked from ‘package:ggplot2’:
+
+    %+%, alpha
+
+"
+"2","
+Attaching package: ‘cutpointr’
+
+"
+"2","The following objects are masked from ‘package:pROC’:
+
+    auc, roc
+
+"
+"2","The following objects are masked from ‘package:caret’:
+
+    precision, recall, sensitivity, specificity
+
+"
+"2","The following object is masked from ‘package:sjstats’:
+
+    boot_ci
+
+"
+"0","source(""02-funcoes.R"")"
+"0","# onde estao os arquivos de resultados:"
+"0","#path_yujiangscript <- str_c(""~/Documentos/Gyrification/data/resultados"")"
+"0",""
+"0","alpha_beta <- str_c(""~/idor/Gyrification/data/resultados/"")"
+"0","  "
+"0","# path_lobes <- str_c(""Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/"")"
+"0","path_lobes <- str_c(""~/idor/Gyrification/STATS/"")"
+"0"," "
+"0","# path_sessions <- str_c(""Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/"")"
+"0","path_sessions <- str_c(""~/idor/Gyrification/Processamento_longitudinal/V6/data/"")"
+"0",""
+"0","# importa os resultados"
+"0","source(""03-import_files.R"") # arquivos dos sujeitos"
+"1","[1m[1mRows: [1m[22m[34m[34m367[34m[39m [1m[1mColumns: [1m[22m[34m[34m12[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "";""
+[31mchr[39m (8): SUBJ, SUBJ_clean, Sexo, Data_nascimento, Diagnostico, RM  Maquina, Data_aquisicao_RM, NeuroQuant
+[32mdbl[39m (4): Visita, Idade, ESC, Lipoxina
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","Joining, by = ""participant_id""
+"
+"1","Note: Using an external vector in selections is ambiguous.
+[34mi[39m Use `all_of(oldnames)` instead of `oldnames` to silence this message.
+[34mi[39m See <https://tidyselect.r-lib.org/reference/faq-external-vector.html>.
+[90mThis message is displayed once per session.[39m
+"
+"1","Joining, by = c(""SUBJ"", ""Session"")
+"
+"1","[1m[1mRows: [1m[22m[34m[34m1620[34m[39m [1m[1mColumns: [1m[22m[34m[34m11[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m (2): SubjectID, Hemisphere
+[32mdbl[39m (9): Lobe, AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, GaussianCurvature, PialVol, WhiteVol, GreymatterVol
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","[1m[1mRows: [1m[22m[34m[34m1622[34m[39m [1m[1mColumns: [1m[22m[34m[34m11[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m (2): SubjectID, Hemisphere
+[32mdbl[39m (9): Lobe, AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, GaussianCurvature, PialVol, WhiteVol, GreymatterVol
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","[1m[1mRows: [1m[22m[34m[34m1620[34m[39m [1m[1mColumns: [1m[22m[34m[34m11[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m (2): SubjectID, Hemisphere
+[32mdbl[39m (9): Lobe, AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, GaussianCurvature, PialVol, WhiteVol, GreymatterVol
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","Joining, by = c(""SubjectID"", ""Hemisphere"", ""Lobe"", ""AvgCortThickness"", ""PialArea"", ""SmoothPialArea"", ""WhiteArea"", ""GaussianCurvature"", ""PialVol"", ""WhiteVol"", ""GreymatterVol"", ""Session"")
+"
+"1","Joining, by = c(""SubjectID"", ""Hemisphere"", ""Lobe"", ""AvgCortThickness"", ""PialArea"", ""SmoothPialArea"", ""WhiteArea"", ""GaussianCurvature"", ""PialVol"", ""WhiteVol"", ""GreymatterVol"", ""Session"")
+"
+"1","[1m[1mRows: [1m[22m[34m[34m262[34m[39m [1m[1mColumns: [1m[22m[34m[34m15[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m  (2): SubjectID, Hemisphere
+[32mdbl[39m (13): AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, ConvexHullArea, PialFullArea, WhiteFullArea, SmoothPialFullArea, ConvexHullFullArea, PialFullVol, WhiteFullVol...
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","[1m[1mRows: [1m[22m[34m[34m160[34m[39m [1m[1mColumns: [1m[22m[34m[34m15[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m  (2): SubjectID, Hemisphere
+[32mdbl[39m (13): AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, ConvexHullArea, PialFullArea, WhiteFullArea, SmoothPialFullArea, ConvexHullFullArea, PialFullVol, WhiteFullVol...
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","[1m[1mRows: [1m[22m[34m[34m96[34m[39m [1m[1mColumns: [1m[22m[34m[34m15[34m[39m
+"
+"1","[36m--[39m [1m[1mColumn specification[1m[22m [36m-----------------------------------------------------------------------------------------------------------------------------------------------------------[39m
+[1mDelimiter:[22m "",""
+[31mchr[39m  (2): SubjectID, Hemisphere
+[32mdbl[39m (13): AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, ConvexHullArea, PialFullArea, WhiteFullArea, SmoothPialFullArea, ConvexHullFullArea, PialFullVol, WhiteFullVol...
+"
+"1","
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m to retrieve the full column specification for this data.
+[36mi[39m Specify the column types or set [38;5;235m[48;5;253m[38;5;235m[48;5;253m`show_col_types = FALSE`[48;5;253m[38;5;235m[49m[39m to quiet this message.
+"
+"1","Joining, by = c(""SubjectID"", ""Hemisphere"", ""AvgCortThickness"", ""PialArea"", ""SmoothPialArea"", ""WhiteArea"", ""ConvexHullArea"", ""PialFullArea"", ""WhiteFullArea"", ""SmoothPialFullArea"", ""ConvexHullFullArea"", ""PialFullVol"", ""WhiteFullVol"", ""GreymatterVol"", ""SmoothPialFullVol"", ""Session"")
+"
+"1","Joining, by = c(""SubjectID"", ""Hemisphere"", ""AvgCortThickness"", ""PialArea"", ""SmoothPialArea"", ""WhiteArea"", ""ConvexHullArea"", ""PialFullArea"", ""WhiteFullArea"", ""SmoothPialFullArea"", ""ConvexHullFullArea"", ""PialFullVol"", ""WhiteFullVol"", ""GreymatterVol"", ""SmoothPialFullVol"", ""Session"")
+"
+"0","# organiza os arquivos"
+"0","source(""04-organiza.R"")"
+"1","Joining, by = c(""Session"", ""SUBJ"", ""hemi"", ""ROI"", ""AvgThickness"", ""logAvgThickness"", ""TotalArea"", ""logTotalArea"", ""ExposedArea"", ""logExposedArea"", ""WhiteSurfArea"", ""logWhiteSurfArea"", ""GMvolume"", ""localGI"", ""k"", ""K"", ""S"", ""I"", ""Knorm"", ""Snorm"", ""Inorm"")
+"
+"1","Joining, by = c(""SUBJ"", ""Session"")
+"
+"0","dados_raw <- dados"
+"0",""
+"0","verificar_lGI_zero <- filter(dados, ExposedArea == 0 | is.na(localGI))"
+"0","write.csv(verificar_lGI_zero, ""verificar_lGI_zero.csv"")"
+"0",""
+"0","# retira os outros diagnosticos e deixa so quem tem machine definido"
+"0","dados_all <- dados %>% filter("
+"0","    Diagnostic == ""CONTROLE"" |"
+"0","      Diagnostic == ""CCL"" |"
+"0","      Diagnostic == ""ALZ"", !is.na(logAvgThickness), ExposedArea != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% "
+"0","  droplevels()"
+"0",""
+"0","dados_excluidos <- anti_join(dados_raw, dados_all)"
+"1","Joining, by = c(""machine"", ""SUBJ"", ""Session"", ""birthday"", ""acq_date"", ""Age"", ""SUBJ_clean"", ""Gender"", ""Birthdate"", ""Diagnostic"", ""ESC"", ""NeuroQuant"", ""Lipoxina"", ""ConvexHullArea"", ""PialFullArea"", ""WhiteFullArea"", ""SmoothPialFullArea"", ""ConvexHullFullArea"", ""PialFullVol"", ""WhiteFullVol"", ""SmoothPialFullVol"", ""hemi"", ""ROI"", ""AvgThickness"", ""logAvgThickness"", ""TotalArea"", ""logTotalArea"", ""logTotalFullArea"", ""ExposedArea"", ""logExposedArea"", ""WhiteSurfArea"", ""logWhiteSurfArea"", ""GMvolume"", ""logConvexHullArea"", ""localGI"", ""k"", ""K"", ""S"", ""I"", ""Knorm"", ""Snorm"", ""Inorm"", ""GaussianCurvature"", ""PialVol"", ""WhiteVol"", ""c"", ""TotalArea_corrected"", ""ExposedArea_corrected"", ""localGI_corrected"", ""logTotalArea_corrected"", ""logExposedArea_corrected"", ""k_corrected"", ""K_corrected"", ""I_corrected"", ""S_corrected"")
+"
+"0","write.csv(dados_excluidos, ""dados_excluidos.csv"")"
+"0",""
+"0","dados <- dados_all"
+"0",""
+"0","Age.cor = 25"
+"0",""
+"0","# Prepara os dados para analise"
+"0","source(""05-analises_prep.R"")"
+"1","Joining, by = c(""machine"", ""SUBJ"", ""Session"", ""birthday"", ""acq_date"", ""Age"", ""SUBJ_clean"", ""Gender"", ""Birthdate"", ""Diagnostic"", ""ESC"", ""NeuroQuant"", ""Lipoxina"", ""ConvexHullArea"", ""PialFullArea"", ""WhiteFullArea"", ""SmoothPialFullArea"", ""ConvexHullFullArea"", ""PialFullVol"", ""WhiteFullVol"", ""SmoothPialFullVol"", ""hemi"", ""ROI"", ""AvgThickness"", ""logAvgThickness"", ""TotalArea"", ""logTotalArea"", ""logTotalFullArea"", ""ExposedArea"", ""logExposedArea"", ""WhiteSurfArea"", ""logWhiteSurfArea"", ""GMvolume"", ""logConvexHullArea"", ""localGI"", ""k"", ""K"", ""S"", ""I"", ""Knorm"", ""Snorm"", ""Inorm"", ""GaussianCurvature"", ""PialVol"", ""WhiteVol"", ""c"", ""TotalArea_corrected"", ""ExposedArea_corrected"", ""localGI_corrected"", ""logTotalArea_corrected"", ""logExposedArea_corrected"", ""k_corrected"", ""K_corrected"", ""I_corrected"", ""S_corrected"", ""Age_interval"", ""Age_interval10"")
+"
+"1","Joining, by = c(""SUBJ"", ""Session"")
+"
+"1","Joining, by = c(""SUBJ"", ""Session"", ""Gender"", ""ESC"")
+"
+"1","Joining, by = c(""SUBJ"", ""Session"")
+"
+"0","dados$Diagnostic <- factor(dados$Diagnostic, levels = c(""ALZ"", ""CCL"",""CONTROLE""))"
+"0","dados$Diagnostic <- revalue(dados$Diagnostic, c(""CONTROLE""=""CTL"", ""ALZ""=""AD"", ""CCL"" = ""MCI""))"
+"0",""
+"0","dados <- filter(dados, machine == ""Philips-Achieva"")"
+"0",""
+"0","# separa em arquivo de hemisferios e de lobos"
+"0",""
+"0","dados_lobos_v1 <- unique(filter(dados, ROI == ""F"" | ROI == ""T"" | ROI == ""O"" | ROI == ""P"", Session == 1, !is.na(K_age_decay), SUBJ != ""SUBJ211"", SUBJ != ""SUBJ223"")) %>% droplevels()"
+"0",""
+"0","dados_v1 <- filter(dados, ROI == ""F"" | ROI == ""T"" | ROI == ""O"" | ROI == ""P"" | ROI == ""hemisphere"", Session == 1) %>% droplevels()"
+"0",""
+"0","dados_hemi_v1 <- unique(filter(dados, ROI == ""hemisphere"", Session == 1, !is.na(K_age_decay)))"
+"0",""
+"0","write.csv(dados_v1,""dados_v1.csv"")"
+"0",""
+"0","set.seed(1)"

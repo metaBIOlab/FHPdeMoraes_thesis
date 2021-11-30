@@ -1,0 +1,171 @@
+# taxa de caimento da girificacao (espessura)----
+
+decay_AvgThickness <- filter(dados, Session == "1" , Longitudinal_correction == "no")  %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_AvgThickness = rlm(logAvgThickness ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ----
+decay_AvgThickness_Coef = tidy(
+  decay_AvgThickness,
+  fit_decay_AvgThickness,
+  conf.int = TRUE,
+  conf.level = 0.95
+)
+
+# lambda, b e Ko CTL - sem correcao longitudinal ----
+
+lambda_t_CTL_hemi <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "hemisphere"]
+
+b_t_CTL_hemi <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "hemisphere"]
+
+lambda_t_CTL_F <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "F"]
+
+b_t_CTL_F <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "F"]
+
+lambda_t_CTL_O <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "O"]
+
+b_t_CTL_O <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "O"]
+
+lambda_t_CTL_P <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "P"]
+
+b_t_CTL_P <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "P"]
+
+lambda_t_CTL_T <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "T"]
+
+b_t_CTL_T <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "T"]
+
+lambda_t_CTL_insula <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "Insula"]
+
+b_t_CTL_insula <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "Insula"]
+
+lambda_t_CTL_CC <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "Age" &
+                                     decay_AvgThickness_Coef$ROI == "CC"]
+
+b_t_CTL_CC <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef$ROI == "CC"]
+
+# lambda, b e Ko CTL - com correcao longitudinal ----
+
+decay_AvgThickness_longcor <- filter(dados, Session == "1" , Longitudinal_correction == "yes")  %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_AvgThickness_longcor = rlm(logAvgThickness ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ----
+decay_AvgThickness_Coef_longcor = tidy(
+  decay_AvgThickness_longcor,
+  fit_decay_AvgThickness_longcor,
+  conf.int = TRUE,
+  conf.level = 0.95
+)
+
+lambda_t_CTL_hemi_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "hemisphere"]
+
+b_t_CTL_hemi_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "hemisphere"]
+
+
+lambda_t_CTL_F_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "F"]
+
+b_t_CTL_F_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "F"]
+
+
+lambda_t_CTL_O_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "O"]
+
+b_t_CTL_O_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "O"]
+
+lambda_t_CTL_P_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "P"]
+
+b_t_CTL_P_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "P"]
+
+lambda_t_CTL_T_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "T"]
+
+b_t_CTL_T_longcor <-
+  decay_AvgThickness_Coef_longcor$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "T"]
+
+lambda_t_CTL_insula_longcor <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "Insula"]
+
+b_t_CTL_insula_longcor <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "Insula"]
+
+lambda_t_CTL_CC_longcor <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "Age" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "CC"]
+
+b_t_CTL_CC_longcor <-
+  decay_AvgThickness_Coef$estimate[decay_AvgThickness_Coef_longcor$Diagnostic == "CONTROLE" &
+                                     decay_AvgThickness_Coef_longcor$term == "(Intercept)" &
+                                     decay_AvgThickness_Coef_longcor$ROI == "CC"]

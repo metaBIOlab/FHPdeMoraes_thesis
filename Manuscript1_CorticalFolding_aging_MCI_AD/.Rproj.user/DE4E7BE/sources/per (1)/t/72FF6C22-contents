@@ -1,0 +1,281 @@
+# DIVIDE POR TIPO DE MEDIDA ----
+
+# AREA TOTAL
+
+LobesExtract_ALL_TotalArea <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `TotalArea_ROI_1_L`,
+  `TotalArea_ROI_2_L`,
+  `TotalArea_ROI_3_L`,
+  `TotalArea_ROI_4_L`,
+  `TotalArea_ROI_5_L`,
+  `TotalArea_ROI_6_L`,
+  `TotalArea_ROI_1_R`,
+  `TotalArea_ROI_2_R`,
+  `TotalArea_ROI_3_R`,
+  `TotalArea_ROI_4_R`,
+  `TotalArea_ROI_5_R`,
+  `TotalArea_ROI_6_R`
+) %>%
+  gather(
+    `TotalArea_ROI_1_L`,
+    `TotalArea_ROI_2_L`,
+    `TotalArea_ROI_3_L`,
+    `TotalArea_ROI_4_L`,
+    `TotalArea_ROI_5_L`,
+    `TotalArea_ROI_6_L`,
+    `TotalArea_ROI_1_R`,
+    `TotalArea_ROI_2_R`,
+    `TotalArea_ROI_3_R`,
+    `TotalArea_ROI_4_R`,
+    `TotalArea_ROI_5_R`,
+    `TotalArea_ROI_6_R`,
+    key = "ROIS",
+    value = "TotalArea"
+  ) %>%
+  separate(ROIS,
+           into = c("Measure", "ROI", "nROI", "hemi"),
+           sep = "_") %>% dplyr::select(`ID`,
+                                 `nROI`,
+                                 `hemi`,
+                                 `TotalArea`)
+
+
+# AvgThickness
+LobesExtract_ALL_AvgThickness <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `AvgThickness_ROI_1_L`,
+  `AvgThickness_ROI_2_L`,
+  `AvgThickness_ROI_3_L`,
+  `AvgThickness_ROI_4_L`,
+  `AvgThickness_ROI_5_L`,
+  `AvgThickness_ROI_6_L`,
+  `AvgThickness_ROI_1_R`,
+  `AvgThickness_ROI_2_R`,
+  `AvgThickness_ROI_3_R`,
+  `AvgThickness_ROI_4_R`,
+  `AvgThickness_ROI_5_R`,
+  `AvgThickness_ROI_6_R`
+) %>%
+  gather(
+    `AvgThickness_ROI_1_L`,
+    `AvgThickness_ROI_2_L`,
+    `AvgThickness_ROI_3_L`,
+    `AvgThickness_ROI_4_L`,
+    `AvgThickness_ROI_5_L`,
+    `AvgThickness_ROI_6_L`,
+    `AvgThickness_ROI_1_R`,
+    `AvgThickness_ROI_2_R`,
+    `AvgThickness_ROI_3_R`,
+    `AvgThickness_ROI_4_R`,
+    `AvgThickness_ROI_5_R`,
+    `AvgThickness_ROI_6_R`,
+    key = "ROIS",
+    value = "AvgThickness"
+  ) %>%
+  separate(ROIS,
+           into = c("Measure", "ROI", "nROI", "hemi"),
+           sep = "_") %>% dplyr::select(`ID`,
+                                 `nROI`,
+                                 `hemi`,
+                                 `AvgThickness`)
+# SmoothArea
+LobesExtract_ALL_SmoothArea <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `SmoothArea_ROI_1_L`,
+  `SmoothArea_ROI_2_L`,
+  `SmoothArea_ROI_3_L`,
+  `SmoothArea_ROI_4_L`,
+  `SmoothArea_ROI_5_L`,
+  `SmoothArea_ROI_6_L`,
+  `SmoothArea_ROI_1_R`,
+  `SmoothArea_ROI_2_R`,
+  `SmoothArea_ROI_3_R`,
+  `SmoothArea_ROI_4_R`,
+  `SmoothArea_ROI_5_R`,
+  `SmoothArea_ROI_6_R`
+) %>%
+  gather(
+    `SmoothArea_ROI_1_L`,
+    `SmoothArea_ROI_2_L`,
+    `SmoothArea_ROI_3_L`,
+    `SmoothArea_ROI_4_L`,
+    `SmoothArea_ROI_5_L`,
+    `SmoothArea_ROI_6_L`,
+    `SmoothArea_ROI_1_R`,
+    `SmoothArea_ROI_2_R`,
+    `SmoothArea_ROI_3_R`,
+    `SmoothArea_ROI_4_R`,
+    `SmoothArea_ROI_5_R`,
+    `SmoothArea_ROI_6_R`,
+    key = "ROIS",
+    value = "SmoothArea"
+  ) %>%
+  separate(ROIS,
+           into = c("Measure", "ROI", "nROI", "hemi"),
+           sep = "_") %>% dplyr::select(`ID`,
+                                 `nROI`,
+                                 `hemi`,
+                                 `SmoothArea`)
+
+
+# K_ds
+LobesExtract_ALL_K_ds <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `K_ds_ROI_1_L`,
+  `K_ds_ROI_2_L`,
+  `K_ds_ROI_3_L`,
+  `K_ds_ROI_4_L`,
+  `K_ds_ROI_5_L`,
+  `K_ds_ROI_6_L`,
+  `K_ds_ROI_1_R`,
+  `K_ds_ROI_2_R`,
+  `K_ds_ROI_3_R`,
+  `K_ds_ROI_4_R`,
+  `K_ds_ROI_5_R`,
+  `K_ds_ROI_6_R`
+) %>%
+  gather(
+    `K_ds_ROI_1_L`,
+    `K_ds_ROI_2_L`,
+    `K_ds_ROI_3_L`,
+    `K_ds_ROI_4_L`,
+    `K_ds_ROI_5_L`,
+    `K_ds_ROI_6_L`,
+    `K_ds_ROI_1_R`,
+    `K_ds_ROI_2_R`,
+    `K_ds_ROI_3_R`,
+    `K_ds_ROI_4_R`,
+    `K_ds_ROI_5_R`,
+    `K_ds_ROI_6_R`,
+    key = "ROIS",
+    value = "K_ds"
+  ) %>%
+  separate(
+    ROIS,
+    into = c("Measure", "Correction", "ROI", "nROI", "hemi"),
+    sep = "_"
+  ) %>% unite(Measure, Measure, Correction, sep = "_") %>% dplyr::select(`ID`,
+                                                                  `nROI`,
+                                                                  `hemi`,
+                                                                  `K_ds`)
+
+# SmoothArea_ds
+LobesExtract_ALL_SmoothArea_ds <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `SmoothArea_ds_ROI_1_L`,
+  `SmoothArea_ds_ROI_2_L`,
+  `SmoothArea_ds_ROI_3_L`,
+  `SmoothArea_ds_ROI_4_L`,
+  `SmoothArea_ds_ROI_5_L`,
+  `SmoothArea_ds_ROI_6_L`,
+  `SmoothArea_ds_ROI_1_R`,
+  `SmoothArea_ds_ROI_2_R`,
+  `SmoothArea_ds_ROI_3_R`,
+  `SmoothArea_ds_ROI_4_R`,
+  `SmoothArea_ds_ROI_5_R`,
+  `SmoothArea_ds_ROI_6_R`
+) %>%
+  gather(
+    `SmoothArea_ds_ROI_1_L`,
+    `SmoothArea_ds_ROI_2_L`,
+    `SmoothArea_ds_ROI_3_L`,
+    `SmoothArea_ds_ROI_4_L`,
+    `SmoothArea_ds_ROI_5_L`,
+    `SmoothArea_ds_ROI_6_L`,
+    `SmoothArea_ds_ROI_1_R`,
+    `SmoothArea_ds_ROI_2_R`,
+    `SmoothArea_ds_ROI_3_R`,
+    `SmoothArea_ds_ROI_4_R`,
+    `SmoothArea_ds_ROI_5_R`,
+    `SmoothArea_ds_ROI_6_R`,
+    key = "ROIS",
+    value = "SmoothArea_ds"
+  ) %>%
+  separate(
+    ROIS,
+    into = c("Measure", "Correction", "ROI", "nROI", "hemi"),
+    sep = "_"
+  ) %>% unite(Measure, Measure, Correction, sep = "_") %>% dplyr::select(`ID`,
+                                                                  `nROI`,
+                                                                  `hemi`,
+                                                                  `SmoothArea_ds`)
+
+# K_CHwoB
+LobesExtract_ALL_K_CHwoB <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `K_CHwoB_ROI_1_L`,
+  `K_CHwoB_ROI_2_L`,
+  `K_CHwoB_ROI_3_L`,
+  `K_CHwoB_ROI_4_L`,
+  `K_CHwoB_ROI_5_L`,
+  `K_CHwoB_ROI_6_L`,
+  `K_CHwoB_ROI_1_R`,
+  `K_CHwoB_ROI_2_R`,
+  `K_CHwoB_ROI_3_R`,
+  `K_CHwoB_ROI_4_R`,
+  `K_CHwoB_ROI_5_R`,
+  `K_CHwoB_ROI_6_R`
+) %>%
+  gather(
+    `K_CHwoB_ROI_1_L`,
+    `K_CHwoB_ROI_2_L`,
+    `K_CHwoB_ROI_3_L`,
+    `K_CHwoB_ROI_4_L`,
+    `K_CHwoB_ROI_5_L`,
+    `K_CHwoB_ROI_6_L`,
+    `K_CHwoB_ROI_1_R`,
+    `K_CHwoB_ROI_2_R`,
+    `K_CHwoB_ROI_3_R`,
+    `K_CHwoB_ROI_4_R`,
+    `K_CHwoB_ROI_5_R`,
+    `K_CHwoB_ROI_6_R`,
+    key = "ROIS",
+    value = "K_CHwoB"
+  ) %>%
+  separate(
+    ROIS,
+    into = c("Measure", "Correction", "ROI", "nROI", "hemi"),
+    sep = "_"
+  ) %>% unite(Measure, Measure, Correction, sep = "_") %>% dplyr::select(`ID`,
+                                                                  `nROI`,
+                                                                  `hemi`,
+                                                                  `K_CHwoB`)
+
+# SmoothArea_CHwoB
+LobesExtract_ALL_SmoothArea_CHwoB <- LobesExtract_ALL %>% dplyr::select(
+  `ID`,
+  `SmoothArea_CHwoB_ROI_1_L`,
+  `SmoothArea_CHwoB_ROI_2_L`,
+  `SmoothArea_CHwoB_ROI_3_L`,
+  `SmoothArea_CHwoB_ROI_4_L`,
+  `SmoothArea_CHwoB_ROI_5_L`,
+  `SmoothArea_CHwoB_ROI_6_L`,
+  `SmoothArea_CHwoB_ROI_1_R`,
+  `SmoothArea_CHwoB_ROI_2_R`,
+  `SmoothArea_CHwoB_ROI_3_R`,
+  `SmoothArea_CHwoB_ROI_4_R`,
+  `SmoothArea_CHwoB_ROI_5_R`,
+  `SmoothArea_CHwoB_ROI_6_R`
+) %>%
+  gather(
+    `SmoothArea_CHwoB_ROI_1_L`,
+    `SmoothArea_CHwoB_ROI_2_L`,
+    `SmoothArea_CHwoB_ROI_3_L`,
+    `SmoothArea_CHwoB_ROI_4_L`,
+    `SmoothArea_CHwoB_ROI_5_L`,
+    `SmoothArea_CHwoB_ROI_6_L`,
+    `SmoothArea_CHwoB_ROI_1_R`,
+    `SmoothArea_CHwoB_ROI_2_R`,
+    `SmoothArea_CHwoB_ROI_3_R`,
+    `SmoothArea_CHwoB_ROI_4_R`,
+    `SmoothArea_CHwoB_ROI_5_R`,
+    `SmoothArea_CHwoB_ROI_6_R`,
+    key = "ROIS",
+    value = "SmoothArea_CHwoB"
+  ) %>%
+  separate(
+    ROIS,
+    into = c("Measure", "Correction", "ROI", "nROI", "hemi"),
+    sep = "_"
+  ) %>% unite(Measure, Measure, Correction, sep = "_") %>% dplyr::select(`ID`, `nROI`, `hemi`, `SmoothArea_CHwoB`)

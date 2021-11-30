@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1564576555040.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "7|27|71|0|\n",
+    "hash" : "2965939827",
+    "id" : "5411B25B",
+    "lastKnownWriteTime" : 1564584529,
+    "last_content_update" : 1564584528237,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/relatorio_estatistica.Rmd",
+    "project_path" : "relatorio_estatistica.Rmd",
+    "properties" : {
+        "cursorPosition" : "792,253",
+        "scrollLine" : "764",
+        "tempName" : "Untitled2"
+    },
+    "relative_order" : 11,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_markdown"
+}

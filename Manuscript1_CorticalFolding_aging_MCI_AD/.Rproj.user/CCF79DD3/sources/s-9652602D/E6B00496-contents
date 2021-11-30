@@ -1,0 +1,30 @@
+
+# IMPORTING HEMISPHERE DATA FROM YUJIANG/TOBIAS SCRIPT
+
+data_Y_T_script <- read_csv(str_c(path_yujiangscript_newsurfaces, "data_15_30.txt"))
+
+data_Y_T_script <- data_Y_T_script %>% mutate(
+  SUBJ = SubjectID,
+  Session = "1",
+  hemi = Hemisphere,
+  ROI = "hemisphere",
+  method = "Yujiang_script",
+  Longitudinal_correction = "yes",
+  AvgThickness = AvgCortThickness,
+  logAvgThickness = log10(AvgCortThickness),
+  TotalArea = PialArea,
+  logTotalArea = log10(PialArea),
+  logTotalFullArea = log10(PialFullArea),
+  ExposedArea = SmoothPialArea,
+  logExposedArea = log10(SmoothPialArea),
+  WhiteSurfArea = WhiteArea,
+  logWhiteSurfArea = log10(WhiteArea),
+  GMvolume = GreymatterVol,
+  logGMvolume = log10(GreymatterVol),
+  logConvexHullArea = log10(ConvexHullArea),
+  localGI = TotalArea / ExposedArea,
+  logkteorico = 1 / 2 * logAvgThickness + logTotalArea - 5 / 4 * logExposedArea
+) %>% dplyr::select(-c(SubjectID, Hemisphere, AvgCortThickness, PialArea, SmoothPialArea, WhiteArea, GreymatterVol))
+
+data_Y_T_script$hemi[data_Y_T_script$hemi == "left"] <- "L"
+data_Y_T_script$hemi[data_Y_T_script$hemi == "right"] <- "R"

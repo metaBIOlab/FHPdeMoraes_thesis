@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1591817798220.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3091381670",
+    "id" : "71065F5E",
+    "lastKnownWriteTime" : 1588901234,
+    "last_content_update" : 1588901234,
+    "path" : "~/idor/Gyrification/RRRRRR/aging/V6/06-calculo_zscore.R",
+    "project_path" : "06-calculo_zscore.R",
+    "properties" : {
+        "cursorPosition" : "196,55",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 10,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

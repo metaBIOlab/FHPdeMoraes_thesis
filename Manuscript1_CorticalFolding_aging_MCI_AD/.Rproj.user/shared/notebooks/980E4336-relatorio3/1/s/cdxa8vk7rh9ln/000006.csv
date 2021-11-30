@@ -1,0 +1,7 @@
+"0",""
+"0","ggbetweenstats("
+"0","    data = dados_hemi_v1,"
+"0","    x = Diagnostic,"
+"0","    y = S, outlier.tagging = TRUE,"
+"0","    plot.type = ""box"""
+"0",") "

@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1565387656544.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "384081116",
+    "id" : "81254DC0",
+    "lastKnownWriteTime" : 1565389759,
+    "last_content_update" : 1565389757875,
+    "path" : "Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/R/aging/V6/4-organiza.R",
+    "project_path" : "4-organiza.R",
+    "properties" : {
+        "cursorPosition" : "20,21",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

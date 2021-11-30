@@ -1,0 +1,4 @@
+"0","ggplot(dados_hemi_v1, aes(x = Diagnostic, y = K_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
+"0","  geom_boxplot() +"
+"0"," stat_compare_means(method = ""anova"") + theme_pubr()"
+"0",""

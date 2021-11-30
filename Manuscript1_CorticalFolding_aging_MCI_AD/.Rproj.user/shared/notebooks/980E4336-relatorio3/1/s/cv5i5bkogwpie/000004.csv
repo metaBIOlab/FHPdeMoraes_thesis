@@ -1,0 +1,5 @@
+"0","lm_Age <- dados_hemi_v1 %>%"
+"0","  group_by(Diagnostic) %>%"
+"0","  do(fit_Age = glance(lm(I ~ Age, data = ., na.action = na.omit), conf.int =TRUE)) %>% unnest()"
+"0",""
+"0","lm_Age"

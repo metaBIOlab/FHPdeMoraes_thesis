@@ -1,0 +1,46 @@
+dados_volume_CC <-
+  dados_aseg_vol %>% mutate(
+    WM_volume_CC = (
+      CC_Posterior + CC_Anterior + CC_Central + CC_Mid_Anterior + CC_Mid_Posterior
+    )
+  )
+
+dados_volume_CC <-
+  dplyr::select(dados_volume_CC,
+                c(SUBJ, Session, Longitudinal_correction, WM_volume_CC))
+
+dados_volume_CC$Session <- as.factor(dados_volume_CC$Session)
+
+dados_area_CC <-
+  dados %>% filter(ROI == "CC") %>% dplyr::select(
+    SUBJ,
+    Session,
+    hemi,
+    Longitudinal_correction,
+    TotalArea_corrected,
+    ExposedArea_corrected,
+    logTotalArea_corrected,
+    logExposedArea_corrected,
+    TotalArea_age_decay,
+    logTotalArea_age_decay,
+    logExposedArea_age_decay
+  )
+
+colnames(dados_area_CC)[which(names(dados_area_CC) == "TotalArea_corrected")] <-
+  "TotalArea_corrected_CC"
+colnames(dados_area_CC)[which(names(dados_area_CC) == "ExposedArea_corrected")] <-
+  "ExposedArea_corrected_CC"
+colnames(dados_area_CC)[which(names(dados_area_CC) == "logTotalArea_corrected")] <-
+  "logTotalArea_corrected_CC"
+colnames(dados_area_CC)[which(names(dados_area_CC) == "logExposedArea_corrected")] <-
+  "logExposedArea_corrected_CC"
+colnames(dados_area_CC)[which(names(dados_area_CC) == "TotalArea_age_decay")] <-
+  "TotalArea_age_decay_CC"
+colnames(dados_area_CC)[which(names(dados_area_CC) == "logTotalArea_age_decay")] <-
+  "logTotalArea_age_decay_CC"
+colnames(dados_area_CC)[which(names(dados_area_CC) == "logExposedArea_age_decay")] <-
+  "logExposedArea_age_decay_CC"
+
+dados_cc <- unique(full_join(dados_volume_CC, dados_area_CC))
+
+dados <- left_join(dados, dados_cc)

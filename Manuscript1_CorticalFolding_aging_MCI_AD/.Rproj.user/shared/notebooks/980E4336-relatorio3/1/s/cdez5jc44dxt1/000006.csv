@@ -1,0 +1,6 @@
+"0",""
+"0","lm_diagnostic_lobe_curv <- dados_lobos_v1 %>%"
+"0","  group_by(ROI, Diagnostic) %>%"
+"0","  do(fit_diagnostic_lobe_curv = tidy(lm(1/2 * logAvgThickness + logTotalArea_corrected ~ logExposedArea_corrected, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()"
+"0",""
+"0","lm_diagnostic_lobe_curv %>% kable(digits = 2) %>% kable_styling()"

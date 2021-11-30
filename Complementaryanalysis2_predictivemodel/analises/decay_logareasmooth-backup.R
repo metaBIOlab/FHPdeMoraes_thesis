@@ -1,0 +1,115 @@
+# taxa de caimento da girificacao (log k teorico)----
+
+decay_logExposedArea <- filter(dados, Session == "1", method == "FreeSurferStandard", Longitudinal_correction == "yes") %>% droplevels() %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_logExposedArea = rlm(logExposedArea_corrected ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ----
+decay_logExposedArea_Coef = tidy(decay_logExposedArea,
+                                 fit_decay_logExposedArea)
+
+# lambda, b e Ko CTL ----
+
+lambda_Ae_CTL_hemi_FS <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "hemisphere"]
+
+
+b_Ae_CTL_hemi_FS <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "hemisphere"]
+
+
+decay_logExposedArea <- filter(dados, Session == "1", method == "Yujiang_script", Longitudinal_correction == "yes") %>% droplevels() %>%
+  group_by(Diagnostic, ROI) %>%
+  do(fit_decay_logExposedArea = rlm(logExposedArea_corrected ~ Age, data = .))
+
+# decay_logExposedArea_2 <- filter(dados, Session == "2", method == "Yujiang_script", Longitudinal_correction == "yes") %>% droplevels() %>% unique() %>%
+#   group_by(Diagnostic, ROI) %>%
+#   do(fit_decay_logExposedArea = rlm(logExposedArea_corrected ~ Age, data = .))
+# 
+# decay_logExposedArea_3 <- filter(dados, Session == "3", method == "Yujiang_script", Longitudinal_correction == "yes") %>% droplevels()%>% unique() %>%
+#   group_by(Diagnostic, ROI) %>%
+#   do(fit_decay_logExposedArea = rlm(logExposedArea_corrected ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ----
+decay_logExposedArea_Coef = tidy(decay_logExposedArea,
+                                 fit_decay_logExposedArea)
+
+# lambda, b e Ko CTL ----
+
+lambda_Ae_CTL_hemi_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "hemisphere"]
+
+lambda_Ae_CTL_F_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "F"]
+
+lambda_Ae_CTL_O_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "O"]
+
+lambda_Ae_CTL_P_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "P"]
+
+lambda_Ae_CTL_T_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "T"]
+
+b_Ae_CTL_hemi_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "hemisphere"]
+
+b_Ae_CTL_F_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "F"]
+
+b_Ae_CTL_O_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "O"]
+
+b_Ae_CTL_P_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "P"]
+
+b_Ae_CTL_T_YW <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "T"]
+
+
+
+# taxa de caimento da girificacao (log k teorico) - CC - ----
+
+decay_logExposedArea <- filter(dados, Session == "1", Longitudinal_correction == "yes") %>%
+  group_by(ROI, Diagnostic) %>%
+  do(fit_decay_logExposedArea = rlm(logExposedArea ~ Age, data = .))
+
+# get the coefficients por intervalo de idade ----
+decay_logExposedArea_Coef = tidy(decay_logExposedArea,
+                                 fit_decay_logExposedArea)
+
+# lambda CC CTL ----
+
+lambda_Ae_CTL_CC <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "Age" &
+                                       decay_logExposedArea_Coef$ROI == "CC"]
+
+b_Ae_CTL_CC <-
+  decay_logExposedArea_Coef$estimate[decay_logExposedArea_Coef$Diagnostic == "CONTROLE" &
+                                       decay_logExposedArea_Coef$term == "(Intercept)" &
+                                       decay_logExposedArea_Coef$ROI == "CC"]

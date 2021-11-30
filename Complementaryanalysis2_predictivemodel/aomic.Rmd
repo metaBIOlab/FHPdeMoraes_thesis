@@ -1,0 +1,276 @@
+---
+title: "AOMIC"
+author: "Fernanda Hansen P. de Moraes"
+date: "23/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(include = FALSE)
+# PREPARO
+
+# define a area de trabalho
+# setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+ setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama as funcoes
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+# path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+ path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+# path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+ path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+#path_AOMIC <- str_c
+ 
+# path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+alpha_beta <- str_c("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/data/resultados/")
+  
+# path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+# path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+ path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+# path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/FA_CC/")
+ path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/") 
+ 
+# importa os resultados
+source("03-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+dados_raw <- dados
+
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", !is.na(logAvgThickness), localGI != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+
+dados <- dados_all
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("ALZ", "CCL","CONTROLE"))
+
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+
+# dados_eTIV <- dados %>% dplyr::select(c(SUBJ, Session, BrainSegVolNotVent, eTIV))
+# dados <- dados %>% full_join(dados_eTIV) %>% unique()
+
+
+# separa em arquivo de hemisferios e de lobos
+dados_hemi_v1 <- filter(dados, ROI == "hemisphere", Session == 1, method == "FreeSurferStandard")
+
+dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, method == "Yujiang_script", !is.na(K_age_decay))) %>% droplevels()
+
+dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere", Session == 1, method == "Yujiang_script") %>% droplevels()
+
+dados_hemi_v1_CH <- unique(filter(dados, ROI == "hemisphere", Session == 1, method == "Yujiang_script", !is.na(K_age_decay)))
+
+dados_hemi_v1_eTIV <- dplyr::select(dados_hemi_v1, c(SUBJ, eTIV))
+
+dados_hemi_v1_CH <- left_join(dados_hemi_v1_CH, dados_hemi_v1_eTIV, by = "SUBJ")
+dados_hemi_v1_CH <- subset(dados_hemi_v1_CH, select = -c(eTIV.x))
+names(dados_hemi_v1_CH)[names(dados_hemi_v1_CH) == 'eTIV.y'] <- 'eTIV'
+
+
+dados_hemi_v1_CH$Diagnostic <- revalue(dados_hemi_v1_CH$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+dados_lobos_v1$Diagnostic <- revalue(dados_lobos_v1$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+
+```
+
+# COMP DATASETS
+
+```{r echo=FALSE}
+# K, S and I  TRAJECTORIES INCLUDING ALL DATASETS
+
+dados_datasetscomp$Sample[dados_datasetscomp$Sample == "ADNIControl"] <- "ADNI"
+dados_datasetscomp$Sample[dados_datasetscomp$Sample == "ADNIAD"] <- "ADNI"
+dados_datasetscomp$Sample[dados_datasetscomp$Sample == "OASIS_healthy"] <- "OASIS"
+
+dados_datasetscomp_lobos <- filter(dados_datasetscomp, ROI == "F" | ROI == "O" | ROI == "P" | ROI == "T")
+dados_datasetscomp_hemi <- filter(dados_datasetscomp, ROI == "hemisphere")
+
+
+lm_diagnostic <- dados_datasetscomp_hemi %>%
+  group_by(Sample, Diagnostic) %>%
+  do(
+    fit_diagnostic = lm(
+      1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea,
+      data = .,
+      na.action = na.omit
+    )
+  )
+
+diagnostic_Coef = tidy(lm_diagnostic,
+                            fit_diagnostic,
+                            conf.int = TRUE,
+                            conf.level = 0.95)
+
+ggplot(
+  data = filter(diagnostic_Coef, term == "logExposedArea"),
+  aes(
+    y = estimate, x = Sample,
+    color = Diagnostic,
+    fill = Diagnostic,
+    alpha = 0.4
+  )
+) + geom_pointrange(aes(ymin = conf.low, ymax = conf.high)) + geom_hline(yintercept = 1.25) + theme_pubr()
+
+
+
+ggplot(filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+       aes(x = Age, y = K,  color = Sample)) + geom_point() + geom_smooth() +
+  theme_pubr() + facet_grid(Diagnostic ~ .)
+
+ggplot(filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+       aes(x = Age, y = S,  color = Sample)) + geom_point() + geom_smooth() +
+  theme_pubr() + facet_grid(Diagnostic ~ .)
+
+ggplot(filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+       aes(x = Age, y = I,  color = Sample)) + geom_point() + geom_smooth() +
+  theme_pubr() + facet_grid(Diagnostic ~ .)
+
+ggplot(
+  filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+  aes(x = Age, y = K,  color = Sample)
+) + stat_summary(fun.data = "mean_cl_normal",
+                 geom = "errorbar",
+                 width = .4) +
+  stat_summary(fun.y = "mean", geom = "point") + geom_smooth() +
+  theme_pubr() + facet_grid(Gender ~ Diagnostic) 
+
+ggplot(
+  filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+  aes(x = Age, y = S,  color = Sample)
+)  + stat_summary(fun.data = "mean_cl_normal",
+                  geom = "errorbar",
+                  width = .4) +
+  stat_summary(fun.y = "mean", geom = "point") + geom_smooth() +
+  theme_pubr() + facet_grid(Gender ~ Diagnostic)
+
+ggplot(
+  filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+  aes(x = Age, y = I,  color = Sample)
+)  + stat_summary(fun.data = "mean_cl_normal",
+                  geom = "errorbar",
+                  width = .4) +
+  stat_summary(fun.y = "mean", geom = "point") + geom_smooth() +
+  theme_pubr() + facet_grid(Gender ~ Diagnostic)
+
+ggplot(filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+       aes(x = K,  color = Age_interval10)) + geom_density() +
+  theme_pubr() + facet_grid(Diagnostic ~ .)
+
+ggplot(filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+       aes(x = S,  color = Age_interval10)) + geom_density() +
+  theme_pubr() + facet_grid(Diagnostic ~ .)
+
+ggplot(filter(dados_datasetscomp, Sample != "Mota&Houzel2015"),
+       aes(x = I,  color = Age_interval10)) + geom_density() +
+  theme_pubr() + facet_grid(Diagnostic ~ .)
+
+
+```
+
+# AOMIC
+
+```{r echo=FALSE}
+lm_AOMIC <- lm(1 / 2 * logAvgThickness + logTotalArea_corrected  ~ logExposedArea_corrected ,
+                     data = filter(dados_AOMIC, ROI == "hemisphere"),
+                     na.action = na.omit)
+tidy(lm_AOMIC, conf.int = TRUE)
+
+ggplot(
+  filter(dados_AOMIC, ROI == "hemisphere"),
+  aes(
+    x = logExposedArea_corrected,
+    y = (1 / 2 * logAvgThickness + logTotalArea_corrected)
+  )
+) + geom_point() + geom_smooth(method = "lm") + stat_cor()
+
+
+#### LOBOS ----
+ggplot(
+  filter(dados_AOMIC, ROI != "hemisphere"),
+  aes(
+    x = logExposedArea_corrected,
+    y = (1 / 2 * logAvgThickness + logTotalArea_corrected)
+  )
+) + geom_point(aes(color=ROI)) + geom_smooth(method = "lm") + stat_cor()
+
+
+lm_AOMIC_lobes <- lm(1 / 2 * logAvgThickness + logTotalArea_corrected  ~ logExposedArea_corrected ,
+           data = filter(dados_AOMIC, ROI != "hemisphere"),
+           na.action = na.omit)
+tidy(lm_AOMIC_lobes, conf.int = TRUE)
+
+lm_diagnostic <- filter(dados_AOMIC, ROI != "hemisphere") %>%
+  group_by(SUBJ) %>%
+  do(
+    fit_diagnostic = lm(
+      1 / 2 * logAvgThickness + logTotalArea_corrected  ~ logExposedArea_corrected ,
+      data = .,
+      na.action = na.omit
+    )
+  )
+
+diagnostic_Coef = tidy(lm_diagnostic,
+                       fit_diagnostic,
+                       conf.int = TRUE,
+                       conf.level = 0.95)
+
+ggplot(
+  filter(diagnostic_Coef, term == "logExposedArea_corrected"),
+  aes(x = estimate, alpha = 0.4)
+) + geom_histogram() + geom_vline(xintercept = 1.25, color = "red") + stat_central_tendency(type = "mean") + theme_pubr()
+
+lm_diagnostic <- dados_AOMIC %>%
+  group_by(SUBJ) %>%
+  do(
+    fit_diagnostic = lm(
+      1 / 2 * logAvgThickness + logTotalArea_corrected  ~ logExposedArea_corrected ,
+      data = .,
+      na.action = na.omit
+    )
+  )
+
+diagnostic_Coef = tidy(lm_diagnostic,
+                       fit_diagnostic,
+                       conf.int = TRUE,
+                       conf.level = 0.95)
+
+ggplot(filter(diagnostic_Coef, term == "logExposedArea_corrected"),
+       aes(x = estimate, alpha = 0.4)) + geom_histogram() + geom_vline(xintercept = 1.25, color = "red") + stat_central_tendency(type = "mean") + theme_pubr()
+
+
+```
+

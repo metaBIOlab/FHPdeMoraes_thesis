@@ -1,0 +1,374 @@
+---
+title: "Longitudinal"
+author: "Fernanda Hansen P. de Moraes"
+date: "01/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+
+```{r}
+# PREPARO
+
+# define a area de trabalho
+# setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
+# setwd("E:/idor/Gyrification/") # se no pendrive
+# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
+ setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama as funcoes
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+# path <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/long_tables/")
+ path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+# path_yujiangscript <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+ path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+# path_yujiangscript_newsurfaces <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/Wang_code_extraction/")
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+alpha_beta <- str_c("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/aging/V6/data/resultados/")
+  
+# path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+# path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
+ path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+# path_FA <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/data/FA_CC/")
+ path_FA <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/FA_CC/") 
+ 
+# importa os resultados
+source("03-import_files.R") # arquivos dos sujeitos
+
+# organiza os arquivos
+source("04-organiza.R")
+# source("rotina_arquivos_neuroquant_comparisson.R")
+
+dados_raw <- dados
+
+verificar_lGI_zero <- filter(dados, localGI == 0 | is.na(localGI))
+write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+
+# retira os outros diagnosticos e deixa so quem tem machine definido
+dados_all <- dados %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", !is.na(logAvgThickness), localGI != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+dados_excluidos <- anti_join(dados_raw, dados_all)
+write.csv(dados_excluidos, "dados_excluidos.csv")
+
+dados <- dados_all
+
+Age.cor = 25
+
+dados <- filter(dados, machine == "Philips-Achieva", Longitudinal_correction == "yes")
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("ALZ", "CCL","CONTROLE"))
+
+dados_CH <- filter(dados, method == "Yujiang_script")
+
+dados_eTIV <- dplyr::select(dados, c(SUBJ, Session, eTIV))
+dados_CH <- left_join(dados_CH, dados_eTIV, by = c("SUBJ", "Session"))
+dados_CH <- subset(dados_CH, select = -c(eTIV.x))
+names(dados_CH)[names(dados_CH) == 'eTIV.y'] <- 'eTIV'
+
+dados_CH <- unique(dados_CH)
+
+dados_CH$Diagnostic <- revalue(dados_CH$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+
+
+dados_CH_longer <-
+  dados_CH %>% dplyr::select(
+    -c(
+      Age_interval,
+      Age_interval10,
+      machine,
+      Longitudinal_correction,
+      method,
+      WM_volume_CC_age_decay,
+      A5,
+      A7,
+      ZA5,
+      ZA7,
+      ZTMTA,
+      ZTMTB,
+      TMTA,
+      TMTB,
+      MMSE, eTIV, BrainSegVolNotVent
+    )
+  ) %>%
+  pivot_wider(
+    names_from = Session,
+    names_sep = ".",
+    values_from = c(
+      acq_date,
+      Age,
+      Diagnostic,
+      Diagnostic_full,
+      AvgThickness,
+      TotalArea,
+      GMvolume,
+      WhiteSurfArea,
+      localGI,
+      ExposedArea,
+      WM_volume_CC,
+      meanFA_CCbody ,
+      meanFA_CCgenu ,
+      meanFA_Ccsplenium,
+      ESC, Lipoxina,
+      COGNITIVE_INDEX,
+      `A7/A5`,
+      `TMT B-A`,
+      relogio,
+      `DIGIT SPAN BACK`,
+      `AB1-40`,
+      `AB1-42`,
+      TAU,
+      AB1_ratio,
+      TAU_AB1_42_ratio,
+      TAU_AB1_ratio,
+      logAvgThickness,
+      logTotalArea,
+      logGMvolume,
+      logWhiteSurfArea,
+      logExposedArea,
+      K,
+      K_ds,
+      ExposedArea_ds,
+      K_CHwoB,
+      ExposedArea_CHwoB,
+      c,
+      TotalArea_corrected,
+      ExposedArea_corrected,
+      localGI_corrected,
+      logTotalArea_corrected,
+      logExposedArea_corrected,
+      K_corrected,
+      I_corrected,
+      S_corrected,
+      ConvexHullArea,
+      PialFullArea,
+      WhiteFullArea,
+      SmoothPialFullArea,
+      ConvexHullFullArea,
+      PialFullVol,
+      WhiteFullVol,
+      SmoothPialFullVol,
+      logTotalFullArea,
+      logConvexHullArea,
+      I,
+      S,
+      Sample,
+      logAvgThickness_age_decay,
+      logTotalArea_age_decay,
+      logExposedArea_age_decay,
+      K_age_decay,
+      I_age_decay,
+      S_age_decay
+    )
+  ) %>% dplyr::filter(is.na(logAvgThickness_age_decay.1) & !is.na(logAvgThickness.1)) %>% distinct()
+
+# %>% mutate(
+#     deltaAge = ifelse(!is.na(Age.3),
+#                       Age.3 - Age.1,
+#                       ifelse(!is.na(Age.2),
+#                              Age.2 - Age.1,
+#                              "")),
+#     deltaK = ifelse(!is.na(K.3),
+#                     K.3 - K.1,
+#                     ifelse(!is.na(K.2),
+#                            K.2 - K.1,
+#                            "")),
+#     deltaS = ifelse(!is.na(S.3),
+#                     S.3 - S.1,
+#                     ifelse(!is.na(S.2),
+#                            S.2 - S.1,
+#                            "")),
+#     deltaT = ifelse(
+#       !is.na(logAvgThickness.3),
+#       logAvgThickness.3 - logAvgThickness.1,
+#       ifelse(
+#         !is.na(logAvgThickness.2),
+#         logAvgThickness.2 - logAvgThickness.1,
+#         ""
+#       )
+#     ),
+#     deltaDiagnostic = ifelse(
+#       !is.na(Diagnostic.3),
+#       paste(Diagnostic.3, "-", Diagnostic.1),
+#       ifelse(
+#         !is.na(Diagnostic.2),
+#         paste(Diagnostic.2, "-", Diagnostic.1),
+#         ""
+#       ),
+#       deltaDiagnosti_evol = ifelse(
+#         Diagnostic.3 == "AD" & Diagnostic.1 == "CTL" | Diagnostic.1 == "MCI",
+#         "progressed",
+#         ifelse(
+#           Diagnostic.3 == "MCI" & Diagnostic.1 == "CTL",
+#           "progressed",
+#           ifelse(
+#             Diagnostic.3 == Diagnostic.1,
+#             "stable",
+#             ifelse(
+#               is.na(Diagnostic.3) &
+#                 Diagnostic.2 == "AD" & Diagnostic.1 == "CTL" | Diagnostic.1 == "MCI",
+#               "progressed",
+#               ifelse(
+#                 is.na(Diagnostic.3) &
+#                   Diagnostic.2 == "MCI" &
+#                   Diagnostic.1 == "CTL",
+#                 "progressed",
+#                 ""
+#               )
+#             )
+#           )
+#         )
+#       )
+#     )
+#   )
+
+
+# # separa em arquivo de hemisferios e de lobos
+dados_hemi <- filter(dados_CH, ROI == "hemisphere") %>% droplevels()
+
+dados_lobos <- unique(filter(dados_CH, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P")) %>% droplevels()
+
+
+
+```
+
+# Distrubuição das amostras
+
+```{r distribuicao da Sample}
+ggplot(data = dados_hemi, aes(x = Diagnostic, y = Age, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + 
+  geom_boxplot() + theme_pubr() +
+  stat_compare_means(method = "anova") + facet_wrap(.~Session)
+
+ggplot(data = dados_hemi, aes(x = Diagnostic, y = ESC, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + 
+  geom_boxplot() + theme_pubr() +
+  stat_compare_means(method = "anova") + facet_wrap(.~Session)
+
+ggplot(data = dados_hemi, aes(x = Diagnostic, y = K, color = sex, fill = sex, alpha = 0.4)) + 
+  geom_boxplot() + theme_pubr() +
+  stat_compare_means(method = "anova") + facet_wrap(.~Session)
+
+ggplot(data = dados_hemi, aes(x = Diagnostic, y = I, color = sex, fill = sex, alpha = 0.4)) + 
+  geom_boxplot() + theme_pubr() +
+  stat_compare_means(method = "anova") + facet_wrap(.~Session)
+
+ggplot(data = dados_hemi, aes(x = Diagnostic, y = S, color = sex, fill = sex, alpha = 0.4)) + 
+  geom_boxplot() + theme_pubr() +
+  stat_compare_means(method = "anova") + facet_wrap(.~Session)
+```
+
+# diagnostic changes
+
+```{r}
+#dados_CH_longer <- dados_CH %>% pivot
+```
+
+## difference between sessions
+```{r}
+ggplot(dados_hemi, aes(x = Session, y = K)) + geom_point(aes(color = Diagnostic)) +
+  geom_line() + facet_wrap(. ~ SUBJ)
+ggplot(dados_hemi, aes(x = Session, y = S)) + geom_point(aes(color = Diagnostic)) +
+  geom_line() + facet_wrap(. ~ SUBJ)
+ggplot(dados_hemi, aes(x = Session, y = I)) + geom_point(aes(color = Diagnostic)) +
+  geom_line() + facet_wrap(. ~ SUBJ)
+
+# plot_ly(
+# dados_hemi,
+#   x =  ~ K,
+#   z =  ~ S,
+#   y =  ~ I,
+#   type = "scatter3d",
+#   mode = 'markers',
+#   color =  ~ Diagnostic,
+#   text = ~ Session
+# ) %>% layout(scene = list(
+#   xaxis = list(title = 'K'),
+#   zaxis = list(title = 'S', scaleanchor = "x"),
+#   yaxis = list(title = 'I', scaleanchor = "x")
+# ))
+```
+
+## trajectories
+```{r}
+mean_K_I_S <-
+  dados_hemi %>% group_by(Session, Diagnostic) %>% summarise(
+    mean.K = mean(K, na.rm = TRUE),
+    SD_K = sd(K, na.rm = TRUE),
+    mean.I = mean(I, na.rm = TRUE),
+    SD_I = sd(I, na.rm = TRUE),
+    mean.S = mean(S, na.rm = TRUE),
+    SD_S = sd(S, na.rm = TRUE),
+    mean.K_age_decay = mean(K_age_decay, na.rm = TRUE),
+    SD_K_age_decay = sd(K_age_decay, na.rm = TRUE),
+    mean.I_age_decay = mean(I_age_decay, na.rm = TRUE),
+    SD_I_age_decay = sd(I_age_decay, na.rm = TRUE),
+    mean.S_age_decay = mean(S_age_decay, na.rm = TRUE),
+    SD_S_age_decay = sd(S_age_decay, na.rm = TRUE),
+    mean.K.zscore = mean(K.zscore, na.rm = TRUE),
+    SD_K.zscore = sd(K.zscore, na.rm = TRUE),
+    mean.I.zscore = mean(I.zscore, na.rm = TRUE),
+    SD_I.zscore = sd(I.zscore, na.rm = TRUE),
+    mean.S.zscore = mean(S.zscore, na.rm = TRUE),
+    SD_S.zscore = sd(S.zscore, na.rm = TRUE),
+    mean.K_age_decay.zscore = mean(K_age_decay.zscore, na.rm = TRUE),
+    SD_K_age_decay.zscore = sd(K_age_decay.zscore, na.rm = TRUE),
+    mean.I_age_decay.zscore = mean(I_age_decay.zscore, na.rm = TRUE),
+    SD_I_age_decay.zscore = sd(I_age_decay.zscore, na.rm = TRUE),
+    mean.S_age_decay.zscore = mean(S_age_decay.zscore, na.rm = TRUE),
+    SD_S_age_decay.zscore = sd(S_age_decay.zscore, na.rm = TRUE)
+  )
+
+plot_ly(
+mean_K_I_S,
+  x =  ~ mean.K,
+  z =  ~ mean.S,
+  y =  ~ mean.I,
+  type = "scatter3d",
+  mode = 'lines+markers+text',
+  color =  ~ Diagnostic,
+  text = ~ Session
+) %>% layout(scene = list(
+  xaxis = list(title = 'K'),
+  zaxis = list(title = 'S', scaleanchor = "x"),
+  yaxis = list(title = 'I', scaleanchor = "x")
+))
+
+plot_ly(
+mean_K_I_S,
+  x =  ~ mean.K,
+  z =  ~ mean.S,
+  y =  ~ mean.I,
+  type = "scatter3d",
+  mode = 'lines+markers+text',
+  color =  ~ Diagnostic,
+  text = ~ Session
+) %>% layout(scene = list(
+  xaxis = list(title = 'K'),
+  zaxis = list(title = 'S', scaleanchor = "x"),
+  yaxis = list(title = 'I', scaleanchor = "x")
+))
+```
+

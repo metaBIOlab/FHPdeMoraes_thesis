@@ -30,7 +30,7 @@ Part of the data used here cannot be shared due to restrictions of the Ethic Com
 
 Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our aim is to improve the code as needed!
 
-```{r packages}
+```{r call packages}
 library(readr)
 library(tidyverse)
 library(lubridate)
@@ -43,7 +43,6 @@ library(broom)
 ## set working directory
 setwd("~/GitHub/FHPdeMoraes_thesis/Complementaryanalysis1_modelrobustness")
 
-# path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/data/resultados/")
 ```
 
 ```{r functions}
@@ -86,12 +85,12 @@ tabela_sujeitos <- tabela_sujeitos %>%
 
 ```
 
-```{r}
+```{r import files 2}
 # import results with default config EE = 15mm
 data_longcor_ses1 <- read_csv("data_longcor_ses1.txt") 
 ```
 
-```{r}
+```{r import files 3}
 ## new surfaces ----
 # import results with other config EE = 5; 20; 30; 50; 75 and 100mm
 data_longcor_ses1_5 <- read_csv("data_longcor_ses1_5mm.txt")
@@ -150,7 +149,7 @@ data <- full_join(data_longcor_ses1, data_longcor_ses1_5) %>% # combine files
 )
 ```
 
-```{r}
+```{r import files 4}
 ## FS Standard ----
 data_h <- read_csv("data_h.csv", col_types = cols(...1 = col_skip()))
 
@@ -321,14 +320,14 @@ dados %>%
 
 # Results
 
-## Comparacao com e sem correcao longitudinal
+## Comring the usage of longitudinal correction
 
 ```{r}
 long_comp <- filter(dados, method == "FreeSurferStandard", !is.na(TotalArea), !is.infinite(ExposedArea))
 
 lm_fit_comp_idor <- long_comp %>%
   group_by(Diagnostic, Longitudinal_correction) %>%
-  do(fit_comp_idor = tidy(lm(log10(TotalArea*sqrt(AvgThickness)) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
+  do(fit_comp_idor = tidy(lm(log10(TotalArea*sqrt(AvgThickness)) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest(cols = c(fit_comp_idor))
 
 lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
 
@@ -396,8 +395,7 @@ longcor1 <- annotate_figure(longcor1,
 longcor1
 ```
 
-
-### Comparacao entre medidas
+### Comparing measurements
 ```{r}
 long_comp_long <-
   dplyr::select(
@@ -499,7 +497,8 @@ method_comp <- filter(dados, Longitudinal_correction == "yes", EEdiameter == "15
 
 lm_fit_comp_idor <- method_comp %>%
   group_by(Diagnostic, method) %>%
-  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
+  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>%
+  unnest(cols = c(fit_comp_idor))
 
 lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
 
@@ -537,7 +536,7 @@ ggplot(
   labs(y = expression(alpha))
 ```
 
-### Comparacao entre medidas
+### Comparing measurements
 ```{r}
 method_comp_long <- dplyr::select(method_comp, -c(ConvexHullArea,logConvexHullArea, WhiteSurfArea, logWhiteSurfArea, GMvolume, logGMvolume, Age_interval, Age_interval10)) %>%
   pivot_wider(names_from = method, values_from = c(AvgThickness, logAvgThickness, TotalArea, logTotalArea, TotalFullArea, logTotalFullArea, ExposedArea, logExposedArea, localGI, K, S, I))
@@ -576,7 +575,7 @@ ggplot(data = method_comp_long, aes(x = S_CorticalFoldingTool- S_FreeSurferStand
 ggplot(data = method_comp_long, aes(x = I_CorticalFoldingTool- I_FreeSurferStandard, color = Diagnostic)) + geom_density() + theme_pubr() + labs(color = "Diagnostic")
 ```
 
-#### Diferenca
+#### Diference
 ```{r}
 ggplot(data = method_comp_long,
        aes(x = TotalFullArea_CorticalFoldingTool, y = TotalArea_FreeSurferStandard)) +
@@ -594,14 +593,14 @@ ggplot(
   labs(color = "Diagnostic")
 ```
 
-## diferentes superfícies
+## Smoother surfaces - different EE diameter
 ```{r}
 diameter_comp <- filter(dados, Longitudinal_correction == "yes", method == "CorticalFoldingTool")
 
 lm_fit_comp_idor <- diameter_comp %>%
   group_by(Diagnostic, EEdiameter) %>%
-  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest(cols = c(fit_comp_idor))
-
+  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>%
+  unnest(cols = c(fit_comp_idor))
 
 #lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
 
@@ -655,7 +654,7 @@ EEdiameter2 <- ggplot(
 ggsave("EEdiameter2.png", plot = EEdiameter2, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
 ```
 
-### Com Convex Hull
+### Convex Hull
 ```{r}
 diameter_comp$EEdiameter <- as.factor(diameter_comp$EEdiameter)
 
@@ -711,4 +710,3 @@ ggplot(
   theme_pubr() +
   labs(y = "ExposedArea [mm²]", x = "se sphere diameter [mm]")
 ```
-

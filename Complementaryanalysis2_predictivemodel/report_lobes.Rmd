@@ -1,0 +1,892 @@
+---
+title: "Complementary Analysis 1 from Fernanda Hansen P. de Moraes Thesis - Cortical folding alterations in humans due to aging and diseases"
+author: "Fernanda Hansen Pacheco de Moraes"
+date: "30-november-2021"
+output:
+  html_document: 
+    df_print: kable
+    fig_caption: yes
+    fig_width: 8
+    number_sections: yes
+    theme: paper
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	cache = TRUE
+)
+```
+
+Description of the procedures and analysis present in Complementary Analysis 1, Simple multinomial predictive models and diagnostic discrimination, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
+
+Part of the data used here cannot be shared due to restrictions of the Ethic Comittee. Data can be shared upon reasonable request to the corresponding author. To fullfil these limitation, we will generate random data to simulate the results.
+
+Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our aim is to improve the code as needed!
+
+```{r working directory}
+setwd("~/GitHub/FHPdeMoraes_thesis/Complementaryanalysis2_predictivemodel")
+```
+
+```{r call packages}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(ggpubr)
+library(kableExtra)
+library(broom)
+library(MASS)
+
+# multinomial predictive model packages
+require(foreign)
+require(nnet)
+require(reshape2)
+library(stargazer)
+require(betareg)
+library(caret)
+library(pROC)
+
+```
+
+```{r}
+test_coef <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+}
+```
+
+```{r import files}
+dados_raw <- read_csv("dados_raw.csv")
+```
+
+```{r create new variables}
+# estimate cortical folding variables
+dados_raw <- dados_raw %>%
+  mutate( # create new variables
+  localGI = TotalArea / ExposedArea,
+  k = sqrt(AvgThickness) * TotalArea / (ExposedArea ^ 1.25),
+  K = 1 / 4 * log10(AvgThickness^2)  + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+  S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^2) ,
+  I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^2),
+  c = as.double(ifelse(ROI == "hemisphere", NA, 4 * pi / GaussianCurvature)),
+  TotalArea_corrected = ifelse(ROI == "hemisphere", TotalArea, TotalArea * c),
+  ExposedArea_corrected = ifelse(ROI == "hemisphere", ExposedArea, ExposedArea * c),
+  logTotalArea_corrected = log10(TotalArea_corrected),
+  logExposedArea_corrected = log10(ExposedArea_corrected),
+  localGI_corrected = ifelse(
+    ROI == "hemisphere",
+    TotalArea / ExposedArea,
+    TotalArea_corrected / ExposedArea_corrected
+  ),
+  k_corrected = ifelse(
+    ROI == "hemisphere",
+    sqrt(AvgThickness) * log10(TotalArea) / (log10(ExposedArea) ^ 1.25),
+    sqrt(AvgThickness) * log10(TotalArea_corrected) / (log10(ExposedArea_corrected^1.25) )
+  ),
+  K_corrected =  ifelse(
+    ROI == "hemisphere",
+    1 / 4 * log10(AvgThickness^ 2)+ log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+    1 / 4 * log10(AvgThickness^ 2) + log10(TotalArea_corrected) - 5 / 4 * log10(ExposedArea_corrected)
+  ),
+  I_corrected = ifelse(
+    ROI == "hemisphere",
+    log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^ 2) ,
+    log10(TotalArea_corrected) + log10(ExposedArea_corrected) + log10(AvgThickness^ 2) 
+  ),
+  S_corrected = ifelse(
+    ROI == "hemisphere",
+    3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^ 2) ,
+    3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness^ 2) 
+  )
+)
+
+# create age intervals
+dados_raw$Age_interval <- cut(dados_raw$Age,
+                                       breaks = c(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100),
+                                       right = FALSE,
+                                       include.lowest = TRUE)
+
+dados_raw$Age_interval10 <- cut(dados_raw$Age,
+                                         breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+                                         right = FALSE,
+                                         include.lowest = TRUE)
+```
+
+```{r data cleanup}
+dados_all <- dados_raw %>% filter(
+    Diagnostic == "CONTROLE" |
+      Diagnostic == "CCL" |
+      Diagnostic == "ALZ", !is.na(logAvgThickness), ExposedArea != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
+  droplevels()
+
+# excluded data
+anti_join(dados_raw, dados_all) %>%
+  kable() %>%
+  kable_styling()
+
+dados <- dados_all
+```
+
+```{r}
+# rename diagnostics
+dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "CTL"
+dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI"
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("AD", "MCI","CTL"))
+
+# filter data
+dados <- dados %>%
+  filter(machine == "Philips-Achieva", # include only subjects acquired at Philips Achieva 3T
+                          ESC == 8 | ESC > 8, # include only subjects with 8 years of scholarship or more
+                          Session == 1) %>% # use only data from Session 1
+  droplevels() # delete factor levels
+
+```
+
+```{r deaging}
+# define age for deaging
+Age.cor = 25
+
+# AVG thickness ----
+decay_AvgThickness <-
+  filter(dados, Diagnostic == "CTL") %>%
+  droplevels() %>%
+  group_by(ROI) %>%
+  do(fit_decay_AvgThickness = tidy(rlm(AvgThickness ~ Age, data = .), conf.int=TRUE)) %>% unnest(cols = c(fit_decay_AvgThickness)) %>%
+  filter(term == "Age") %>%
+    mutate(c_AvgThickness = estimate,
+         std_error_c_AvgThickness = std.error) %>%
+  dplyr::select(c(ROI, c_AvgThickness, std_error_c_AvgThickness))
+
+## TotalArea ---
+decay_TotalArea <- filter(dados, Diagnostic == "CTL", !is.na(TotalArea), !is.nan(TotalArea), !is.infinite(TotalArea)) %>%
+  droplevels() %>%
+  group_by(ROI) %>%
+  do(fit_decay_TotalArea = tidy(rlm(TotalArea ~ Age, data = .),conf.int=TRUE)) %>%
+  unnest(cols = c(fit_decay_TotalArea)) %>%
+  filter(term == "Age") %>%
+  mutate(c_TotalArea = estimate,
+         std_error_c_TotalArea = std.error) %>%
+  dplyr::select(c(ROI, c_TotalArea, std_error_c_TotalArea))
+
+## ExposedArea ---
+decay_ExposedArea <- filter(dados, Diagnostic == "CTL", !is.na(ExposedArea), !is.nan(ExposedArea), !is.infinite(ExposedArea)) %>%
+  droplevels() %>%
+  group_by(ROI) %>%
+  do(fit_decay_ExposedArea = tidy(rlm(ExposedArea ~ Age, data = .), conf.int = TRUE)) %>%
+  unnest(cols = c(fit_decay_ExposedArea)) %>%
+  filter(term == "Age") %>%
+  mutate(c_ExposedArea = estimate,
+         std_error_c_ExposedArea = std.error) %>%
+  dplyr::select(c(ROI, c_ExposedArea, std_error_c_ExposedArea))
+
+dados <- full_join(dados, decay_AvgThickness) %>%
+  full_join(decay_TotalArea) %>%
+  full_join(decay_ExposedArea) %>%
+  mutate(
+    AvgThickness_age_decay = AvgThickness - c_AvgThickness * (Age - Age.cor),
+    logAvgThickness_age_decay = log10(AvgThickness_age_decay),
+    TotalArea_age_decay = TotalArea - c_TotalArea * (Age - Age.cor),
+    logTotalArea_age_decay = log10(TotalArea_age_decay),
+    ExposedArea_age_decay = ExposedArea - c_ExposedArea * (Age - Age.cor),
+    logExposedArea_age_decay = log10(ExposedArea_age_decay),
+    K_age_decay = log10(TotalArea_age_decay) + 1/4*log10(AvgThickness_age_decay^2) - 5/4*log10(ExposedArea_age_decay),
+    I_age_decay = log10(TotalArea_age_decay) + log10(ExposedArea_age_decay) + log10(AvgThickness_age_decay^2),
+    S_age_decay = 3/2*log10(TotalArea_age_decay) + 3/4*log10(ExposedArea_age_decay) - 9/4*log10(AvgThickness_age_decay^2))
+
+dados$logAvgThickness <- as.double(dados$logAvgThickness)
+dados$logExposedArea<- as.double(dados$logExposedArea)
+dados$logTotalArea   <- as.double(dados$logTotalArea)
+
+```
+
+```{r}
+dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere") %>%
+  droplevels()
+
+# lobe data
+dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P",  !is.na(K_age_decay), SUBJ != "SUBJ211", SUBJ != "SUBJ223")) %>%
+  droplevels()
+
+# hemisphere data
+dados_hemi_v1 <- unique(filter(dados, ROI == "hemisphere", !is.na(K_age_decay)))
+```
+
+# DIAGNOSTIC PREDICTION
+## set test and training samples
+
+```{r}
+dados_hemi_v1$Diagnostic <- relevel(dados_hemi_v1$Diagnostic, "CTL")
+
+set.seed(0)
+
+N_diag <- dados_hemi_v1 %>% dplyr::select(SUBJ, Diagnostic) %>% unique() %>% group_by(Diagnostic) %>% summarise(n_DIAG = n_distinct(SUBJ))
+
+dados_hemi_v1_filter <- dados_hemi_v1 %>% dplyr::select(SUBJ, Diagnostic) %>% unique()
+
+N_CTL <- as.double(floor(N_diag[1,2]*0.8))
+N_CCL <- as.double(round(N_diag[3,2]*0.8))
+N_ALZ <- as.double(round(N_diag[2,2]*0.8))
+
+test.samples <- c(sample(which(dados_hemi_v1_filter$Diagnostic == "AD"), N_ALZ), sample(which(dados_hemi_v1_filter$Diagnostic == "CTL"), N_CTL), sample(which(dados_hemi_v1_filter$Diagnostic == "MCI"), N_CCL))
+subj.training <- as_tibble(dados_hemi_v1_filter[-test.samples, ]$SUBJ)
+
+colnames(subj.training) <- c("SUBJ")
+
+train.data <- anti_join(dados_hemi_v1, subj.training)
+test.data <- semi_join(dados_hemi_v1, subj.training)
+
+caret::featurePlot(x = dados_hemi_v1[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_hemi_v1$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+caret::featurePlot(x = dados_hemi_v1[, c("K", "I", "S")], y = dados_hemi_v1$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,1))
+
+caret::featurePlot(x = dados_hemi_v1[, c("K_age_decay", "I_age_decay", "S_age_decay")], y = dados_hemi_v1$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,1))
+
+print(n_distinct(dados_hemi_v1$SUBJ))
+print(n_distinct(train.data$SUBJ))
+print(n_distinct(test.data$SUBJ))
+
+caret::featurePlot(x = train.data[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+caret::featurePlot(x = train.data[, c("K", "K_age_decay", "I", "I_age_decay", "S", "S_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,2))
+```
+
+# multinomial model - lobes
+
+## temporal lobe
+
+```{r}
+dados_lobos_v1_T <- filter(dados_lobos_v1, ROI == "T")
+
+dados_lobos_v1_T$Diagnostic <- relevel(dados_lobos_v1_T$Diagnostic, "CTL")
+
+train.data_lobes <- anti_join(dados_lobos_v1_T, subj.training)
+test.data_lobes <- semi_join(dados_lobos_v1_T, subj.training)
+
+caret::featurePlot(x = dados_lobos_v1_T[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_lobos_v1_T$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+print(n_distinct(dados_lobos_v1_T$SUBJ))
+print(n_distinct(train.data_lobes$SUBJ))
+print(n_distinct(test.data_lobes$SUBJ))
+
+caret::featurePlot(x = train.data_lobes[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data_lobes$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+```
+
+### K + Age
+
+```{r}
+multinom1.l <- multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+summary(multinom1.l)
+
+m.multi.nova1.l <-
+  multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+  stargazer(m.multi.nova1.l, type = "text")
+
+  z1.l <-
+    summary(m.multi.nova1.l)$coefficients / summary(m.multi.nova1.l)$standard.errors
+    p1.l <- (1 - pnorm(abs(z1.l), 0, 1)) * 2
+    t(p1.l)
+
+#Para facilitar a interpreta??o:
+coef.multi1.l = exp(coef(m.multi.nova1.l))
+t(coef.multi1.l)
+
+#Previsoes
+predicted.classes.multi.nova1.l <- m.multi.nova1.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova1.l == test.data_lobes$Diagnostic)
+
+# Summary
+cM1.l <- confusionMatrix(predicted.classes.multi.nova1.l, test.data_lobes$Diagnostic)
+cM1.l
+#cM1.l.t.score <- mutate(cM1.l, Diagnostic = c("AD", "MCI", "CTL"),sensitivity = as.data.frame(cM1.l$byClass[,1]), specificity = as.data.frame(cM1.l$byClass[,2]))
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova1.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+### LogT + Age
+
+```{r}
+multinom2.l <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+summary(multinom2.l)
+
+m.multi.nova2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+  stargazer(m.multi.nova2.l, type = "text")
+
+  z2.l <-
+    summary(m.multi.nova2.l)$coefficients / summary(m.multi.nova2.l)$standard.errors
+    p2.l <- (1 - pnorm(abs(z2.l), 0, 1)) * 2
+    t(p2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi2.l = exp(coef(m.multi.nova2.l))
+t(coef.multi2.l)
+
+#Previsoes
+predicted.classes.multi.nova2.l <- m.multi.nova2.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova2.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+### K (deaged)
+
+```{r}
+multinom4.l <- multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+summary(multinom4.l)
+
+m.multi.nova4.l <-
+  multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova4.l, type = "text")
+
+  z4.l <-
+    summary(m.multi.nova4.l)$coefficients / summary(m.multi.nova4.l)$standard.errors
+    p4.l <- (1 - pnorm(abs(z4.l), 0, 1)) * 2
+    t(p4.l)
+
+#Para facilitar a interpreta??o:
+coef.multi4.l = exp(coef(m.multi.nova4.l))
+t(coef.multi4.l)
+
+#Previsoes
+predicted.classes.multi.nova4.l <- m.multi.nova4.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova4.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova4.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova4.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+### logT (deaged)
+
+```{r}
+multinom5.l <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+summary(multinom5.l)
+
+m.multi.nova5.l <-
+  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova5.l, type = "text")
+
+  z5.l <-
+    summary(m.multi.nova5.l)$coefficients / summary(m.multi.nova5.l)$standard.errors
+    p5.l <- (1 - pnorm(abs(z5.l), 0, 1)) * 2
+    t(p5.l)
+
+#Para facilitar a interpreta??o:
+coef.multi5.l = exp(coef(m.multi.nova5.l))
+t(coef.multi5.l)
+
+#Previsoes
+predicted.classes.multi.nova5.l <- m.multi.nova5.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova5.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova5.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova5.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+### K + Age + YS
+
+```{r}
+multinom0.l <- multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+summary(multinom0.l)
+
+m.multi.nova0.l <-
+  multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0.l, type = "text")
+
+  z0.l <-
+    summary(m.multi.nova0.l)$coefficients / summary(m.multi.nova0.l)$standard.errors
+    p0.l <- (1 - pnorm(abs(z0.l), 0, 1)) * 2
+    t(p0.l)
+
+coef.multi0.l = exp(coef(m.multi.nova0.l))
+t(coef.multi0.l)
+
+#Previsoes
+predicted.classes.multi.nova0.l <- m.multi.nova0.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova0.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+###LogT + Age + YS
+
+```{r , echo=TRUE, messAge=FALSE, warning=FALSE}
+multinom0_2.l <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+summary(multinom0_2.l)
+
+m.multi.nova0_2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0_2.l, type = "text")
+
+  z0_2.l <-
+    summary(m.multi.nova0_2.l)$coefficients / summary(m.multi.nova0_2.l)$standard.errors
+    p0_2.l <- (1 - pnorm(abs(z0_2.l), 0, 1)) * 2
+    t(p0_2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi0_2.l = exp(coef(m.multi.nova0_2.l))
+t(coef.multi0_2.l)
+
+#Previsoes
+predicted.classes.multi.nova0_2.l <- m.multi.nova0_2.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova0_2.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+## parietal lobe
+
+```{r}
+dados_lobos_v1_P <- filter(dados_lobos_v1, ROI == "P")
+
+dados_lobos_v1_P$Diagnostic <- factor(dados_lobos_v1_P$Diagnostic, levels = c("AD", "MCI","CTL"))
+
+train.data_lobes <- anti_join(dados_lobos_v1_P, subj.training)
+test.data_lobes <- semi_join(dados_lobos_v1_P, subj.training)
+
+caret::featurePlot(x = dados_lobos_v1_P[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_lobos_v1_P$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+
+print(n_distinct(dados_lobos_v1_P$SUBJ))
+print(n_distinct(train.data_lobes$SUBJ))
+print(n_distinct(test.data_lobes$SUBJ))
+
+caret::featurePlot(x = train.data_lobes[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data_lobes$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
+```
+
+### K + Age
+
+```{r}
+multinom1.l <- multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+summary(multinom1.l)
+
+m.multi.nova1.l <-
+  multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
+  stargazer(m.multi.nova1.l, type = "text")
+
+  z1.l <-
+    summary(m.multi.nova1.l)$coefficients / summary(m.multi.nova1.l)$standard.errors
+    p1.l <- (1 - pnorm(abs(z1.l), 0, 1)) * 2
+    t(p1.l)
+
+#Para facilitar a interpreta??o:
+coef.multi1.l = exp(coef(m.multi.nova1.l))
+t(coef.multi1.l)
+
+#Previsoes
+predicted.classes.multi.nova1.l <- m.multi.nova1.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova1.l == test.data_lobes$Diagnostic)
+
+# Summary
+cM1.l <- confusionMatrix(predicted.classes.multi.nova1.l, test.data_lobes$Diagnostic)
+cM1.l
+#cM1.l.t.score <- mutate(cM1.l, Diagnostic = c("AD", "MCI", "CTL"),sensitivity = as.data.frame(cM1.l$byClass[,1]), specificity = as.data.frame(cM1.l$byClass[,2]))
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova1.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+### LogT + Age
+
+```{r}
+multinom2.l <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+summary(multinom2.l)
+
+m.multi.nova2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
+  stargazer(m.multi.nova2.l, type = "text")
+
+  z2.l <-
+    summary(m.multi.nova2.l)$coefficients / summary(m.multi.nova2.l)$standard.errors
+    p2.l <- (1 - pnorm(abs(z2.l), 0, 1)) * 2
+    t(p2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi2.l = exp(coef(m.multi.nova2.l))
+t(coef.multi2.l)
+
+#Previsoes
+predicted.classes.multi.nova2.l <- m.multi.nova2.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova2.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+### K (deaged)
+
+```{r}
+multinom4.l <- multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+summary(multinom4.l)
+
+m.multi.nova4.l <-
+  multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova4.l, type = "text")
+
+  z4.l <-
+    summary(m.multi.nova4.l)$coefficients / summary(m.multi.nova4.l)$standard.errors
+    p4.l <- (1 - pnorm(abs(z4.l), 0, 1)) * 2
+    t(p4.l)
+
+#Para facilitar a interpreta??o:
+coef.multi4.l = exp(coef(m.multi.nova4.l))
+t(coef.multi4.l)
+
+#Previsoes
+predicted.classes.multi.nova4.l <- m.multi.nova4.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova4.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova4.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova4.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+### logT (deaged)
+
+```{r}
+multinom5.l <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+summary(multinom5.l)
+
+m.multi.nova5.l <-
+  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
+  stargazer(m.multi.nova5.l, type = "text")
+
+  z5.l <-
+    summary(m.multi.nova5.l)$coefficients / summary(m.multi.nova5.l)$standard.errors
+    p5.l <- (1 - pnorm(abs(z5.l), 0, 1)) * 2
+    t(p5.l)
+
+#Para facilitar a interpreta??o:
+coef.multi5.l = exp(coef(m.multi.nova5.l))
+t(coef.multi5.l)
+
+#Previsoes
+predicted.classes.multi.nova5.l <- m.multi.nova5.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova5.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova5.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova5.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+### K + Age + YS
+
+```{r}
+multinom0.l <- multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+summary(multinom0.l)
+
+m.multi.nova0.l <-
+  multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0.l, type = "text")
+
+  z0.l <-
+    summary(m.multi.nova0.l)$coefficients / summary(m.multi.nova0.l)$standard.errors
+    p0.l <- (1 - pnorm(abs(z0.l), 0, 1)) * 2
+    t(p0.l)
+
+coef.multi0.l = exp(coef(m.multi.nova0.l))
+t(coef.multi0.l)
+
+#Previsoes
+predicted.classes.multi.nova0.l <- m.multi.nova0.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova0.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+###LogT + Age + YS
+
+```{r , echo=TRUE, messAge=FALSE, warning=FALSE}
+multinom0_2.l <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+summary(multinom0_2.l)
+
+m.multi.nova0_2.l <-
+  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
+  stargazer(m.multi.nova0_2.l, type = "text")
+
+  z0_2.l <-
+    summary(m.multi.nova0_2.l)$coefficients / summary(m.multi.nova0_2.l)$standard.errors
+    p0_2.l <- (1 - pnorm(abs(z0_2.l), 0, 1)) * 2
+    t(p0_2.l)
+
+#Para facilitar a interpreta??o:
+coef.multi0_2.l = exp(coef(m.multi.nova0_2.l))
+t(coef.multi0_2.l)
+
+#Previsoes
+predicted.classes.multi.nova0_2.l <- m.multi.nova0_2.l %>% predict(test.data_lobes, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova0_2.l == test.data_lobes$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0_2.l, test.data_lobes$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data_lobes$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0_2.l),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```

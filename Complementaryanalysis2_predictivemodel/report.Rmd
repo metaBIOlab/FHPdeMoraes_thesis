@@ -14,16 +14,21 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-	echo = FALSE,
+	echo = TRUE,
+	message = FALSE,
 	warning = FALSE,
-	messAge = FALSE
+	cache = TRUE
 )
 ```
 
+Description of the procedures and analysis present in Complementary Analysis 1, Simple multinomial predictive models and diagnostic discrimination, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
 
-```{r}
+Part of the data used here cannot be shared due to restrictions of the Ethic Comittee. Data can be shared upon reasonable request to the corresponding author. To fullfil these limitation, we will generate random data to simulate the results.
+
+Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our aim is to improve the code as needed!
+
+```{r working directory}
 setwd("~/GitHub/FHPdeMoraes_thesis/Complementaryanalysis2_predictivemodel")
-
 ```
 
 ```{r call packages}
@@ -213,27 +218,9 @@ dados_hemi_v1 <- unique(filter(dados, ROI == "hemisphere", !is.na(K_age_decay)))
 
 # Data description
 
-### Somente Philips
-
 ```{r N sujeitos Philips, echo=FALSE, message=FALSE, warning=FALSE}
 dados_hemi_v1 %>%
   group_by(Diagnostic) %>%
-  summarise(
-    N = n_distinct(SUBJ),
-    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
-    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
-    ESC = paste(signif(mean(ESC), 2), "±", signif(sd(ESC), 2)),
-    T =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
-    AT =  paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
-    AE =  paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2)),
-    k =  paste(signif(mean(k), 2), "±", signif(sd(k), 2)),
-    K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
-    S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
-    I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
-  ) %>% kable(digits = 2) %>% kable_styling()
-
-dados_hemi_v1 %>%
-  group_by(Gender, Diagnostic) %>%
   summarise(
     N = n_distinct(SUBJ),
     age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
@@ -281,10 +268,9 @@ ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = K, color = Gender, fill = G
 
 # DIAGNOSTIC PREDICTION ----
 
-## multinomial model
+## set test and training samples
 
-```{r glm, echo=TRUE, messAge=FALSE, warning=FALSE}
-
+```{r}
 dados_hemi_v1$Diagnostic <- relevel(dados_hemi_v1$Diagnostic, "CTL")
 
 set.seed(0)
@@ -318,21 +304,14 @@ print(n_distinct(test.data$SUBJ))
 caret::featurePlot(x = train.data[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
 
 caret::featurePlot(x = train.data[, c("K", "K_age_decay", "I", "I_age_decay", "S", "S_age_decay")], y = train.data$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(3,2))
+```
 
-multinom1 <- multinom(Diagnostic ~ K + Age, data = train.data)
-multinom2 <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data)
 
-multinom10 <- multinom(Diagnostic ~ S + Age, data = train.data)
-multinom11 <- multinom(Diagnostic ~ I + Age, data = train.data)
+# multinomial model
 
-multinom0 <- multinom(Diagnostic ~ K + Age + ESC, data = train.data)
-multinom0_2 <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data)
+## K + Age
 
-multinom_Gender1 <- multinom(Diagnostic ~ K + Age + Gender , data = train.data)
-multinom_Gender2 <- multinom(Diagnostic ~ logAvgThickness + Age + Gender , data = train.data)
-
-multinom0_0 <- multinom(Diagnostic ~ K + S + I + Age, data = train.data)
-
+```{r}
 m.multi.nova1 <-
   multinom(Diagnostic ~ K + Age, data = train.data)
   stargazer(m.multi.nova1, type = "text")
@@ -373,8 +352,11 @@ multiclass.roc(
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
   )
+```
 
+## LogT + Age
 
+```{r}
 m.multi.nova2 <-
   multinom(Diagnostic ~ logAvgThickness + Age, data = train.data)
   stargazer(m.multi.nova2, type = "text")
@@ -416,7 +398,57 @@ multiclass.roc(
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
   )
+```
 
+## S + Age
+
+```{r}
+m.multi.nova11 <-
+  multinom(Diagnostic ~ S + Age, data = train.data)
+  stargazer(m.multi.nova10, type = "text")
+
+  z11 <-
+    summary(m.multi.nova11)$coefficients / summary(m.multi.nova11)$standard.errors
+    p11 <- (1 - pnorm(abs(z11), 0, 1)) * 2
+    t(p11)
+
+#Para facilitar a interpreta??o:
+coef.multi11 = exp(coef(m.multi.nova11))
+t(coef.multi11)
+#Previsoes
+predicted.classes.multi.nova11 <- m.multi.nova11 %>% predict(test.data, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova11 == test.data$Diagnostic)
+
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova11, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova11),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+## I + Age
+
+```{r}
 
 m.multi.nova10 <-
   multinom(Diagnostic ~ I + Age, data = train.data)
@@ -461,90 +493,11 @@ multiclass.roc(
   )
 
 
-m.multi.nova11 <-
-  multinom(Diagnostic ~ S + Age, data = train.data)
-  stargazer(m.multi.nova10, type = "text")
+```
 
-  z11 <-
-    summary(m.multi.nova11)$coefficients / summary(m.multi.nova11)$standard.errors
-    p11 <- (1 - pnorm(abs(z11), 0, 1)) * 2
-    t(p11)
+## LogT + Age + YS
 
-#Para facilitar a interpreta??o:
-coef.multi11 = exp(coef(m.multi.nova11))
-t(coef.multi11)
-#Previsoes
-predicted.classes.multi.nova11 <- m.multi.nova11 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova11 == test.data$Diagnostic)
-
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova11, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova11),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova0 <-
-  multinom(Diagnostic ~ K + Age + ESC, data = train.data)
-  stargazer(m.multi.nova0, type = "text")
-  
-  z0 <-
-    summary(m.multi.nova0)$coefficients / summary(m.multi.nova0)$standard.errors
-    p0 <- (1 - pnorm(abs(z0), 0, 1)) * 2
-    t(p0)
-
-#Para facilitar a interpreta??o:
-coef.multi0 = exp(coef(m.multi.nova0))
-t(coef.multi0)
-#Previsoes
-predicted.classes.multi.nova0 <- m.multi.nova0 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova0 == test.data$Diagnostic)
-
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova0, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova0),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
+```{r}
 m.multi.nova0_2 <-
   multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data)
   stargazer(m.multi.nova0_2, type = "text")
@@ -586,7 +539,57 @@ multiclass.roc(
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
   )
+```
 
+## K + Age + YS
+
+```{r}
+m.multi.nova0 <-
+  multinom(Diagnostic ~ K + Age + ESC, data = train.data)
+  stargazer(m.multi.nova0, type = "text")
+  
+  z0 <-
+    summary(m.multi.nova0)$coefficients / summary(m.multi.nova0)$standard.errors
+    p0 <- (1 - pnorm(abs(z0), 0, 1)) * 2
+    t(p0)
+
+#Para facilitar a interpreta??o:
+coef.multi0 = exp(coef(m.multi.nova0))
+t(coef.multi0)
+#Previsoes
+predicted.classes.multi.nova0 <- m.multi.nova0 %>% predict(test.data, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova0 == test.data$Diagnostic)
+
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova0, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova0),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+```
+
+## K + S + I + Age
+
+```{r , echo=TRUE, messAge=FALSE, warning=FALSE}
 m.multi.nova0_0 <-
   multinom(Diagnostic ~ K + I + S + Age, data = train.data)
   stargazer(m.multi.nova0_0, type = "text")
@@ -628,147 +631,13 @@ multiclass.roc(
   xlab = "0_0-Specificity (false positive rate)"
   )
 
-
-m.multi.nova.Gender1 <-
-  multinom(Diagnostic ~ K + Age + Gender, data = train.data)
-  stargazer(m.multi.nova.Gender1, type = "text")
-
-  z.Gender1 <-
-    summary(m.multi.nova.Gender1)$coefficients / summary(m.multi.nova.Gender1)$standard.errors
-    p.Gender1 <- (1 - pnorm(abs(z.Gender1), 0, 1)) * 2
-    t(p.Gender1)
-
-#Para facilitar a interpreta??o:
-coef.multi.Gender1 = exp(coef(m.multi.nova.Gender1))
-t(coef.multi.Gender1)
-#Previsoes
-predicted.classes.multi.nova.Gender1 <- m.multi.nova.Gender1 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova.Gender1 == test.data$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova.Gender1, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova.Gender1),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = FALSE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova.Gender2 <-
-  multinom(Diagnostic ~ logAvgThickness_age_decay + Age + Gender, data = train.data)
-  stargazer(m.multi.nova.Gender2, type = "text")
-
-  z.Gender2 <-
-    summary(m.multi.nova.Gender2)$coefficients / summary(m.multi.nova.Gender2)$standard.errors
-    p.Gender2 <- (1 - pnorm(abs(z.Gender2), 0, 1)) * 2
-    t(p.Gender2)
-
-#Para facilitar a interpreta??o:
-coef.multi.Gender2 = exp(coef(m.multi.nova.Gender2))
-t(coef.multi.Gender2)
-#Previsoes
-predicted.classes.multi.nova.Gender2 <- m.multi.nova.Gender2 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova.Gender2 == test.data$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova.Gender2, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova.Gender2),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = FALSE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
 ```
 
-## modelo multinomial - deAged
+# multinomial model - deaged
 
-```{r glm deAged, echo=TRUE, messAge=FALSE, warning=FALSE}
+## LogT (deaged)
 
-multinom4 <- multinom(Diagnostic ~ K_age_decay, data = train.data)
-multinom5 <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data)
-
-multinom12 <- multinom(Diagnostic ~ I_age_decay + logAvgThickness_age_decay, data = train.data)
-multinom13 <- multinom(Diagnostic ~ S_age_decay + logAvgThickness_age_decay, data = train.data)
-
-multinom0_0_0 <- multinom(Diagnostic ~ K_age_decay + I_age_decay + S_age_decay, data = train.data)
-
-## da estatistica ##
- 
-m.multi.nova4 <-
-  multinom(Diagnostic ~ K_age_decay, data = train.data)
-  stargazer(m.multi.nova4, type = "text")
-
-  z4 <-
-    summary(m.multi.nova4)$coefficients / summary(m.multi.nova4)$standard.errors
-    p4 <- (1 - pnorm(abs(z4), 0, 1)) * 2
-    t(p4)
-
-#Para facilitar a interpreta??o:
-coef.multi4 = exp(coef(m.multi.nova4))
-t(coef.multi4)
-#Previsoes
-predicted.classes.multi.nova4 <- m.multi.nova4 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova4 == test.data$Diagnostic)
-
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova4, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova4),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
+```{r}
 m.multi.nova5 <-
   multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data)
   stargazer(m.multi.nova5, type = "text")
@@ -810,34 +679,37 @@ multiclass.roc(
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
   )
+```
 
+## K (deaged)
 
-m.multi.nova12 <-
-  multinom(Diagnostic ~ I_age_decay, data = train.data)
-  stargazer(m.multi.nova12, type = "text")
+```{r}
+m.multi.nova4 <-
+  multinom(Diagnostic ~ K_age_decay, data = train.data)
+  stargazer(m.multi.nova4, type = "text")
 
-  z12 <-
-    summary(m.multi.nova12)$coefficients / summary(m.multi.nova12)$standard.errors
-    p12 <- (1 - pnorm(abs(z12), 0, 1)) * 2
-    t(p12)
+  z4 <-
+    summary(m.multi.nova4)$coefficients / summary(m.multi.nova4)$standard.errors
+    p4 <- (1 - pnorm(abs(z4), 0, 1)) * 2
+    t(p4)
 
 #Para facilitar a interpreta??o:
-coef.multi12 = exp(coef(m.multi.nova12))
-t(coef.multi12)
+coef.multi4 = exp(coef(m.multi.nova4))
+t(coef.multi4)
 #Previsoes
-predicted.classes.multi.nova12 <- m.multi.nova12 %>% predict(test.data, type = "class")
+predicted.classes.multi.nova4 <- m.multi.nova4 %>% predict(test.data, type = "class")
 
 #Model accuracy
-mean(predicted.classes.multi.nova12 == test.data$Diagnostic)
+mean(predicted.classes.multi.nova4 == test.data$Diagnostic)
 
 
 # Summary
-confusionMatrix(predicted.classes.multi.nova12, test.data$Diagnostic)
+confusionMatrix(predicted.classes.multi.nova4, test.data$Diagnostic)
 
 #ROC
 multiclass.roc(
   as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova12),
+  as.numeric(predicted.classes.multi.nova4),
   percent = F,
   ci.alpha = 0.9,
   stratified = FALSE,
@@ -853,8 +725,11 @@ multiclass.roc(
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
   )
+```
 
+## S (deaged)
 
+```{r}
 m.multi.nova13 <-
   multinom(Diagnostic ~ S_age_decay, data = train.data)
   stargazer(m.multi.nova12, type = "text")
@@ -872,7 +747,6 @@ predicted.classes.multi.nova13 <- m.multi.nova13 %>% predict(test.data, type = "
 
 #Model accuracy
 mean(predicted.classes.multi.nova13 == test.data$Diagnostic)
-
 
 # Summary
 confusionMatrix(predicted.classes.multi.nova13, test.data$Diagnostic)
@@ -897,6 +771,58 @@ multiclass.roc(
   xlab = "1-Specificity (false positive rate)"
   )
   
+```
+
+## I (deaged)
+
+```{r}
+m.multi.nova12 <-
+  multinom(Diagnostic ~ I_age_decay, data = train.data)
+  stargazer(m.multi.nova12, type = "text")
+
+  z12 <-
+    summary(m.multi.nova12)$coefficients / summary(m.multi.nova12)$standard.errors
+    p12 <- (1 - pnorm(abs(z12), 0, 1)) * 2
+    t(p12)
+
+#Para facilitar a interpreta??o:
+coef.multi12 = exp(coef(m.multi.nova12))
+t(coef.multi12)
+#Previsoes
+predicted.classes.multi.nova12 <- m.multi.nova12 %>% predict(test.data, type = "class")
+
+#Model accuracy
+mean(predicted.classes.multi.nova12 == test.data$Diagnostic)
+
+# Summary
+confusionMatrix(predicted.classes.multi.nova12, test.data$Diagnostic)
+
+#ROC
+multiclass.roc(
+  as.numeric(test.data$Diagnostic),
+  as.numeric(predicted.classes.multi.nova12),
+  percent = F,
+  ci.alpha = 0.9,
+  stratified = FALSE,
+  plot = TRUE,
+  grid = TRUE,
+  legacy.axes = TRUE,
+  reuse.auc = TRUE,
+  print.auc = TRUE,
+  print.thres.col = "blue",
+  ci.type = "bars",
+  print.thres.cex = 0.7,
+  main = "ROC curve",
+  ylab = "Sensitivity (true positive rate)",
+  xlab = "1-Specificity (false positive rate)"
+  )
+
+```
+
+## K + S + I (deaged)
+
+
+```{r, echo=TRUE, messAge=FALSE, warning=FALSE}
 
 m.multi.nova0_0_0 <-
   multinom(Diagnostic ~ K_age_decay + I_age_decay + S_age_decay, data = train.data)
@@ -940,684 +866,4 @@ multiclass.roc(
   xlab = "1-Specificity (false positive rate)"
   )  
   
-
-m.multi.nova.Gender3 <-
-  multinom(Diagnostic ~ K_age_decay + Gender, data = train.data)
-  stargazer(m.multi.nova.Gender3, type = "text")
-
-  z.Gender3 <-
-    summary(m.multi.nova.Gender3)$coefficients / summary(m.multi.nova.Gender3)$standard.errors
-    p.Gender3 <- (1 - pnorm(abs(z.Gender3), 0, 1)) * 2
-    t(p.Gender3)
-
-#Para facilitar a interpreta??o:
-coef.multi.Gender3 = exp(coef(m.multi.nova.Gender3))
-t(coef.multi.Gender3)
-#Previsoes
-predicted.classes.multi.nova.Gender3 <- m.multi.nova.Gender3 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova.Gender3 == test.data$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova.Gender3, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova.Gender3),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = FALSE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova.Gender4 <-
-  multinom(Diagnostic ~ logAvgThickness + Age + Gender, data = train.data)
-  stargazer(m.multi.nova.Gender4, type = "text")
-
-  z.Gender4 <-
-    summary(m.multi.nova.Gender4)$coefficients / summary(m.multi.nova.Gender4)$standard.errors
-    p.Gender4 <- (1 - pnorm(abs(z.Gender4), 0, 1)) * 2
-    t(p.Gender4)
-
-#Para facilitar a interpreta??o:
-coef.multi.Gender4 = exp(coef(m.multi.nova.Gender4))
-t(coef.multi.Gender4)
-#Previsoes
-predicted.classes.multi.nova.Gender4 <- m.multi.nova.Gender4 %>% predict(test.data, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova.Gender4 == test.data$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova.Gender4, test.data$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data$Diagnostic),
-  as.numeric(predicted.classes.multi.nova.Gender4),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = FALSE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
 ```
-
-## modelo multinomial - lobes
-
-### Lobo temporal
-
-```{r glm temporal lobe, echo=TRUE, messAge=FALSE, warning=FALSE}
-
-dados_lobos_v1_T <- filter(dados_lobos_v1, ROI == "T")
-
-dados_lobos_v1_T$Diagnostic <- relevel(dados_lobos_v1_T$Diagnostic, "CTL")
-
-train.data_lobes <- anti_join(dados_lobos_v1_T, subj.training)
-test.data_lobes <- semi_join(dados_lobos_v1_T, subj.training)
-
-caret::featurePlot(x = dados_lobos_v1_T[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_lobos_v1_T$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
-
-print(n_distinct(dados_lobos_v1_T$SUBJ))
-print(n_distinct(train.data_lobes$SUBJ))
-print(n_distinct(test.data_lobes$SUBJ))
-
-caret::featurePlot(x = train.data_lobes[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data_lobes$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
-
-multinom1.l <- multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
-multinom2.l <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
-
-multinom4.l <- multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
-multinom5.l <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
-
-multinom0.l <- multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
-multinom0_2.l <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
-
-## da estatistica ##
- 
-summary(multinom1.l)
-summary(multinom2.l)
-summary(multinom4.l)
-summary(multinom5.l)
-summary(multinom0.l)
-summary(multinom0_2.l)
-
-# anova(multinom5, multinom4, test = "Chisq")
-
-## da estatistica ##
-
-m.multi.nova1.l <-
-  multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
-  stargazer(m.multi.nova1.l, type = "text")
-
-  z1.l <-
-    summary(m.multi.nova1.l)$coefficients / summary(m.multi.nova1.l)$standard.errors
-    p1.l <- (1 - pnorm(abs(z1.l), 0, 1)) * 2
-    t(p1.l)
-
-#Para facilitar a interpreta??o:
-coef.multi1.l = exp(coef(m.multi.nova1.l))
-t(coef.multi1.l)
-
-#Previsoes
-predicted.classes.multi.nova1.l <- m.multi.nova1.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova1.l == test.data_lobes$Diagnostic)
-
-# Summary
-cM1.l <- confusionMatrix(predicted.classes.multi.nova1.l, test.data_lobes$Diagnostic)
-cM1.l
-#cM1.l.t.score <- mutate(cM1.l, Diagnostic = c("AD", "MCI", "CTL"),sensitivity = as.data.frame(cM1.l$byClass[,1]), specificity = as.data.frame(cM1.l$byClass[,2]))
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova1.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova2.l <-
-  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
-  stargazer(m.multi.nova2.l, type = "text")
-
-  z2.l <-
-    summary(m.multi.nova2.l)$coefficients / summary(m.multi.nova2.l)$standard.errors
-    p2.l <- (1 - pnorm(abs(z2.l), 0, 1)) * 2
-    t(p2.l)
-
-#Para facilitar a interpreta??o:
-coef.multi2.l = exp(coef(m.multi.nova2.l))
-t(coef.multi2.l)
-
-#Previsoes
-predicted.classes.multi.nova2.l <- m.multi.nova2.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova2.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova2.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova2.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
- 
-m.multi.nova4.l <-
-  multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
-  stargazer(m.multi.nova4.l, type = "text")
-
-  z4.l <-
-    summary(m.multi.nova4.l)$coefficients / summary(m.multi.nova4.l)$standard.errors
-    p4.l <- (1 - pnorm(abs(z4.l), 0, 1)) * 2
-    t(p4.l)
-
-#Para facilitar a interpreta??o:
-coef.multi4.l = exp(coef(m.multi.nova4.l))
-t(coef.multi4.l)
-
-#Previsoes
-predicted.classes.multi.nova4.l <- m.multi.nova4.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova4.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova4.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova4.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova5.l <-
-  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
-  stargazer(m.multi.nova5.l, type = "text")
-
-  z5.l <-
-    summary(m.multi.nova5.l)$coefficients / summary(m.multi.nova5.l)$standard.errors
-    p5.l <- (1 - pnorm(abs(z5.l), 0, 1)) * 2
-    t(p5.l)
-
-#Para facilitar a interpreta??o:
-coef.multi5.l = exp(coef(m.multi.nova5.l))
-t(coef.multi5.l)
-
-#Previsoes
-predicted.classes.multi.nova5.l <- m.multi.nova5.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova5.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova5.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova5.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-
-m.multi.nova0.l <-
-  multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
-  stargazer(m.multi.nova0.l, type = "text")
-
-  z0.l <-
-    summary(m.multi.nova0.l)$coefficients / summary(m.multi.nova0.l)$standard.errors
-    p0.l <- (1 - pnorm(abs(z0.l), 0, 1)) * 2
-    t(p0.l)
-
-#Para facilitar a interpreta??o:
-coef.multi0.l = exp(coef(m.multi.nova0.l))
-t(coef.multi0.l)
-
-#Previsoes
-predicted.classes.multi.nova0.l <- m.multi.nova0.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova0.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova0.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova0.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova0_2.l <-
-  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
-  stargazer(m.multi.nova0_2.l, type = "text")
-
-  z0_2.l <-
-    summary(m.multi.nova0_2.l)$coefficients / summary(m.multi.nova0_2.l)$standard.errors
-    p0_2.l <- (1 - pnorm(abs(z0_2.l), 0, 1)) * 2
-    t(p0_2.l)
-
-#Para facilitar a interpreta??o:
-coef.multi0_2.l = exp(coef(m.multi.nova0_2.l))
-t(coef.multi0_2.l)
-
-#Previsoes
-predicted.classes.multi.nova0_2.l <- m.multi.nova0_2.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova0_2.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova0_2.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova0_2.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-```
-
-### Lobo parietal
-
-```{r glm parietal lobe, echo=TRUE, messAge=FALSE, warning=FALSE}
-
-dados_lobos_v1_P <- filter(dados_lobos_v1, ROI == "P")
-
-dados_lobos_v1_P$Diagnostic <- factor(dados_lobos_v1_P$Diagnostic, levels = c("AD", "MCI","CTL"))
-
-train.data_lobes <- anti_join(dados_lobos_v1_P, subj.training)
-test.data_lobes <- semi_join(dados_lobos_v1_P, subj.training)
-
-caret::featurePlot(x = dados_lobos_v1_P[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = dados_lobos_v1_P$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
-
-print(n_distinct(dados_lobos_v1_P$SUBJ))
-print(n_distinct(train.data_lobes$SUBJ))
-print(n_distinct(test.data_lobes$SUBJ))
-
-caret::featurePlot(x = train.data_lobes[, c("K", "logAvgThickness", "K_age_decay", "logAvgThickness_age_decay")], y = train.data_lobes$Diagnostic, plot = "box", scales = list(y = list(relation = "free"), x = list(rot = 90)), layout = c(4, 1))
-
-multinom1.l <- multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
-multinom2.l <- multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
-
-multinom4.l <- multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
-multinom5.l <- multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
-
-multinom0.l <- multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
-multinom0_2.l <- multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
-
-## da estatistica ##
- 
-summary(multinom1.l)
-summary(multinom2.l)
-summary(multinom4.l)
-summary(multinom5.l)
-summary(multinom0.l)
-summary(multinom0_2.l)
-
-# anova(multinom5, multinom4, test = "Chisq")
-
-## da estatistica ##
-
-m.multi.nova1.l <-
-  multinom(Diagnostic ~ K_corrected + Age, data = train.data_lobes)
-  stargazer(m.multi.nova1.l, type = "text")
-
-  z1.l <-
-    summary(m.multi.nova1.l)$coefficients / summary(m.multi.nova1.l)$standard.errors
-    p1.l <- (1 - pnorm(abs(z1.l), 0, 1)) * 2
-    t(p1.l)
-
-#Para facilitar a interpreta??o:
-coef.multi1.l = exp(coef(m.multi.nova1.l))
-t(coef.multi1.l)
-
-#Previsoes
-predicted.classes.multi.nova1.l <- m.multi.nova1.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova1.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova1.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova1.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova2.l <-
-  multinom(Diagnostic ~ logAvgThickness + Age, data = train.data_lobes)
-  stargazer(m.multi.nova2.l, type = "text")
-
-  z2.l <-
-    summary(m.multi.nova2.l)$coefficients / summary(m.multi.nova2.l)$standard.errors
-    p2.l <- (1 - pnorm(abs(z2.l), 0, 1)) * 2
-    t(p2.l)
-
-#Para facilitar a interpreta??o:
-coef.multi2.l = exp(coef(m.multi.nova2.l))
-t(coef.multi2.l)
-
-#Previsoes
-predicted.classes.multi.nova2.l <- m.multi.nova2.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova2.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova2.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova2.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
- 
-m.multi.nova4.l <-
-  multinom(Diagnostic ~ K_age_decay, data = train.data_lobes)
-  stargazer(m.multi.nova4.l, type = "text")
-
-  z4.l <-
-    summary(m.multi.nova4.l)$coefficients / summary(m.multi.nova4.l)$standard.errors
-    p4.l <- (1 - pnorm(abs(z4.l), 0, 1)) * 2
-    t(p4.l)
-
-#Para facilitar a interpreta??o:
-coef.multi4.l = exp(coef(m.multi.nova4.l))
-t(coef.multi4.l)
-
-#Previsoes
-predicted.classes.multi.nova4.l <- m.multi.nova4.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova4.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova4.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova4.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova5.l <-
-  multinom(Diagnostic ~ logAvgThickness_age_decay, data = train.data_lobes)
-  stargazer(m.multi.nova5.l, type = "text")
-
-  z5.l <-
-    summary(m.multi.nova5.l)$coefficients / summary(m.multi.nova5.l)$standard.errors
-    p5.l <- (1 - pnorm(abs(z5.l), 0, 1)) * 2
-    t(p5.l)
-
-#Para facilitar a interpreta??o:
-coef.multi5.l = exp(coef(m.multi.nova5.l))
-t(coef.multi5.l)
-
-#Previsoes
-predicted.classes.multi.nova5.l <- m.multi.nova5.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova5.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova5.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova5.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-
-m.multi.nova0.l <-
-  multinom(Diagnostic ~ K_corrected + Age + ESC, data = train.data_lobes)
-  stargazer(m.multi.nova0.l, type = "text")
-
-  z0.l <-
-    summary(m.multi.nova0.l)$coefficients / summary(m.multi.nova0.l)$standard.errors
-    p0.l <- (1 - pnorm(abs(z0.l), 0, 1)) * 2
-    t(p0.l)
-
-#Para facilitar a interpreta??o:
-coef.multi0.l = exp(coef(m.multi.nova0.l))
-t(coef.multi0.l)
-
-#Previsoes
-predicted.classes.multi.nova0.l <- m.multi.nova0.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova0.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova0.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova0.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-m.multi.nova0_2.l <-
-  multinom(Diagnostic ~ logAvgThickness + Age + ESC, data = train.data_lobes)
-  stargazer(m.multi.nova0_2.l, type = "text")
-
-  z0_2.l <-
-    summary(m.multi.nova0_2.l)$coefficients / summary(m.multi.nova0_2.l)$standard.errors
-    p0_2.l <- (1 - pnorm(abs(z0_2.l), 0, 1)) * 2
-    t(p0_2.l)
-
-#Para facilitar a interpreta??o:
-coef.multi0_2.l = exp(coef(m.multi.nova0_2.l))
-t(coef.multi0_2.l)
-
-#Previsoes
-predicted.classes.multi.nova0_2.l <- m.multi.nova0_2.l %>% predict(test.data_lobes, type = "class")
-
-#Model accuracy
-mean(predicted.classes.multi.nova0_2.l == test.data_lobes$Diagnostic)
-
-# Summary
-confusionMatrix(predicted.classes.multi.nova0_2.l, test.data_lobes$Diagnostic)
-
-#ROC
-multiclass.roc(
-  as.numeric(test.data_lobes$Diagnostic),
-  as.numeric(predicted.classes.multi.nova0_2.l),
-  percent = F,
-  ci.alpha = 0.9,
-  stratified = FALSE,
-  plot = TRUE,
-  grid = TRUE,
-  legacy.axes = TRUE,
-  reuse.auc = TRUE,
-  print.auc = TRUE,
-  print.thres.col = "blue",
-  ci.type = "bars",
-  print.thres.cex = 0.7,
-  main = "ROC curve",
-  ylab = "Sensitivity (true positive rate)",
-  xlab = "1-Specificity (false positive rate)"
-  )
-
-```
-

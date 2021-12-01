@@ -36,6 +36,7 @@ library(ggpubr)
 library(kableExtra)
 library(broom)
 library(MASS)
+library(rmarkdown)
 
 # multinomial predictive model packages
 require(foreign)
@@ -120,11 +121,6 @@ dados_all <- dados_raw %>% filter(
       Diagnostic == "ALZ", !is.na(logAvgThickness), ExposedArea != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
   droplevels()
 
-# excluded data
-anti_join(dados_raw, dados_all) %>%
-  kable() %>%
-  kable_styling()
-
 dados <- dados_all
 ```
 
@@ -148,7 +144,7 @@ dados <- dados %>%
 # define age for deaging
 Age.cor = 25
 
-# AVG thickness ----
+## Avg thickness ----
 decay_AvgThickness <-
   filter(dados, Diagnostic == "CTL") %>%
   droplevels() %>%
@@ -159,7 +155,7 @@ decay_AvgThickness <-
          std_error_c_AvgThickness = std.error) %>%
   dplyr::select(c(ROI, c_AvgThickness, std_error_c_AvgThickness))
 
-## TotalArea ---
+## TotalArea ----
 decay_TotalArea <- filter(dados, Diagnostic == "CTL", !is.na(TotalArea), !is.nan(TotalArea), !is.infinite(TotalArea)) %>%
   droplevels() %>%
   group_by(ROI) %>%
@@ -170,7 +166,7 @@ decay_TotalArea <- filter(dados, Diagnostic == "CTL", !is.na(TotalArea), !is.nan
          std_error_c_TotalArea = std.error) %>%
   dplyr::select(c(ROI, c_TotalArea, std_error_c_TotalArea))
 
-## ExposedArea ---
+## ExposedArea ----
 decay_ExposedArea <- filter(dados, Diagnostic == "CTL", !is.na(ExposedArea), !is.nan(ExposedArea), !is.infinite(ExposedArea)) %>%
   droplevels() %>%
   group_by(ROI) %>%
@@ -311,18 +307,19 @@ caret::featurePlot(x = train.data[, c("K", "K_age_decay", "I", "I_age_decay", "S
 ```{r}
 m.multi.nova1 <-
   multinom(Diagnostic ~ K + Age, data = train.data)
-  stargazer(m.multi.nova1, type = "text")
+stargazer(m.multi.nova1, type = "text")
 
-  z1 <-
-    summary(m.multi.nova1)$coefficients / summary(m.multi.nova1)$standard.errors
-    p1 <- (1 - pnorm(abs(z1), 0, 1)) * 2
-    t(p1)
+z1 <-
+  summary(m.multi.nova1)$coefficients / summary(m.multi.nova1)$standard.errors
+p1 <- (1 - pnorm(abs(z1), 0, 1)) * 2
+t(p1)
 
 #Para facilitar a interpreta??o:
 coef.multi1 = exp(coef(m.multi.nova1))
 t(coef.multi1)
 #Previsoes
-predicted.classes.multi.nova1 <- m.multi.nova1 %>% predict(test.data, type = "class")
+predicted.classes.multi.nova1 <-
+  m.multi.nova1 %>% predict(test.data, type = "class")
 
 #Model accuracy
 mean(predicted.classes.multi.nova1 == test.data$Diagnostic)
@@ -348,7 +345,7 @@ multiclass.roc(
   main = "ROC curve",
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
-  )
+)
 ```
 
 ## LogT + Age
@@ -356,22 +353,22 @@ multiclass.roc(
 ```{r}
 m.multi.nova2 <-
   multinom(Diagnostic ~ logAvgThickness + Age, data = train.data)
-  stargazer(m.multi.nova2, type = "text")
+stargazer(m.multi.nova2, type = "text")
 
-  z2 <-
-    summary(m.multi.nova2)$coefficients / summary(m.multi.nova2)$standard.errors
-    p2 <- (1 - pnorm(abs(z2), 0, 1)) * 2
-    t(p2)
+z2 <-
+  summary(m.multi.nova2)$coefficients / summary(m.multi.nova2)$standard.errors
+p2 <- (1 - pnorm(abs(z2), 0, 1)) * 2
+t(p2)
 
 #Para facilitar a interpreta??o:
 coef.multi2 = exp(coef(m.multi.nova2))
 t(coef.multi2)
 #Previsoes
-predicted.classes.multi.nova2 <- m.multi.nova2 %>% predict(test.data, type = "class")
+predicted.classes.multi.nova2 <-
+  m.multi.nova2 %>% predict(test.data, type = "class")
 
 #Model accuracy
 mean(predicted.classes.multi.nova2 == test.data$Diagnostic)
-
 
 # Summary
 confusionMatrix(predicted.classes.multi.nova2, test.data$Diagnostic)
@@ -399,7 +396,7 @@ multiclass.roc(
 
 ## S + Age
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 m.multi.nova11 <-
   multinom(Diagnostic ~ S + Age, data = train.data)
   stargazer(m.multi.nova11, type = "text")
@@ -445,26 +442,27 @@ multiclass.roc(
 
 ## I + Age
 
-```{r}
+```{r eval=FALSE, include=FALSE}
+
 
 m.multi.nova10 <-
   multinom(Diagnostic ~ I + Age, data = train.data)
-  stargazer(m.multi.nova10, type = "text")
+stargazer(m.multi.nova10, type = "text")
 
-  z10 <-
-    summary(m.multi.nova10)$coefficients / summary(m.multi.nova10)$standard.errors
-    p10 <- (1 - pnorm(abs(z10), 0, 1)) * 2
-    t(p10)
+z10 <-
+  summary(m.multi.nova10)$coefficients / summary(m.multi.nova10)$standard.errors
+p10 <- (1 - pnorm(abs(z10), 0, 1)) * 2
+t(p10)
 
 #Para facilitar a interpreta??o:
 coef.multi10 = exp(coef(m.multi.nova10))
 t(coef.multi10)
 #Previsoes
-predicted.classes.multi.nova10 <- m.multi.nova10 %>% predict(test.data, type = "class")
+predicted.classes.multi.nova10 <-
+  m.multi.nova10 %>% predict(test.data, type = "class")
 
 #Model accuracy
 mean(predicted.classes.multi.nova10 == test.data$Diagnostic)
-
 
 # Summary
 confusionMatrix(predicted.classes.multi.nova10, test.data$Diagnostic)
@@ -487,8 +485,7 @@ multiclass.roc(
   main = "ROC curve",
   ylab = "Sensitivity (true positive rate)",
   xlab = "1-Specificity (false positive rate)"
-  )
-
+)
 
 ```
 

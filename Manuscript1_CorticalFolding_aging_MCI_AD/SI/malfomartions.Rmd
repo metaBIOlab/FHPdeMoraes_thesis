@@ -1,0 +1,2808 @@
+---
+title: "Malformations"
+author: "Fernanda Hansen P. de Moraes"
+date: "23/02/2021"
+output: 
+  html_document: 
+    toc: yes
+    number_sections: yes
+    fig_width: 10
+    fig_height: 7
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/comparing_samples/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama funcoes caso necessário
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+  
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep_ACC.R")
+
+dados_datasetscomp_PAC017 <- filter(dados_datasetscomp, SUBJ == "PAC017" & Diagnostic == "CCD") # nao tem todos os resultados
+dados_datasetscomp_SUBJ069 <- filter(dados_datasetscomp, SUBJ == "SUBJ069" & Diagnostic == "CCD") # nao tem todos os resultados
+dados_datasetscomp_SUBJ086 <- filter(dados_datasetscomp, SUBJ == "SUBJ086" & Diagnostic == "CTL" & Sample == "CALTECH") # nao tem todos os resultados
+
+dados_datasetscomp <- dados_datasetscomp %>%
+  anti_join(dados_datasetscomp_PAC017) %>%
+  anti_join(dados_datasetscomp_SUBJ069) %>%
+  anti_join(dados_datasetscomp_SUBJ086) %>%
+  filter(!is.na(AvgThickness), !is.na(K), !is.na(logAvgThickness))
+
+# write.csv(dados_datasetscomp,"dados_datasetscomp_malformations.csv")
+```
+
+# Datasets description
+
+We included multiple datasets from different sites to estimate, accounting methodological and "subject" biases, typical values for K, S and I.
+
+```{r description, echo=FALSE}
+filter(dados_datasetscomp,
+       Sample != "Mota&Houzel2015",
+       ROI == "hemisphere") %>%
+  group_by(Sample, Diagnostic) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2))
+    # ,
+    # AvgT =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
+    # AT =  paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
+    # AE =  paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2)),
+    # K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
+    # S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
+    # I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+filter(dados_datasetscomp, Sample != "Mota&Houzel2015", ROI == "hemisphere") %>%
+  group_by(Sample, Diagnostic, Gender) %>%
+  summarise(
+    N = n_distinct(SUBJ)
+) %>% kable(digits = 2) %>% kable_styling()
+
+```
+
+```{r}
+source("harmonization_DCC_lobes.R")
+```
+
+# Cortical folding model by Mota & Houzel (Science, 2015)
+
+Applying the cortical folding from Mota & Houzel:
+
+```{r model, echo=FALSE}
+dados_MH2015 <- mutate(dados_MH2015, ROI = "hemisphere", Diagnostic = "CTL")
+
+dados_datasetscomp_MH <- dados_datasetscomp %>%
+  mutate(Family = "Hominidae", Species = "Homo sapiens") %>%
+  full_join(dados_MH2015)
+
+# amostra_Coef <- filter(dados_datasetscomp_MH, ROI == "hemisphere") %>% droplevels() %>%
+#   group_by(Sample, Diagnostic) %>%
+#   do(fit_amostra = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.exclude), conf.int = TRUE, conf.level = 0.95)) %>% 
+#   unnest(fit_amostra)
+
+dados_datasetscomp_MH_2 <- filter(dados_datasetscomp_MH, ROI == "hemisphere")
+
+dados_datasetscomp_MH_2 <- dados_datasetscomp_MH
+dados_datasetscomp_MH_2$Sample <- as.character(dados_datasetscomp_MH_2$Sample)
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CTL"] <- "IDOR-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "AD"] <- "IDOR-AD"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "MCI"] <- "IDOR-MCI"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CCD"] <- "IDOR-CCD"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "ZK"] <- "IDOR-ZK"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CHIK"] <- "IDOR-CHIK"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "MICRO-ZK"] <- "IDOR-ZK-MICRO"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "MICRO"] <- "IDOR-MICRO"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "MICROVera"] <- "IDOR-MICROVera"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "PRES ZK"] <- "IDOR-PRESZK"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" & dados_datasetscomp_MH_2$Diagnostic == "OUTROS"] <- "IDOR-OUTROS"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IDOR" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "OUTROS"] <- "IDOR-OUTROS"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "CALTECH" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CTL"] <- "CALTECH-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "CALTECH" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CCD"] <- "CALTECH-CCD"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "UCSF" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CTL"] <- "UCSF-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "UCSF" &
+                                  dados_datasetscomp_MH_2$Diagnostic == "CCD"] <- "UCSF-CCD"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "HCP500r"] <- "HCP500r-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "OASIS"] <- "OASIS-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "AOMICPIOP1"] <- "AOMICPIOP1-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "AHEAD"] <- "AHEAD-Control"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "AOMICPIOP2"] <- "AOMICPIOP2-Control"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "NKI"] <- "NKI-Control"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "IXI"] <- "IXI-Control"
+
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "ADNI" & dados_datasetscomp_MH_2$Diagnostic == "AD"] <- "ADNI-AD"
+dados_datasetscomp_MH_2$Sample[dados_datasetscomp_MH_2$Sample == "ADNI"& dados_datasetscomp_MH_2$Diagnostic == "CTL"] <- "ADNI-Control"
+
+dados_datasetscomp_MH_2$Sample <- as.factor(dados_datasetscomp_MH_2$Sample)
+
+cols = gg_color_hue(length(levels(dados_datasetscomp_MH_2$Sample)))
+# cols[levels(dados_datasetscomp_MH$Family)=="Hominidae-ZK-MICRO"]="black"
+# cols[levels(dados_datasetscomp_MH$Family)=="Hominidae-MICRO"]="#CC6666"
+cols[levels(dados_datasetscomp_MH_2$Sample)== "Mota&Houzel2015"]="gray"
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) +
+
+  scale_color_manual(values = cols)
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+    geom_smooth(method = "lm", se = FALSE) + geom_text(aes(label = ifelse(Sample != "Mota&Houzel2015", Diagnostic, "")), size = 3, check_overlap = TRUE) +
+    geom_point(aes(color = Sample)) +
+    theme_pubr() + guides(shape = FALSE) +
+    scale_color_manual(values = cols) + xlim(3.9, 4.45) + ylim(4, 5.3) + guides(color =FALSE)
+
+ggplot(filter(dados_datasetscomp_MH_2, ROI == "hemisphere", Diagnostic == "CTL"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_point(aes(color = Sample)) +
+    theme_pubr() + guides(shape = FALSE)
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_point(aes(color = Sample)) +
+    theme_pubr() + guides(shape = FALSE)
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(ExposedArea, sqrt(AvgThickness)*TotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) 
+  
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(10^Inorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE)
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(10^Knorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) 
+
+# amostra_Coef %>% kable(digits = 2) %>% kable_styling()
+
+amostra_Coef <- filter(dados_datasetscomp_MH, ROI == "hemisphere") %>%
+  do(fit_amostra = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int = TRUE, conf.level = 0.95)) %>% 
+  unnest(fit_amostra)
+amostra_Coef %>% kable(digits = 2) %>% kable_styling()
+```
+
+## Harmonizado + deaging
+
+```{r echo=FALSE}
+dados_datasetscomp <- dados_datasetscomp %>% mutate(Family = "Hominidae", Species = "Homo sapiens")
+
+dados_MH2015 <- mutate(dados_MH2015, ROI = "hemisphere", Diagnostic = "CTL")
+dados_datasetscomp_MH <- full_join(dados_datasetscomp, dados_MH2015)
+
+amostra_Coef <- filter(dados_datasetscomp_MH, ROI == "hemisphere", Sample != "Mota&Houzel2015", Diagnostic != "PRES ZK", Diagnostic != "MICRO-ZK") %>% group_by(Sample, Diagnostic) %>%
+  do(fit_amostra = tidy(lm(1/2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc ~ logExposedArea_age_decay_shiftc, data = ., na.action = na.omit), conf.int = TRUE, conf.level = 0.95)) %>% 
+  unnest(fit_amostra)
+
+cols = gg_color_hue(length(levels(dados_datasetscomp_MH_2$Sample)))
+# cols[levels(dados_datasetscomp_MH$Family)=="Hominidae-ZK-MICRO"]="black"
+# cols[levels(dados_datasetscomp_MH$Family)=="Hominidae-MICRO"]="#CC6666"
+cols[levels(dados_datasetscomp_MH_2$Sample)== "Mota&Houzel2015"]="gray"
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(logExposedArea_age_decay_shiftc, 1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) +
+  scale_color_manual(values = cols)
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(logExposedArea_age_decay_shiftc, 1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc)) +
+    geom_smooth(method = "lm", se = FALSE) + geom_text(aes(label = ifelse(Sample != "Mota&Houzel2015", Diagnostic, "")), size = 3, check_overlap = TRUE) +
+    geom_point(aes(color = Sample)) +
+    theme_pubr() + guides(shape = FALSE) +
+    scale_color_manual(values = cols) +
+  xlim(4, 4.5) +
+  ylim(4, 5.3) +
+  guides(color =FALSE)
+
+ggplot(filter(dados_datasetscomp_MH_2, ROI == "hemisphere", Diagnostic == "CTL"), aes(logExposedArea_age_decay_shiftc, 1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc)) +
+    geom_smooth(method = "lm", se = FALSE) +
+    geom_point(aes(color = Sample)) +
+    theme_pubr() + guides(shape = FALSE)
+  
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(Inorm_age_decay_shiftc, Snorm_age_decay_shiftc)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE)
+
+ggplot(data = filter(dados_datasetscomp_MH_2, ROI == "hemisphere"), aes(Knorm_age_decay_shiftc, Snorm_age_decay_shiftc)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) 
+
+# amostra_Coef %>% kable(digits = 2) %>% kable_styling()
+
+amostroef <- filter(dados_datasetscomp_MH, ROI == "hemisphere") %>%
+  do(fit_amostra = tidy(lm(1/2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc ~ logExposedArea_age_decay_shiftc, data = ., na.action = na.omit), conf.int = TRUE, conf.level = 0.95)) %>% 
+  unnest(fit_amostra)
+amostra_Coef %>% kable(digits = 2) %>% kable_styling()
+```
+
+## Behavior of k, K and S across Familys
+
+```{r}
+dados_datasetscomp_MH$Family <- as.factor(dados_datasetscomp_MH$Family)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, k, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  ) + ylim(0, 0.5)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(x = Family, y = Knorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  )  + labs(y = "K norm") + ylim(0, -0.45)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, Knorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+  geom_hline(aes(yintercept = min(filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK" | Diagnostic == "MICRO" | Diagnostic == "ZK")$Knorm)), color = "gray", linetype = "dashed") +
+  geom_hline(aes(yintercept = max(filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK" | Diagnostic == "MICRO" | Diagnostic == "ZK")$Knorm)), color = "gray", linetype = "dashed") +
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9) 
+    ) + labs(y = "K norm") + ylim(0,-0.45)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(x = Family, y = 10^Knorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  )  + labs(y = "10^K norm") + ylim(0, 0.6)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, S, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  )
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, Snorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9) 
+  ) + labs(y = "S norm") + ylim(0,4)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, Snorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+  geom_hline(aes(yintercept = min(filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK"| Diagnostic == "ZK" | Diagnostic == "MICRO")$Snorm)), color = "gray", linetype = "dashed") +
+  geom_hline(aes(yintercept = max(filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK"| Diagnostic == "ZK" | Diagnostic == "MICRO")$Snorm)), color = "gray", linetype = "dashed") +
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9) 
+    ) + labs(y = "S norm") + ylim(0,4)
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, 10^Snorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9) 
+  ) + labs(y = "10^S norm")
+
+ggplot(filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(Family, Inorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+         geom_boxplot()+
+  geom_hline(aes(yintercept = min(filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK"| Diagnostic == "ZK" | Diagnostic == "MICRO" )$Inorm)), color = "gray", linetype = "dashed") +
+  geom_hline(aes(yintercept = max(filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK"| Diagnostic == "ZK" | Diagnostic == "MICRO" )$Inorm)), color = "gray", linetype = "dashed") +
+         theme_pubr() +
+  guides(alpha = FALSE) + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  )
+
+
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "MICRO-ZK"] <- "Hominidae-ZK-MICRO"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "MICROVera"] <- "Hominidae-MICROVera"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "MICRO"] <- "Hominidae-MICRO"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Sample == "IDOR-ZK"] <- "Hominidae-ZK"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "CCD"] <- "Hominidae-CCD"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "AD"] <- "Hominidae-AD"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Sample == "dHCP-Control"] <- "Hominidae-newborn (dHCP)"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "MCI"] <- "Hominidae-MCI"
+dados_datasetscomp_MH$Family[dados_datasetscomp_MH$Diagnostic == "CHICK"] <- "Hominidae-CHICK"
+
+mean_K_I_S <-
+  filter(dados_datasetscomp_MH, ROI == "hemisphere") %>% group_by(Family) %>% summarise(
+    mean.K = mean(10^Knorm, na.rm = TRUE),
+    SD_K = sd(10^Knorm, na.rm = TRUE),
+    mean.I = mean(10^I, na.rm = TRUE),
+    SD_I = sd(10^I, na.rm = TRUE),
+    mean.S = mean(10^Snorm, na.rm = TRUE),
+    SD_S = sd(10^Snorm, na.rm = TRUE)
+    )
+
+plot_ly(
+mean_K_I_S,
+  x = ~ mean.K,
+  z =  ~ mean.S,
+  y =  ~ mean.I,
+  color = ~ Family,
+text =  ~ Family,
+  type = "scatter3d",
+  mode = 'markers+text'
+) %>% layout(scene = list(
+  xaxis = list(title = '10^Knorm'),
+  zaxis = list(title = '10^Snorm', scaleanchor = "x"),
+  yaxis = list(title = '10^Inorm', scaleanchor = "x")
+))
+
+ggplot(data = filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(10^Knorm, 10^Snorm, color = Family)) +
+  geom_point() +
+  theme_pubr() 
+
+ggplot(data = filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(10^Knorm, 10^Inorm, color = Family)) +
+  geom_point() +
+  theme_pubr()
+
+cols = gg_color_hue(length(levels(dados_datasetscomp_MH$Family)))
+cols[levels(dados_datasetscomp_MH$Family)=="Hominidae-ZK-MICRO"]="black"
+cols[levels(dados_datasetscomp_MH$Family)=="Hominidae-MICRO"]="#CC6666"
+cols[levels(dados_datasetscomp_MH$Family)=="Hominidae"]="gray"
+
+ggplot(data = filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Family)) +
+  theme_pubr() + guides(shape = FALSE) +
+  scale_color_manual(values = cols)
+
+ggplot(data = filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Family)) +
+  theme_pubr() + guides(shape = FALSE) +
+  scale_color_manual(values = cols) + ylim(4,5.5) + xlim (3.5, 5)
+
+modela2 <- ggplot(data = filter(dados_datasetscomp_MH, ROI == "hemisphere"), aes(10^Inorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Family)) +
+    theme_pubr() +
+  scale_color_manual(values = cols)
+
+modelb2 <- ggplot(data = filter(dados_datasetscomp_MH, ROI == "hemisphere")
+                  , aes(10^Knorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Family)) +
+  theme_pubr() +
+  scale_color_manual(values = cols)
+
+ggarrange(modela2, modelb2, labels = c("A","B"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+
+```
+
+## Only humans
+
+```{r modelo_humanos, echo=FALSE, message=FALSE, warning=FALSE}
+
+dados_datasetscomp2 <- dados_datasetscomp
+dados_datasetscomp2$Sample <- as.character(dados_datasetscomp2$Sample)
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "CTL"] <- "IDOR-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "AD"] <- "IDOR-AD"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "MCI"] <- "IDOR-MCI"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "CCD"] <- "IDOR-CCD"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "ZK"] <- "IDOR-ZK"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "CHIK"] <- "IDOR-CHIK"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "MICRO-ZK"] <- "IDOR-ZK-MICRO"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "MICRO"] <- "IDOR-MICRO"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "PRESZK"] <- "IDOR-PRESZK"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "MICROVera"] <- "IDOR-MICROVera"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" & dados_datasetscomp2$Diagnostic == "OUTROS"] <- "IDOR-OUTROS"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IDOR" &
+                                  dados_datasetscomp2$Diagnostic == "OUTROS"] <- "IDOR-OUTROS"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "CALTECH" &
+                                  dados_datasetscomp2$Diagnostic == "CTL"] <- "CALTECH-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "CALTECH" &
+                                  dados_datasetscomp2$Diagnostic == "CCD"] <- "CALTECH-CCD"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "UCSF" &
+                                  dados_datasetscomp2$Diagnostic == "CTL"] <- "UCSF-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "UCSF" &
+                                  dados_datasetscomp2$Diagnostic == "CCD"] <- "UCSF-CCD"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "HCP500r"] <- "HCP500r-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "OASIS"] <- "OASIS-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "AOMICPIOP1"] <- "AOMICPIOP1-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "AHEAD"] <- "AHEAD-Control"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "AOMICPIOP2"] <- "AOMICPIOP2-Control"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "NKI"] <- "NKI-Control"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "IXI"] <- "IXI-Control"
+
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "ADNI" & dados_datasetscomp2$Diagnostic == "AD"] <- "ADNI-AD"
+dados_datasetscomp2$Sample[dados_datasetscomp2$Sample == "ADNI"& dados_datasetscomp2$Diagnostic == "CTL"] <- "ADNI-Control"
+
+dados_datasetscomp2$Sample <- as.factor(dados_datasetscomp2$Sample)
+
+ggplot(
+  filter(dados_datasetscomp2, ROI == "hemisphere"),
+  aes(ExposedArea, sqrt(AvgThickness)*TotalArea, color = Sample, fill = Sample)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_datasetscomp2$SUBJ)
+  ))
+
+ggplot( filter(dados_datasetscomp2, ROI == "hemisphere"),
+        aes(10^logExposedArea_age_decay, 10^(1 / 2 * logAvgThickness_age_decay + logTotalArea_age_decay), color = Sample, fill = Sample)
+) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE) +
+    #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+    theme_pubr() + labs(x = "ExposedArea (age corrected)", y = "sqrt(AvgThickness)*TotalArea (age corrected)" ,  caption = paste(
+        "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+        n_distinct(dados_datasetscomp2$SUBJ)
+    ))
+
+
+ggplot( filter(dados_datasetscomp2, ROI == "hemisphere", Age < 6),
+        aes(10^logExposedArea_age_decay, 10^(1 / 2 * logAvgThickness_age_decay + logTotalArea_age_decay), color = Sample, fill = Sample)
+) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE) +
+    #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+    theme_pubr() + labs(x = "ExposedArea (age corrected)", y = "sqrt(AvgThickness)*TotalArea (age corrected)" ,  caption = paste(
+        "Humanos de todos os diagnosticos, Age < 6, apenas 1 visita, N = ",
+        n_distinct(dados_datasetscomp2$SUBJ)
+    ))
+
+ggplot( filter(dados_datasetscomp2, ROI == "hemisphere", Age < 6),
+        aes(logExposedArea_age_decay, (1 / 2 * logAvgThickness_age_decay + logTotalArea_age_decay), color = Sample, fill = Sample)
+) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE) +
+    #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+    theme_pubr() + labs(x = "logExposedArea (age corrected)", y = "1 / 2 * logAvgThickness + logTotalArea (age corrected)" ,  caption = paste(
+        "Humanos de todos os diagnosticos, Age < 6, apenas 1 visita, N = ",
+        n_distinct(dados_datasetscomp2$SUBJ)
+    ))
+
+ggplot(
+  filter(dados_datasetscomp2, ROI == "hemisphere"),
+  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Sample, fill = Sample)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_datasetscomp2$SUBJ)
+  ))
+
+ggplot(
+  filter(dados_datasetscomp2, ROI == "hemisphere"),
+  aes(logExposedArea_age_decay, 1 / 2 * logAvgThickness_age_decay + logTotalArea_age_decay, color = Sample, fill = Sample)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_datasetscomp2$SUBJ)
+  ))
+
+ ggplot( filter(dados_datasetscomp2, ROI == "hemisphere"),
+  aes(10^logExposedArea_age_decay, 10^(1 / 2 * logAvgThickness_age_decay + logTotalArea_age_decay), color = Sample, fill = Sample)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_datasetscomp2$SUBJ)
+  ))
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "K") #+ ylim(0, -0.7)
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = K_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "K (age corrected)") #+ ylim(0, -0.7)
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = S_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "S (age corrected)")
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = I_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "I (age corrected)") + ylim(0, 11)
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = I_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "I (age corrected)") 
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = 10^Knorm, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "10^K norm") + ylim(0, 0.6)
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = 10^Knorm_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "10^K norm (age corrected)") # + ylim(0, 0.6)
+
+paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp2, ROI == "hemisphere"), na.action = na.omit), 2, 1.25))
+
+mean_K_I_S <-
+  filter(dados_datasetscomp2, ROI == "hemisphere") %>% group_by(Sample, Diagnostic) %>% summarise(
+    mean.K = mean(10^Knorm, na.rm = TRUE),
+    SD_K = sd(10^Knorm, na.rm = TRUE),
+    mean.I = mean(10^I, na.rm = TRUE),
+    SD_I = sd(10^I, na.rm = TRUE),
+    mean.S = mean(10^Snorm, na.rm = TRUE),
+    SD_S = sd(10^Snorm, na.rm = TRUE)
+    )
+
+ggplot(mean_K_I_S,aes(mean.K, mean.I, color = Sample, fill = Sample)) +
+  geom_point() +
+  theme_pubr() + labs(x = "10^Knorm", y = "10^Inorm")
+
+
+plot_ly(
+mean_K_I_S,
+  x = ~ mean.K,
+  z =  ~ mean.S,
+  y =  ~ mean.I,
+  color = ~ Sample,
+text =  ~ Sample,
+  type = "scatter3d",
+  mode = 'markers+text'
+) %>% layout(scene = list(
+  xaxis = list(title = '10^Knorm'),
+  zaxis = list(title = '10^Snorm', scaleanchor = "x"),
+  yaxis = list(title = '10^Inorm', scaleanchor = "x")
+))
+
+```
+
+```{r}
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+      aes(x = Age, y = K)) +
+    geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+    geom_smooth(color = "black", method = "lm") +
+    theme_pubr() +
+    guides(alpha = FALSE)+ 
+    labs(x = "Age [years]")
+
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+      aes(x = Age, y = 10^Knorm)) +
+    geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+    geom_smooth(color = "black", method = "lm") +
+    theme_pubr() +
+    guides(alpha = FALSE)+ 
+    labs(x = "Age [years]") 
+```
+
+
+```{r}
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+      aes(x = Age, y = K_age_decay)) +
+    geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+    geom_smooth(color = "black", method = "lm") +
+    theme_pubr() +
+    guides(alpha = FALSE)+ 
+    labs(x = "Age [years]") 
+
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+       aes(x = Age, y = 10^Knorm_age_decay)) +
+  geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]")
+
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+       aes(x = Age, y = 10^Snorm_age_decay)) +
+  geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]")
+```
+
+### Harmonizado + deaging
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+ggplot(
+  filter(dados_datasetscomp2, ROI == "hemisphere"),
+  aes(10^logExposedArea_age_decay_shiftc, sqrt(10^logAvgThickness_age_decay_shiftc)*10^logTotalArea_age_decay_shiftc, color = Sample, fill = Sample)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_datasetscomp2$SUBJ)
+  ))
+
+ggplot( filter(dados_datasetscomp2, ROI == "hemisphere"),
+        aes(10^logExposedArea_age_decay_shiftc, 10^(1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc), color = Sample, fill = Sample)
+) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE) +
+    #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+    theme_pubr() + labs(x = "ExposedArea (age corrected-harmonized)", y = "sqrt(AvgThickness)*TotalArea (age corrected-harmonized)" ,  caption = paste(
+        "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+        n_distinct(dados_datasetscomp2$SUBJ)
+    ))
+
+
+ggplot( filter(dados_datasetscomp2, ROI == "hemisphere", Age < 6),
+        aes(10^logExposedArea_age_decay_shiftc, 10^(1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc), color = Sample, fill = Sample)
+) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE) +
+    #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+    theme_pubr() + labs(x = "ExposedArea (age corrected-harmonized)", y = "sqrt(AvgThickness)*TotalArea (age corrected-harmonized)" ,  caption = paste(
+        "Humanos de todos os diagnosticos, Age < 6, apenas 1 visita, N = ",
+        n_distinct(dados_datasetscomp2$SUBJ)
+    ))
+
+ggplot( filter(dados_datasetscomp2, ROI == "hemisphere", Age < 6),
+        aes(logExposedArea_age_decay_shiftc, (1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc), color = Sample, fill = Sample)
+) +
+    geom_point() +
+    geom_smooth(method = "lm", se = TRUE) +
+    #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+    theme_pubr() + labs(x = "logExposedArea (age corrected-harmonized)", y = "1 / 2 * logAvgThickness + logTotalArea (age corrected-harmonized)" ,  caption = paste(
+        "Humanos de todos os diagnosticos, Age < 6, apenas 1 visita, N = ",
+        n_distinct(dados_datasetscomp2$SUBJ)
+    ))
+
+ggplot(
+  filter(dados_datasetscomp2, ROI == "hemisphere"),
+  aes(logExposedArea_age_decay_shiftc, 1 / 2 * logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc, color = Sample, fill = Sample)
+  ) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  #geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp, ROI == "hemisphere"), na.action = na.omit))[1], color = "black") +
+  theme_pubr() + labs(caption = paste(
+  "Humanos de todos os diagnosticos, apenas 1 visita, N = ",
+  n_distinct(dados_datasetscomp2$SUBJ)
+  ))
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = K_age_decay_shiftc, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "K (age corrected-harmonized)")
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = S_age_decay_shiftc, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "S (age corrected-harmonized)")
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = I_age_decay_shiftc, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )  + labs(y = "I (age corrected-harmonized)")
+
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic != "AD" , Diagnostic != "MCI", Diagnostic != "OUTROS"), aes(x = Sample, y = 10^Knorm_age_decay_shiftc, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_boxplot()+
+    theme_pubr() +
+    guides(alpha = FALSE) + 
+    theme(
+        axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+    )
+
+
+paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = filter(dados_datasetscomp2, ROI == "hemisphere"), na.action = na.omit), 2, 1.25))
+
+mean_K_I_S <-
+  filter(dados_datasetscomp2, ROI == "hemisphere") %>% group_by(Sample, Diagnostic) %>% summarise(
+    mean.K = mean(10^Knorm_age_decay_shiftc, na.rm = TRUE),
+    SD_K = sd(10^Knorm_age_decay_shiftc, na.rm = TRUE),
+    mean.I = mean(10^I_age_decay_shiftc, na.rm = TRUE),
+    SD_I = sd(10^I_age_decay_shiftc, na.rm = TRUE),
+    mean.S = mean(10^Snorm_age_decay_shiftc, na.rm = TRUE),
+    SD_S = sd(10^Snorm_age_decay_shiftc, na.rm = TRUE)
+    )
+
+ggplot(mean_K_I_S,aes(mean.K, mean.I, color = Sample, fill = Sample)) +
+  geom_point() +
+  theme_pubr() + labs(x = "10^Knorm (age corrected-harmonized)", y = "10^Inorm (age corrected-harmonized)")
+
+
+plot_ly(
+mean_K_I_S,
+  x = ~ mean.K,
+  z =  ~ mean.S,
+  y =  ~ mean.I,
+  color = ~ Sample,
+text =  ~ Sample,
+  type = "scatter3d",
+  mode = 'markers+text'
+) %>% layout(scene = list(
+  xaxis = list(title = '10^Knorm (age corrected-harmonized)'),
+  zaxis = list(title = '10^Snorm (age corrected-harmonized)', scaleanchor = "x"),
+  yaxis = list(title = '10^Inorm (age corrected-harmonized)', scaleanchor = "x")
+))
+
+```
+
+```{r}
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+      aes(x = Age, y = K_age_decay_shiftc)) +
+    geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+    geom_smooth(color = "black", method = "lm") +
+    theme_pubr() +
+    guides(alpha = FALSE)+ 
+    labs(x = "Age [years]")
+
+ggplot(filter(dados_datasetscomp2, ROI == "hemisphere", Diagnostic == "CTL"),
+      aes(x = Age, y = 10^Knorm_age_decay_shiftc)) +
+    geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+    geom_smooth(color = "black", method = "lm") +
+    theme_pubr() +
+    guides(alpha = FALSE)+ 
+    labs(x = "Age [years]") 
+```
+
+
+# Mapping
+
+## CTL
+
+```{r mapping}
+paste("Total number of CTL subjects =", n_distinct(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$SUBJ))
+paste("Age range CTL. Min age = ", min(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$Age), "; max age = ", max(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$Age))
+
+figS6a <- ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL"),
+       aes(x = Age , y = K)) +
+  geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") 
+
+ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL"),
+       aes(x = (Age*12*4)+40 , y = K)) +
+    geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) +
+    geom_smooth(color = "black", method = "lm") + geom_vline(xintercept = 40, linetype = "dashed") +
+    theme_pubr() +
+    guides(alpha = FALSE)+ 
+    labs(x = "Age [weeks] (age birth, 40 weeks)") + xlim(0,1000)
+
+#figS6a
+
+figS6b <- ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL"),
+       aes(x = Age, y = S)) +
+  geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) + geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE, color = FALSE,fill = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position= "none")
+#figS6b
+
+figS6c <- ggplot(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL"),
+       aes(x = Age, y = I)) + geom_point(aes(color = Sample, fill = Sample, alpha = 0.4)) + geom_smooth(color = "black", linetype = 2) + geom_smooth(color = "black", method = "lm") + theme_pubr() +
+  guides(alpha = FALSE, color = FALSE,fill = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme( legend.position= "none")
+ # figS6c      
+
+figS6 <- ggarrange(figS6a, ggarrange(figS6b, figS6c,labels = c("B","C"), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c("A"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+figS6
+
+cor.test(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$K, filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$Age)
+
+cor.test(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$S, filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$Age)
+
+cor.test(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$I, filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL")$Age)
+```
+
+# Decreasing rate
+
+## K \~ Age
+
+```{r eval=FALSE, include=FALSE}
+#dados_datasetscomp <- filter(dados_datasetscomp)
+#, Sample = "IDOR-Control_young"
+dados_datasetscomp_rate <- filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL" | Diagnostic == "MCI"| Diagnostic == "AD", Sample != "IDOR-CCD-Control")
+dados_datasetscomp_rate$Diagnostic <- factor(dados_datasetscomp_rate$Diagnostic, levels = c("CTL", "MCI","AD"))
+#dados_datasetscomp$Diagnostic <- relevel(dados_datasetscomp$Diagnostic, ref = "CTL")
+
+m.interaction <- lm(K ~ Age*Diagnostic, data = dados_datasetscomp_rate, na.action = na.omit)
+anova(m.interaction)
+summary(m.interaction)
+
+glance <- glance(m.interaction)
+tidy <- tidy(m.interaction)
+
+# Obtain slopes
+m.lst <- lstrends(m.interaction, "Diagnostic", var="Age")
+pairs <- pairs(m.lst)
+
+m.lst <-
+  as_tibble(m.lst) %>% mutate(
+    TX = paste(signif(Age.trend, 2), "±", signif(SE, 2)),
+    CI = paste(signif(lower.CL , 2), ";", signif(upper.CL , 2)),
+    pvalue = filter(tidy, str_starts(term, "Age") )$p.value
+  )
+
+dplyr::select(m.lst, -c(Age.trend, SE, lower.CL, upper.CL)) %>% kable() %>% kable_styling()
+
+#pairs %>% kable() %>% kable_styling()
+ 
+fig_TX_K_age <- ggplot(data = as_tibble(pairs), aes(
+    x = contrast,
+    y = estimate,
+    ymin = estimate - SE,
+    ymax = estimate + SE)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange( position = position_dodge(width = 0.2)) +
+   geom_text(aes(label = str_c("p adj = ", signif(p.value, digits = 2))), nudge_x = 0.3) +
+    coord_flip() + 
+    labs(y =  expression('Differences in slopes ('*Delta*'K/'*Delta*'Age)'), x = "Constrast") +
+  theme_pubr() 
+
+e <- allEffects(m.interaction)
+e <- as.data.frame(e[[1]])
+
+fig_K_age <- ggplot(e, aes(x = Age, y = fit,ymin=lower,ymax=upper, shape = Diagnostic)) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "K", shape = "Diagnostic")
+
+m.lst.comp <- m.lst %>% mutate(Samples = "MA", variable = "K")
+
+a.K = tidy$estimate[tidy$term == "Age"]
+b.K = tidy$estimate[tidy$term == "(Intercept)"]
+a.K.se = tidy$std.error[tidy$term == "Age"]
+b.K.se = tidy$std.error[tidy$term == "(Intercept)"]
+
+lm.K.se = glance$sigma
+
+# a.K
+# b.K
+# lm.K.se
+```
+
+## S \~ Age
+
+```{r eval=FALSE, include=FALSE}
+m.interaction <- lm(S ~ Age*Diagnostic, data = dados_datasetscomp_rate, na.action = na.omit)
+anova(m.interaction)
+summary(m.interaction)
+
+glance <- glance(m.interaction)
+tidy <- tidy(m.interaction) 
+
+# Obtain slopes
+m.lst <- lstrends(m.interaction, "Diagnostic", var="Age")
+pairs <- pairs(m.lst)
+
+m.lst <-
+  as_tibble(m.lst) %>% mutate(
+    TX = paste(signif(Age.trend, 2), "±", signif(SE, 2)),
+    CI = paste(signif(lower.CL , 2), ";", signif(upper.CL , 2)),
+    pvalue = filter(tidy, str_starts(term, "Age") )$p.value
+  )
+
+dplyr::select(m.lst, -c(Age.trend, SE, lower.CL, upper.CL)) %>% kable() %>% kable_styling()
+
+pairs %>% kable() %>% kable_styling()
+
+fig_TX_S_age <- ggplot(data = as_tibble(pairs), aes(
+    x = contrast,
+    y = estimate,
+    ymin = estimate - SE,
+    ymax = estimate + SE)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange( position = position_dodge(width = 0.2)) +
+  geom_text(aes(label = str_c("p adj = ", signif(p.value, digits = 2))), nudge_x = 0.3) +
+    coord_flip() + 
+    labs(y =  expression('Differences in slopes ('*Delta*'S/'*Delta*'Age)'),x = "Constrast") +
+  theme_pubr() +
+  theme(legend.position= "none")
+
+e <- allEffects(m.interaction)
+e <- as.data.frame(e[[1]])
+
+fig_S_age <- ggplot(e, aes(x = Age, y = fit,ymin=lower,ymax=upper, shape = Diagnostic)) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "S", shape = "Diagnostic") +
+  theme(legend.position= "none")
+
+m.lst <- m.lst %>% mutate(Samples = "MA", variable = "S")
+m.lst.comp <- rbind(m.lst.comp, m.lst)
+
+a.S = tidy$estimate[tidy$term == "Age"]
+b.S = tidy$estimate[tidy$term == "(Intercept)"]
+a.S.se = tidy$std.error[tidy$term == "Age"]
+b.S.se = tidy$std.error[tidy$term == "(Intercept)"]
+
+lm.S.se = glance$sigma
+
+```
+
+## I \~ Age
+
+```{r eval=FALSE, include=FALSE}
+m.interaction <- lm(I ~ Age*Diagnostic, data = dados_datasetscomp_rate, na.action = na.omit)
+anova(m.interaction)
+summary(m.interaction)
+
+glance <- glance(m.interaction)
+tidy <- tidy(m.interaction) 
+
+# Obtain slopes
+m.lst <- lstrends(m.interaction, "Diagnostic", var="Age")
+pairs <- pairs(m.lst)
+
+m.lst <-
+  as_tibble(m.lst) %>% mutate(
+    TX = paste(signif(Age.trend, 2), "±", signif(SE, 2)),
+    CI = paste(signif(lower.CL , 2), ";", signif(upper.CL , 2)),
+    pvalue = filter(tidy, str_starts(term, "Age") )$p.value
+  )
+
+dplyr::select(m.lst, -c(Age.trend, SE, lower.CL, upper.CL)) %>% kable() %>% kable_styling()
+
+fig_TX_I_age <- ggplot(data = as_tibble(pairs), aes(
+    x = contrast,
+    y = estimate,
+    ymin = estimate - SE,
+    ymax = estimate + SE)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange( position = position_dodge(width = 0.2)) +
+  geom_text(aes(label = str_c("p adj = ", signif(p.value, digits = 2))), nudge_x = 0.3) +
+    coord_flip() + 
+    labs(y =  expression('Differences in slopes ('*Delta*'I/'*Delta*'Age)'), x = "Constrast") +
+  theme_pubr() +
+  theme(legend.position= "none")
+
+e <- allEffects(m.interaction)
+e <- as.data.frame(e[[1]])
+
+fig_I_age <- ggplot(e, aes(x = Age, y = fit,ymin=lower,ymax=upper, shape = Diagnostic)) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "I", shape = "Diagnostic") +
+  theme(legend.position= "none")
+
+m.lst <- m.lst %>% mutate(Samples = "MA", variable = "I")
+m.lst.comp <- rbind(m.lst.comp, m.lst)
+
+a.I = tidy$estimate[tidy$term == "Age"]
+b.I = tidy$estimate[tidy$term == "(Intercept)"]
+a.I.se = tidy$std.error[tidy$term == "Age"]
+b.I.se = tidy$std.error[tidy$term == "(Intercept)"]
+
+lm.I.se = glance$sigma
+
+```
+
+```{r eval=FALSE, include=FALSE}
+fig_TX_age <- ggarrange(fig_TX_K_age, ggarrange(fig_TX_S_age, fig_TX_I_age,labels = c("B","C"), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c("A"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+fig_TX_age
+
+fig_age <- ggarrange(fig_K_age, ggarrange(fig_S_age, fig_I_age,labels = c("B","C"), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c("A"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+fig_age
+
+```
+
+# Simulating healthy values
+
+```{r Simulating values with linear regression error (coefficients error propagated), eval=FALSE, include=FALSE}
+Age <- as_tibble(runif(1000, min=0, max=100))
+colnames(Age)[1] <- "Age"
+# paste("mean age from the random sample = ",signif(mean(Age$Age),2),"±",signif(sd(Age$Age),2))
+
+pred <- Age %>% mutate(
+  Age = Age,
+  K = a.K * Age + b.K,
+  K.se = sqrt((abs(Age) * a.K.se) ^ 2 + b.K.se ^2),
+  S = a.S * Age + b.S,
+  S.se = sqrt((abs(Age) * a.S.se) ^ 2 + b.S.se ^2),
+  I = a.I * Age + b.I,
+  I.se = sqrt((abs(Age) * a.I.se) ^ 2 + b.I.se ^2),
+  Diagnostic = "CTL-pred",
+  ROI = "hemisphere"
+)
+
+# paste("a.K = ", signif(a.K,2), ", b.K = ", signif(b.K,2), ", a.K.se = ", signif(a.K.se,2), ", b.K.se = ", signif(b.K.se,2))
+# 
+# paste("a.S = ", signif(a.S,2), ", b.S = ", signif(b.S,2), ", a.S.se = ", signif(a.S.se,2), ", b.S.se = ", signif(b.S.se,2))
+# 
+# paste("a.I = ", signif(a.I,2), ", b.I = ", signif(b.I,2), ", a.I.se = ", signif(a.I.se,2), ", b.I.se = ", signif(b.I.se,2))
+
+predictions <- ggplot(pred,
+       aes(x = Age, y = K, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = K - K.se, ymax = K + K.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "Predicted K")
+
+predictions.S <- ggplot(pred,
+       aes(x = Age, y = S, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = S - S.se, ymax = S + S.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "Predicted S")
+predictions.I <- ggplot(pred,
+       aes(x = Age, y = I, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = I - I.se, ymax = I + I.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "Predicted I")
+
+```
+
+```{r Simulating values with Residual standard error, eval=FALSE, include=FALSE}
+pred.rse <- Age %>% mutate(
+  Age = Age,
+  K = a.K * Age + b.K,
+  K.se = lm.K.se,
+  S = a.S * Age + b.S,
+  S.se = lm.S.se,
+  I = a.I * Age + b.I,
+  I.se = lm.I.se,
+  Diagnostic = "CTL-pred.rse",
+  ROI = "hemisphere"
+)
+
+# paste("a.K = ", signif(a.K,2), ", b.K = ", signif(b.K,2), ", lm.K.se = ", signif(lm.K.se,2))
+# 
+# paste("a.S = ", signif(a.S,2), ", b.S = ", signif(b.S,2), ", lm.S.se = ", signif(lm.S.se,2))
+# 
+# paste("a.I = ", signif(a.I,2), ", b.I = ", signif(b.I,2), ", lm.I.se = ", signif(lm.I.se,2))
+
+predictions.rse <- ggplot(pred.rse,
+       aes(x = Age, y = K, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = K - K.se, ymax = K + K.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "RSE K")
+
+predictions.S.rse <- ggplot(pred.rse,
+       aes(x = Age, y = S, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = S - S.se, ymax = S + S.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "RSE S") 
+
+predictions.I.rse <- ggplot(pred.rse,
+       aes(x = Age, y = I, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = I - I.se, ymax = I + I.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "RSE I") 
+```
+
+```{r Simulating values with baeysian approach values, eval=FALSE, include=FALSE}
+a.K = -0.00087 # extraído do modelo do Victor
+b.K = -0.47 # extraído do modelo do Victor
+K.se = 0.02
+
+a.S = -0.000825 # extraído do modelo do Victor
+b.S = -10.645 # extraído do modelo do Victor
+S.se = .087
+
+a.I = -0.001925 # extraído do modelo do Victor
+b.I = -9.827 # extraído do modelo do Victor
+I.se = 0.07
+
+simulation <- Age %>% mutate(
+  Age = Age,
+  K = a.K * Age + b.K,
+  K.se = 0.02,
+  S = a.S * Age + b.S,
+  S.se = 0.087, # Confirmar
+  I = a.I * Age + b.I,
+  I.se = 0.07, # Confirmar
+  Diagnostic = "CTL-simulated",
+  ROI = "hemisphere"
+)
+
+data <- full_join(pred, simulation)
+
+simulationfig <- ggplot(simulation,
+       aes(x = Age, y = K, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = K - K.se, ymax = K + K.se), color = "gray") +
+  geom_smooth(color = "black", linetype = 2) +
+  geom_smooth(color = "black", method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]", y = "Simulated K")
+
+# simulationfig.S <- ggplot(simulation,
+#        aes(x = Age, y = S, alpha = 0.4)) +
+#   geom_point() +
+#   geom_errorbar(aes(ymin = S - S.se, ymax = S + S.se), color = "gray") +
+#   geom_smooth(color = "black", linetype = 2) +
+#   geom_smooth(color = "black", method = "lm") +
+#   theme_pubr() +
+#   guides(alpha = FALSE)+ 
+#   labs(x = "Age [years]", y = "Simulated S") +
+#   theme(axis.title = element_text(size = 11),
+#     axis.text = element_text(size = 10), text = element_text(size = 10))
+# 
+# simulationfig.I <- ggplot(simulation,
+#        aes(x = Age, y = I, alpha = 0.4)) +
+#   geom_point() +
+#   geom_errorbar(aes(ymin = I - I.se, ymax = I + I.se), color = "gray") +
+#   geom_smooth(color = "black", linetype = 2) +
+#   geom_smooth(color = "black", method = "lm") +
+#   theme_pubr() +
+#   guides(alpha = FALSE)+ 
+#   labs(x = "Age [years]", y = "Simulated I ") +
+#   theme(axis.title = element_text(size = 11),
+#     axis.text = element_text(size = 10), text = element_text(size = 10))
+
+
+```
+
+## Comparing methods
+
+We estimate the coefficients and uncertainties with two methods: (a) linear regression and (b) Bayesian modeling. From (a) we calculated the linear regression model error, based on the coefficients errors, and the fluctuation around a certain value of age, with the Residual Standard Error; (b) estimated the fluctuation around a certain value of age.
+
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| Variable          | Method            | Alpha    | Alpha error | Beta  | Beta error | Model error                            | Epsilon / Residual SE |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| K                 | Linear Regression | -0.001  | 1.5e-05     | -0.48 | 0.00068    | $$\sqrt{(|Age|*1.5e-05)^2+0.00068^2}$$ | 0.020                 |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| Bayesian modeling | -0.00087          | --       | -0.47       | --    | --         | 0.02                                   |                       |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| S                 | Linear Regression | -0.00024 | 1e-4     | 11    | 0.0045     | $$\sqrt{(|Age|*1e-04)^2+0.00045^2}$$ | 0.13                 |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| Bayesian modeling | --                | --       | --          | --    | --         | --                                     | --                    |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| I                 | Linear Regression | -0.0031  | 6.3e-05     | 10.5   | 0.0027     | $$\sqrt{(|Age|*6.3e-05)^2+0.00028^2}$$ | 0.084                |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+| Bayesian modeling | --                | --       | --          | --    | --         | --                                     | --                    |
++-------------------+-------------------+----------+-------------+-------+------------+----------------------------------------+-----------------------+
+
+: **Table:** Comparison of estimated coefficients and error from each methodology (not including AOMIC-PIOP2)
+
+```{r eval=FALSE, include=FALSE}
+# healthyvalues <- ggarrange(predictions, simulationfig, predictions.S, simulationfig.S, predictions.I, simulationfig.I, nrow = 3, ncol = 2, labels = c("A", "B", "C", "D", "E", "F"), font.label = list(size = 11))
+
+#healthyvalues
+
+#healthyvalues2 <- ggarrange(predictions, predictions.rse, simulationfig, predictions.S, predictions.S.rse, simulationfig.S, predictions.I, predictions.I.rse, simulationfig.I, nrow = 3, ncol = 3, labels = c("A", "B", "C", "D", "E", "F", "G", "H", "I"), font.label = list(size = 11))
+
+healthyvalues2 <- ggarrange(simulationfig, ggarrange(predictions, predictions.rse, predictions.S, predictions.S.rse, predictions.I, predictions.I.rse, nrow = 3, ncol = 2, labels = c("B", "C", "D", "E", "F", "G")),labels = c("A"), nrow = 1, ncol = 2, font.label = list(size = 11))
+
+healthyvalues2
+
+#ggsave("healthyvalues.jpeg", plot = healthyvalues, dpi=1200, width = 18, height = 22, units = "cm", device = "jpeg")
+```
+
+# dHCP
+```{r eval=FALSE, include=FALSE}
+dados_dHCP <- filter(dados_datasetscomp_MH,Sample == "dHCP-Control")
+
+ggplot(data = filter(dados_dHCP, ROI == "hemisphere") , aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point() +
+  theme_pubr() 
+
+filter(dados_dHCP, ROI == "hemisphere") %>%
+  do(fit_amostra = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int = TRUE, conf.level = 0.95)) %>% 
+  unnest(fit_amostra) %>%
+  kable() %>%
+  kable_styling()
+
+ggplot(data = filter(dados_dHCP, ROI == "hemisphere"), aes(10^I, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point() +
+  theme_pubr() 
+
+ggplot(data = filter(dados_dHCP, ROI == "hemisphere"), aes(10^Knorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point() +
+  theme_pubr() 
+
+ggplot(filter(dados_dHCP, ROI == "hemisphere"),
+       aes(x = Age_at_scan_week, y = K )) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [weeks]")
+
+ggplot(filter(dados_dHCP, ROI == "hemisphere"),
+       aes(x = Age_at_scan_week, y = S)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [weeks]") 
+
+ggplot(filter(dados_dHCP, ROI == "hemisphere"),
+       aes(x = Age_at_scan_week, y = I)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [weeks]") 
+```
+
+
+# Malformations diagnostic characterization in terms of K, S and I
+
+## Dataset description
+
+```{r}
+dados_datasetscomp_malformation <-
+  filter(
+    dados_datasetscomp2,
+    Sample == "IDOR-CCD" |
+      Sample == "IDOR-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control" |
+      Sample == "IDOR-ZK" |
+      Sample == "IDOR-ZK-MICRO" |
+      Sample == "IDOR-MICRO" |
+      Sample == "IDOR-CHIK" |
+      Sample == "IDOR-PRESZK" |
+      Sample == "dHCP-Control"
+  )
+
+filter(dados_datasetscomp_malformation,
+       ROI == "hemisphere") %>%
+  group_by(Sample, Diagnostic) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+
+ggplot(dados_datasetscomp_malformation, aes(Diagnostic, Age, color = Sample, fill = Sample, alpha = 0.4)) +
+  geom_boxplot() + theme_pubr() + guides(alpha = FALSE)
+```
+
+## Simulating healthy controls
+
+Due to the reduced number of healthy controls in the age range of ZK and DCC samples, we choose to simulate values based on the typical values and uncertainties from the previous topic
+
+```{r eval=FALSE, include=FALSE}
+
+ZK.Age <- as_tibble(filter(dados_datasetscomp, Sample == "IDOR-ZK"| Sample == "IDOR-ZK-MICRO" | Sample == "IDOR-CHIK" | Sample == "IDOR-PRESZK" | Sample == "IDOR-MICRO")$Age)
+colnames(ZK.Age)[1] <- "Age"
+
+paste("Min age = ", min(ZK.Age$Age))
+paste("Max age = ", max(ZK.Age$Age))
+paste("mean age = ", paste(signif(mean(ZK.Age$Age), 2), "±", signif(sd(ZK.Age$Age), 2)))
+
+Age.simulation <- as_tibble(runif(1000, min=min(ZK.Age$Age), max=max(ZK.Age$Age)))
+colnames(Age.simulation)[1] <- "Age"
+
+# hist(Age.simulation$Age)
+
+ZK.simulation <-
+  Age.simulation %>% mutate(
+    #Age = rnorm(1000, mean = mean.age, sd = 0.5),
+    Age = Age,
+    K = rnorm(1000,
+              mean = a.K * Age + b.K,
+              #sd = sqrt((abs(Age)*a.K.se)^2+b.K.se^2)),
+              sd = K.se),
+    # S = rnorm(1000,
+    #           mean = a.S * Age + b.S,
+    #           #sd = sqrt((abs(Age)*a.S.se)^2+b.S.se^2)),
+    #           sd = S.se),
+    # I = rnorm(1000,
+    #           mean = a.I * Age + b.I,
+    #           #sd = sqrt((abs(Age)*a.I.se)^2+b.I.se^2)),
+    #           sd = I.se),
+    Diagnostic = "CTL-simulation",
+    ROI = "hemisphere",
+    Sample = "CTL-simulation",
+  Family = "Hominidae",
+  Species = "Homo sapiens"
+  )
+
+Age.simulation <- as_tibble(runif(100, min=25, max=25))
+colnames(Age.simulation)[1] <- "Age"
+
+ZK.simulation_agedecay <-
+  Age.simulation %>% mutate(
+    #Age = rnorm(1000, mean = mean.age, sd = 0.5),
+    Age = Age,
+    K_age_decay = rnorm(100,
+              mean = a.K * Age + b.K,
+              #sd = sqrt((abs(Age)*a.K.se)^2+b.K.se^2)),
+              sd = K.se),
+    # S_age_decay = rnorm(100,
+    #           mean = a.S * Age + b.S,
+    #           #sd = sqrt((abs(Age)*a.S.se)^2+b.S.se^2)),
+    #           sd = S.se),
+    # # Confirmar sd
+    # I_age_decay = rnorm(100,
+    #           mean = a.I * Age + b.I,
+    #           #sd = sqrt((abs(Age)*a.I.se)^2+b.I.se^2)),
+    #           sd = I.se),
+    # Confirmar sd
+    Diagnostic = "CTL-simulation",
+    ROI = "hemisphere",
+    Sample = "CTL-simulation",
+  Family = "Hominidae",
+  Species = "Homo sapiens"
+  )
+
+dados_datasetscomp_malformation <- full_join(dados_datasetscomp_malformation, ZK.simulation) %>% full_join(ZK.simulation_agedecay)
+
+ggplot(dados_datasetscomp_malformation, aes(Diagnostic, Age, color = Sample, fill = Sample, alpha = 0.4)) +
+  geom_boxplot() + theme_pubr() + guides(alpha = FALSE) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  )
+
+```
+
+## Model
+
+```{r}
+dados_datasetscomp_MH_2 <- filter(dados_datasetscomp_MH, ROI == "hemisphere", Diagnostic != "MCI" | Diagnostic != "AD")
+
+dados_datasetscomp_MH_2$Sample <- as.factor(dados_datasetscomp_MH_2$Sample)
+
+cols = gg_color_hue(length(levels(dados_datasetscomp_MH_2$Sample)))
+
+cols[levels(dados_datasetscomp_MH_2$Sample)=="ADNI"]="grey"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="AHEAD"]="grey"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="AOMICPIOP1"]="grey"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="AOMICPIOP2"]="grey"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="HCP500r"]="grey"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="NKI"]="grey"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="OASIS"]="grey"
+
+cols[levels(dados_datasetscomp_MH_2$Sample)=="IDOR-ZK-MICRO"]="black"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="IDOR-MICRO"]="#CC6666"
+cols[levels(dados_datasetscomp_MH_2$Sample)=="IDOR-CCD"]="#9999CC"
+
+model_all <- ggplot(data = dados_datasetscomp_MH_2, aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) +
+  scale_color_manual(values = cols)
+
+modela <- ggplot(data = dados_datasetscomp_MH_2, aes(10^I, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) +
+  scale_color_manual(values = cols)
+
+modelb <- ggplot(data = dados_datasetscomp_MH_2, aes(10^Knorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) +
+  scale_color_manual(values = cols)
+
+model_micro <- ggarrange(modela, modelb, labels = c("A","B"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+model_micro
+
+model_all <- ggplot(data = filter(
+    dados_datasetscomp2,
+    Sample == "IDOR-CCD" |
+      Sample == "IDOR-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control" |
+      Sample == "IDOR-ZK" |
+      Sample == "IDOR-ZK-MICRO" |
+      Sample == "IDOR-MICRO" |
+      Sample == "IDOR-CHIK" |
+      Sample == "IDOR-PRESZK" |
+      Sample == "dHCP-Control" , Diagnostic != "AD", Diagnostic != "MCI", ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE)
+
+ggplot(data = filter(
+    dados_datasetscomp2,
+    Sample == "IDOR-CCD" |
+      Sample == "IDOR-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control" |
+      Sample == "IDOR-ZK" |
+      Sample == "IDOR-ZK-MICRO" |
+      Sample == "IDOR-MICRO" |
+      Sample == "IDOR-CHIK" |
+      Sample == "IDOR-PRESZK" |
+      Sample == "dHCP-Control", Diagnostic != "AD",  Diagnostic != "MCI", ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Diagnostic)) +
+  theme_pubr() + guides(shape = FALSE) 
+
+ggplot(data = filter(dados_datasetscomp_MH, Diagnostic == "CTL" | Diagnostic == "ZK" | Diagnostic == "PRESZK"| Diagnostic == "MICROVera" | Diagnostic == "MICRO-ZK" | Diagnostic == "MICRO", ROI == "hemisphere"), aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Diagnostic)) +
+  theme_pubr() + guides(shape = FALSE) 
+
+model_all
+
+modela <- ggplot(data = filter(
+    dados_datasetscomp2,
+    Sample == "IDOR-CCD" |
+      Sample == "IDOR-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control" |
+      Sample == "IDOR-ZK" |
+      Sample == "IDOR-ZK-MICRO" |
+      Sample == "IDOR-MICRO" |
+      Sample == "IDOR-CHIK" |
+      Sample == "IDOR-PRESZK" |
+      Sample == "dHCP-Control", Diagnostic != "AD",  Diagnostic != "MCI", ROI == "hemisphere"), aes(10^I, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) 
+
+modelb <- ggplot(data = filter(
+    dados_datasetscomp2,
+    Sample == "IDOR-CCD" |
+      Sample == "IDOR-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control" |
+      Sample == "IDOR-ZK" |
+      Sample == "IDOR-ZK-MICRO" |
+      Sample == "IDOR-MICRO" |
+      Sample == "IDOR-CHIK" |
+      Sample == "IDOR-PRESZK" |
+      Sample == "dHCP-Control", Diagnostic != "AD" | Diagnostic != "MCI", ROI == "hemisphere"), aes(10^Knorm, 10^Snorm)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_point(aes(color = Sample)) +
+  theme_pubr() + guides(shape = FALSE) 
+
+model_micro <- ggarrange(modela, modelb, labels = c("A","B"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+model_micro
+
+```
+
+## K, S and I through time - DCC, ZK and MICRO + simualted values
+
+```{r eval=FALSE, include=FALSE}
+#dados_datasetscomp_malformation$Sample[dados_datasetscomp_malformation$Sample == "IDOR-ZK-MICRO"] <- "IDOR-ZK"
+
+simu_allsamplesa <- ggplot(dados_datasetscomp_malformation,
+       aes(x = Age, y = K, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") 
+
+simu_allsamplesb <- ggplot(dados_datasetscomp_malformation,
+       aes(x = Age, y = S, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth( method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position = "none")
+
+simu_allsamplesc <- ggplot(dados_datasetscomp_malformation,
+       aes(x = Age, y = I, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position = "none")
+
+simu_allsamples <- ggarrange(simu_allsamplesa, ggarrange(simu_allsamplesb, simu_allsamplesc,labels = c("B","C"), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c("A"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+simu_allsamples
+
+```
+
+### DCC
+
+```{r eval=FALSE, include=FALSE}
+simu_allsamplesa <- ggplot(filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"),
+       aes(x = Age, y = K, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]")
+
+simu_allsamplesb <- ggplot(filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"),
+       aes(x = Age, y = S, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth( method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position = "none")
+
+simu_allsamplesc <- ggplot(filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"),
+       aes(x = Age, y = I, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position = "none")
+
+simu_allsamples <- ggarrange(simu_allsamplesa, ggarrange(simu_allsamplesb, simu_allsamplesc,labels = c("B","C"), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c("A"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+simu_allsamples
+```
+
+### Arbovirus
+
+```{r eval=FALSE, include=FALSE}
+simu_allsamplesa <- ggplot(filter(dados_datasetscomp_malformation, Sample != "IDOR-CCD" |
+      Sample != "IDOR-Control" |
+      Sample != "UCSF-CCD" |
+      Sample != "UCSF-Control" |
+      Sample != "CALTECH-CCD" |
+      Sample != "CALTECH-Control" ),
+       aes(x = Age, y = K, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") 
+
+simu_allsamplesb <- ggplot(filter(dados_datasetscomp_malformation, Sample != "IDOR-CCD" |
+      Sample != "IDOR-CCD-Control" |
+      Sample != "UCSF-CCD" |
+      Sample != "UCSF-Control" |
+      Sample != "CALTECH-CCD" |
+      Sample != "CALTECH-Control" ),
+       aes(x = Age, y = S, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth( method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position = "none")
+
+simu_allsamplesc <- ggplot(filter(dados_datasetscomp_malformation, Sample != "IDOR-CCD" |
+      Sample != "IDOR-CCD-Control" |
+      Sample != "UCSF-CCD" |
+      Sample != "UCSF-Control" |
+      Sample != "CALTECH-CCD" |
+      Sample != "CALTECH-Control" ),
+       aes(x = Age, y = I, alpha = 0.4, color = Diagnostic, fill = Diagnostic)) +
+  geom_point(aes(shape = Sample)) +
+  geom_smooth(method = "lm") +
+  theme_pubr() +
+  guides(alpha = FALSE)+ 
+  labs(x = "Age [years]") +
+  theme(legend.position = "none")
+
+simu_allsamples <- ggarrange(simu_allsamplesa, ggarrange(simu_allsamplesb, simu_allsamplesc,labels = c("B","C"), nrow = 1, ncol = 2, font.label = list(size = 11)),labels = c("A"), nrow = 2, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+simu_allsamples
+```
+
+#### Time of infection
+```{r}
+dados_arbo <- filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" | Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK", ROI == "hemisphere", !is.na(Trimestre_exantema)
+                     #, Diagnostic != "CHIK"
+                     )
+
+dados_arbo$Trimestre_exantema <- factor(dados_arbo$Trimestre_exantema)
+
+dados_arbo %>% group_by(Trimestre_exantema) %>% summarise(n_distinct(SUBJ))
+
+dados_arbo %>% filter(!is.na(Trimestre_exantema))%>%
+  group_by(Diagnostic) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)))
+
+ggplot(dados_arbo, aes(Trimestre_exantema, K, color = Diagnostic )) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)")
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(Trimestre_exantema, K)) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)") + stat_compare_means(method = "anova")
+
+summary(aov(10^Knorm ~ Trimestre_exantema, data = filter(dados_arbo, Diagnostic == "ZK")))
+
+
+ggplot(dados_arbo, aes(Trimestre_exantema, S, color = Diagnostic)) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)") 
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(Trimestre_exantema, S)) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)") + stat_compare_means(method = "anova") 
+
+summary(aov(10^Snorm ~ Trimestre_exantema, data = filter(dados_arbo, Diagnostic == "ZK")))
+
+ggplot(dados_arbo, aes(Trimestre_exantema, I, color = Diagnostic)) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)")
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(Trimestre_exantema, I)) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)") + stat_compare_means(method = "anova") 
+
+
+summary(aov(10^Inorm ~ Trimestre_exantema, data = filter(dados_arbo, Diagnostic == "ZK")))
+
+# plot_ly(
+# filter(dados_arbo, Diagnostic == "ZK"),
+#   x = ~ 10^Knorm,
+#   z = ~ 10^Snorm,
+#   y = ~ 10^Inorm,
+#   color = ~ Trimestre_exantema,
+#   type = "scatter3d",
+#   mode = 'markers+text'
+# ) %>% layout(scene = list(
+#   xaxis = list(title = '10^Knorm'),
+#   zaxis = list(title = '10^Snorm', scaleanchor = "x"),
+#   yaxis = list(title = '10^Inorm', scaleanchor = "x")
+# ))
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(as.double(Trimestre_exantema), K)) +
+  geom_point() +
+  geom_smooth(method= "lm", color = "black") + 
+  stat_cor() +
+  theme_pubr() +
+  labs(x = "Infection onset (pregnancy quarter)") 
+
+cor.test((filter(dados_arbo, Diagnostic == "ZK")$K), as.double(filter(dados_arbo, Diagnostic == "ZK")$Trimestre_exantema))
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(as.double(Trimestre_exantema), S)) +
+  geom_point() +
+  geom_smooth(method= "lm", color = "black") + 
+  stat_cor() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)")
+
+cor.test((filter(dados_arbo, Diagnostic == "ZK")$S), as.double(filter(dados_arbo, Diagnostic == "ZK")$Trimestre_exantema))
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(as.double(Trimestre_exantema), I)) +
+  geom_point() +
+  geom_smooth(method= "lm", color = "black") + 
+  stat_cor() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)") 
+
+cor.test((filter(dados_arbo, Diagnostic == "ZK")$I), as.double(filter(dados_arbo, Diagnostic == "ZK")$Trimestre_exantema))
+
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(Trimestre_exantema, I/EstimatedTotalIntraCranialVol)) +
+  geom_boxplot() + geom_jitter() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)") + stat_compare_means(method = "anova")
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"), aes(as.double(Trimestre_exantema), I/EstimatedTotalIntraCranialVol)) +
+  geom_point() +
+  geom_smooth(method= "lm", color = "black") + 
+  stat_cor() +
+  theme_pubr() + labs(x = "Infection onset (pregnancy quarter)")
+
+```
+
+##### Time of infection, including controls to compare
+
+```{r}
+# dados_datasetscomp <- dados_datasetscomp %>%
+#  mutate(Trimestre_exantema = ifelse(Trimestre_exantema != 0, Trimestre_exantema, 0))
+# 
+# dados_datasetscomp$Trimestre_exantema <- factor(dados_datasetscomp$Trimestre_exantema)
+
+dados_arbo <- filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere", !is.na(Trimestre_exantema)
+                     #, Diagnostic != "CHIK"
+                     )
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD"), aes(factor(Trimestre_exantema), 10^Knorm_age_decay, color = Diagnostic)) +
+  geom_boxplot() +
+  theme_pubr() +
+  labs(x = "Infection onset (pregnancy quarter)") + stat_compare_means(method = "anova") 
+
+summary(aov(10^Knorm_age_decay ~ Trimestre_exantema*Diagnostic, data = filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD")))
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD"), aes(factor(Trimestre_exantema), 10^Snorm_age_decay, color = Diagnostic)) +
+  geom_boxplot() + 
+  theme_pubr() +
+  labs(x = "Infection onset (pregnancy quarter)") 
+
+summary(aov(10^Snorm_age_decay ~ Trimestre_exantema*Diagnostic, data = filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD")))
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD"), aes(factor(Trimestre_exantema), 10^Inorm_age_decay, color = Diagnostic)) +
+  geom_boxplot() + 
+  theme_pubr() +
+  labs(x = "Infection onset (pregnancy quarter)")
+
+summary(aov(10^Inorm_age_decay ~ Trimestre_exantema*Diagnostic, data = filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD")))
+
+ggplot(filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD", !is.na(EstimatedTotalIntraCranialVol)), aes(factor(Trimestre_exantema), 10^Inorm_age_decay/EstimatedTotalIntraCranialVol, color = Diagnostic)) +
+  geom_boxplot() + 
+  theme_pubr() +
+  labs(x = "Infection onset (pregnancy quarter)")
+
+summary(aov(10^Inorm_age_decay/EstimatedTotalIntraCranialVol ~ Trimestre_exantema*Diagnostic, data = filter(dados_arbo, Diagnostic == "ZK"| Diagnostic == "CTL"| Diagnostic == "CCD")))
+
+```
+
+#### CSF
+
+```{r}
+ggplot(filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere"), aes(x = Diagnostic, y = CSF)) +
+  geom_boxplot() +
+  stat_compare_means() +
+  theme_pubr() 
+
+ggplot(filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere"), aes(x = K, y = CSF)) +
+  geom_point(aes(color = Diagnostic)) +
+  stat_cor() + 
+  theme_pubr() 
+
+ggplot(filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere"), aes(x = EstimatedTotalIntraCranialVol, y = CSF)) +
+    geom_point(aes(color = Diagnostic)) + 
+    stat_cor() + 
+    theme_pubr() 
+
+ggplot(filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere"), aes(x = K, y = CSF/EstimatedTotalIntraCranialVol)) +
+    geom_point(aes(color = Diagnostic)) + 
+    stat_cor() + 
+    theme_pubr() 
+
+ggplot(filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere"), aes(x = S, y = CSF/EstimatedTotalIntraCranialVol)) +
+    geom_point(aes(color = Diagnostic)) + 
+    stat_cor() + 
+    theme_pubr() 
+
+ggplot(filter(dados_datasetscomp, Diagnostic == "ZK" |Diagnostic == "MICRO" |Diagnostic == "MICRO-ZK"|Diagnostic == "PRESZK"|Diagnostic == "CTL"|Diagnostic == "CCD", ROI == "hemisphere"), aes(x = I, y = CSF/EstimatedTotalIntraCranialVol)) +
+    geom_point(aes(color = Diagnostic)) + 
+    stat_cor() + 
+    theme_pubr() 
+
+```
+
+## Interhemispheric balance
+```{r}
+dados_paired <-
+  filter(dados_datasetscomp) %>%
+  dplyr::select(c(SUBJ, Sample, Diagnostic, hemi, ROI, AvgThickness, K, S, I, logAvgThickness_age_decay_shiftc, K_age_decay_shiftc, S_age_decay_shiftc, I_age_decay_shiftc)) %>%
+  pivot_wider(names_from = hemi, values_from = c(AvgThickness, K,S,I, logAvgThickness_age_decay_shiftc, K_age_decay_shiftc, S_age_decay_shiftc, I_age_decay_shiftc)) %>%
+  unnest() %>%
+  filter(!is.na(K_L) & !is.na(K_R)) %>%
+  mutate(delta_T = AvgThickness_L - AvgThickness_R,
+         delta_absT = abs(AvgThickness_L - AvgThickness_R),
+         delta_K = K_L - K_R,
+         delta_absK = abs(K_L - K_R),
+         delta_S = S_L - S_R,
+         delta_absS = abs(S_L - S_R),
+         delta_I = I_L - I_R,
+         delta_absI = abs(I_L - I_R),
+         delta_T_age_decay_shiftc = logAvgThickness_age_decay_shiftc_L - logAvgThickness_age_decay_shiftc_R,
+         delta_absT_age_decay_shiftc = abs(logAvgThickness_age_decay_shiftc_L - logAvgThickness_age_decay_shiftc_R),
+         delta_K_age_decay_shiftc = K_age_decay_shiftc_L - K_age_decay_shiftc_R,
+         delta_absK_age_decay_shiftc = abs(K_age_decay_shiftc_L - K_age_decay_shiftc_R),
+         delta_S_age_decay_shiftc = S_age_decay_shiftc_L - S_age_decay_shiftc_R,
+         delta_absS_age_decay_shiftc = abs(S_age_decay_shiftc_L - S_age_decay_shiftc_R),
+         delta_I_age_decay_shiftc = I_age_decay_shiftc_L - I_age_decay_shiftc_R,
+         delta_absI_age_decay_shiftc = abs(I_age_decay_shiftc_L - I_age_decay_shiftc_R))
+
+dados_paired %>% group_by(Sample, Diagnostic) %>% summarise(N = n_distinct(SUBJ))
+```
+
+### K 
+```{r}
+ggplot(dados_datasetscomp, aes(Diagnostic, K, color = hemi)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(dados_paired, aes(Diagnostic, delta_K)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_K ~ dados_paired$Diagnostic))
+
+dados_datasetscomp %>%
+  group_by(Sample, Diagnostic) %>%
+  cohens_d(K ~ hemi, paired = TRUE) %>%
+  kable() %>% kable_styling()
+
+ggplot(dados_paired, aes(Diagnostic, delta_absK)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_absK ~ dados_paired$Diagnostic))
+# cohens_d(dados_paired, delta_absK ~ Diagnostic) %>% kable() %>% kable_styling()
+
+```
+
+```{r}
+ggplot(dados_datasetscomp, aes(Diagnostic, K_age_decay_shiftc, color = hemi)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+    facet_wrap(ROI ~ .) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(dados_paired, aes(Diagnostic, delta_K_age_decay_shiftc)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+    facet_wrap(ROI ~ .) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_K_age_decay_shiftc ~ dados_paired$Diagnostic))
+
+dados_datasetscomp %>% 
+group_by(Diagnostic) %>%
+  cohens_d(K_age_decay_shiftc ~ hemi, paired = TRUE) %>%
+  kable() %>% kable_styling()
+
+ggplot(dados_paired, aes(Diagnostic, delta_absK_age_decay_shiftc)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_absK_age_decay_shiftc ~ dados_paired$Diagnostic))
+# cohens_d(dados_paired, delta_absK_age_decay_shiftc ~ Diagnostic) %>% kable() %>% kable_styling()
+
+```
+
+### S 
+```{r}
+ggplot(dados_datasetscomp, aes(Diagnostic, S, color = hemi)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(dados_paired, aes(Diagnostic, delta_S)) +
+  geom_boxplot() +
+  # geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_S ~ dados_paired$Diagnostic))
+
+dados_datasetscomp %>%
+  group_by(Sample, Diagnostic) %>%
+  cohens_d(S ~ hemi, paired = TRUE) %>%
+  kable() %>% kable_styling()
+
+ggplot(dados_paired, aes(Diagnostic, delta_absS)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_absS ~ dados_paired$Diagnostic))
+# cohens_d(dados_paired, delta_absS ~ Diagnostic) %>% kable() %>% kable_styling()
+
+```
+
+```{r}
+ggplot(dados_datasetscomp, aes(Diagnostic, S_age_decay_shiftc, color = hemi)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(dados_paired, aes(Diagnostic, delta_S_age_decay_shiftc)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_S_age_decay_shiftc ~ dados_paired$Diagnostic))
+
+dados_datasetscomp %>%
+group_by(Diagnostic) %>%
+  cohens_d(S_age_decay_shiftc ~ hemi, paired = TRUE) %>%
+  kable() %>% kable_styling()
+
+ggplot(dados_paired, aes(Diagnostic, delta_absS_age_decay_shiftc)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_absS_age_decay_shiftc ~ dados_paired$Diagnostic))
+# cohens_d(dados_paired, delta_absS_age_decay_shiftc ~ Diagnostic) %>% kable() %>% kable_styling()
+
+```
+
+
+### I
+```{r}
+ggplot(dados_datasetscomp, aes(Diagnostic, I, color = hemi)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(dados_paired, aes(Diagnostic, delta_I)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_I ~ dados_paired$Diagnostic))
+
+dados_datasetscomp %>%
+  group_by(Sample, Diagnostic) %>%
+  cohens_d(I ~ hemi, paired = TRUE) %>%
+  kable() %>% kable_styling()
+
+ggplot(dados_paired, aes(Diagnostic, delta_absI)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  facet_wrap(ROI ~ .) +
+  theme_pubr() +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_absI ~ dados_paired$Diagnostic))
+# cohens_d(dados_paired, delta_absI ~ Diagnostic) %>% kable() %>% kable_styling()
+
+```
+
+```{r}
+ggplot(dados_datasetscomp, aes(Diagnostic, I_age_decay_shiftc, color = hemi)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(dados_paired, aes(Diagnostic, delta_I_age_decay_shiftc)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_I_age_decay_shiftc ~ dados_paired$Diagnostic))
+
+dados_datasetscomp %>%
+group_by(Diagnostic) %>%
+  cohens_d(I_age_decay_shiftc ~ hemi, paired = TRUE) %>%
+  kable() %>% kable_styling()
+
+ggplot(dados_paired, aes(Diagnostic, delta_absI_age_decay_shiftc)) +
+  geom_boxplot() +
+#  geom_jitter(aes(alpha = 0.2)) +
+  theme_pubr() +
+    facet_wrap(ROI ~ .) +
+  guides(alpha = FALSE) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# summary(aov(dados_paired$delta_absI_age_decay_shiftc ~ dados_paired$Diagnostic))
+# cohens_d(dados_paired, delta_absI_age_decay_shiftc ~ Diagnostic) %>% kable() %>% kable_styling()
+
+```
+
+## Comparing diagnostics
+
+ANOVA and TukeyHSD comparison of means.
+
+```{r echo=FALSE}
+# cor.test(filter(ZK, Diagnostic == "CTL")$K, filter(ZK, Diagnostic == "CTL")$Age)
+
+ZK_boxplot_k <- ggplot(dados_datasetscomp_malformation, aes(Diagnostic, K)) +
+  geom_boxplot() +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_k
+
+ZK_boxplot_s <- ggplot(dados_datasetscomp_malformation, aes(Diagnostic, S)) +
+  geom_boxplot() +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_s
+
+ZK_boxplot_i <- ggplot(dados_datasetscomp_malformation, aes(Diagnostic, I)) +
+  geom_boxplot() +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_i
+ 
+# ZK_boxplot <- ggarrange(ZK_boxplot_k, ggarrange(ZK_boxplot_s, ZK_boxplot_i,labels = c("B","C"), nrow = 2, ncol = 1, font.label = list(size = 11)),labels = c("A"), nrow = 1, ncol = 2, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+# 
+# ZK_boxplot
+
+a <- aov(K ~ Diagnostic, data = dados_datasetscomp_malformation)
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+
+ZK_tukey_k <- ggplot(data = filter(a.TukeyHSD, `p adj` < 0.05 | `p adj` == 0.05), aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in K mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+ZK_tukey_k
+
+b <- aov(S ~ Diagnostic, data = dados_datasetscomp_malformation)
+summary(b)
+b.TukeyHSD <- as.data.frame(TukeyHSD(b)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(b)$`Diagnostic`))
+b.TukeyHSD <- as_tibble(cbind(Contrasts, b.TukeyHSD))
+rownames(b.TukeyHSD) <- NULL
+colnames(b.TukeyHSD)[1] <- c("Contrast")
+b.TukeyHSD <- b.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_s <- ggplot(data = filter(b.TukeyHSD, `p adj` < 0.05 | `p adj` == 0.05), aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in S mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+ZK_tukey_s
+
+c <- aov(I ~ Diagnostic, data = dados_datasetscomp_malformation)
+summary(c)
+c.TukeyHSD <- as.data.frame(TukeyHSD(c)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(c)$`Diagnostic`))
+c.TukeyHSD <- as_tibble(cbind(Contrasts, c.TukeyHSD))
+rownames(c.TukeyHSD) <- NULL
+colnames(c.TukeyHSD)[1] <- c("Contrast")
+c.TukeyHSD <- c.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_i <- ggplot(data = filter(c.TukeyHSD, `p adj` < 0.05 | `p adj` == 0.05), aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in I mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+ZK_tukey_i
+
+#ZK_tukey <- ggarrange(ZK_tukey_k, ZK_tukey_s, ZK_tukey_i,labels = c("A","B","C"), nrow = 3, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+#ZK_tukey
+
+```
+
+### DCC
+
+```{r echo=FALSE}
+# cor.test(filter(ZK, Diagnostic == "CTL")$K, filter(ZK, Diagnostic == "CTL")$Age)
+
+ggplot(filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, logAvgThickness_shiftc)) +
+  geom_boxplot() + stat_compare_means(method = "t.test", label.x = 0.8) +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, GI_shiftc)) +
+  geom_boxplot() + stat_compare_means(method = "t.test", label.x = 0.8) +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ZK_boxplot_k <- ggplot(filter(dados_datasetscomp_malformation,     Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, K_shiftc)) +
+  geom_boxplot() + stat_compare_means(method = "t.test", label.x = 0.8) +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ZK_boxplot_k
+
+ZK_boxplot_s <- ggplot(filter(dados_datasetscomp_malformation,     Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, S_shiftc)) +
+  geom_boxplot() + stat_compare_means(method = "t.test", label.x = 0.8) +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ZK_boxplot_s
+
+ZK_boxplot_i <- ggplot(filter(dados_datasetscomp_malformation,     Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, I_shiftc)) +
+  geom_boxplot() + stat_compare_means(method = "t.test", label.x = 0.5) +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# ZK_boxplot_i
+ 
+ZK_boxplot <- ggarrange(ZK_boxplot_k, ggarrange(ZK_boxplot_s, ZK_boxplot_i,labels = c("B","C"), nrow = 2, ncol = 1, font.label = list(size = 11)),labels = c("A"), nrow = 1, ncol = 2, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+# 
+ZK_boxplot
+
+a <- aov(logAvgThickness_shiftc ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ggplot(data = a.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() + geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in logAvgThickness_shiftc mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+a <- aov(GI_shiftc ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ggplot(data = a.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() + geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in localGI_shiftc mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+a <- aov(K_shiftc ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+
+ZK_tukey_k <- ggplot(data = a.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() + geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in K_shiftc mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+# ZK_tukey_k
+
+b <- aov(S_shiftc ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(b)
+b.TukeyHSD <- as.data.frame(TukeyHSD(b)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(b)$`Diagnostic`))
+b.TukeyHSD <- as_tibble(cbind(Contrasts, b.TukeyHSD))
+rownames(b.TukeyHSD) <- NULL
+colnames(b.TukeyHSD)[1] <- c("Contrast")
+b.TukeyHSD <- b.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_s <- ggplot(data = b.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in S_shiftc mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+# ZK_tukey_s
+
+c <- aov(I_shiftc ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(c)
+c.TukeyHSD <- as.data.frame(TukeyHSD(c)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(c)$`Diagnostic`))
+c.TukeyHSD <- as_tibble(cbind(Contrasts, c.TukeyHSD))
+rownames(c.TukeyHSD) <- NULL
+colnames(c.TukeyHSD)[1] <- c("Contrast")
+c.TukeyHSD <- c.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_i <- ggplot(data = c.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in I_shiftc mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+# ZK_tukey_i
+
+ZK_tukey <- ggarrange(ZK_tukey_k, ZK_tukey_s, ZK_tukey_i,labels = c("A","B","C"), nrow = 3, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+ZK_tukey
+
+```
+
+
+### Age corrected
+
+Removing age effect to fair comparison. 100 points of simulated healthy control subjects with 25 years old (reference age for age correction).
+
+```{r echo=FALSE}
+# cor.test(filter(ZK, Diagnostic == "CTL")$K, filter(ZK, Diagnostic == "CTL")$Age)
+
+ZK_boxplot_k <- ggplot(dados_datasetscomp_malformation, aes(Diagnostic, K_age_decay_shiftc)) +
+  geom_boxplot() +
+  theme_pubr() +
+    labs(y =  "K (age corrected-harmonized)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_k
+
+ZK_boxplot_s <- ggplot(dados_datasetscomp_malformation, aes(Diagnostic, S_age_decay_shiftc)) +
+  geom_boxplot() +
+  theme_pubr() +
+    labs(y =  "S (age corrected-harmonized)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_s
+
+ZK_boxplot_i <- ggplot(dados_datasetscomp_malformation, aes(Diagnostic, I_age_decay_shiftc)) +
+  geom_boxplot() +
+  theme_pubr() + 
+  labs(y =  "I (age corrected-harmonized)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_i
+ 
+# ZK_boxplot <- ggarrange(ZK_boxplot_k, ggarrange(ZK_boxplot_s, ZK_boxplot_i,labels = c("B","C"), nrow = 2, ncol = 1, font.label = list(size = 11)),labels = c("A"), nrow = 1, ncol = 2, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+# 
+# ZK_boxplot
+
+a <- aov(K_age_decay_shiftc ~ Diagnostic, data = dados_datasetscomp_malformation)
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_k <- ggplot(data = filter(a.TukeyHSD, `p adj` < 0.05 | `p adj` == 0.05), aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in K (age corrected-harmonized) mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+ZK_tukey_k
+
+b <- aov(S_age_decay_shiftc ~ Diagnostic, data = dados_datasetscomp_malformation)
+summary(b)
+b.TukeyHSD <- as.data.frame(TukeyHSD(b)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(b)$`Diagnostic`))
+b.TukeyHSD <- as_tibble(cbind(Contrasts, b.TukeyHSD))
+rownames(b.TukeyHSD) <- NULL
+colnames(b.TukeyHSD)[1] <- c("Contrast")
+b.TukeyHSD <- b.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_s <- ggplot(data = filter(b.TukeyHSD, `p adj` < 0.05 | `p adj` == 0.05), aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in S (age corrected-harmonized) mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+ZK_tukey_s
+
+c <- aov(I_age_decay_shiftc ~ Diagnostic, data = dados_datasetscomp_malformation)
+summary(c)
+c.TukeyHSD <- as.data.frame(TukeyHSD(c)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(c)$`Diagnostic`))
+c.TukeyHSD <- as_tibble(cbind(Contrasts, c.TukeyHSD))
+rownames(c.TukeyHSD) <- NULL
+colnames(c.TukeyHSD)[1] <- c("Contrast")
+c.TukeyHSD <- c.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+# ZK_tukey_i <- ggplot(data = filter(c.TukeyHSD, `p adj` < 0.05 | `p adj` == 0.05), aes(x = Contrast,
+  #   y = diff,
+  #   ymin = lwr,
+  #   ymax = upr)) +
+  #   geom_hline(yintercept = 0,
+  #              linetype = "11",
+  #              colour = "grey60") +
+  #   geom_pointrange() +
+  # geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+  #   coord_flip() +
+  #   labs(title = "95% family-wise confidence level", y =  "Diff in I (age corrected-harmonized) mean levels of Diagnostic", x = "Contrast") +
+  #   theme_pubr() 
+
+# ZK_tukey_i
+
+#ZK_tukey <- ggarrange(ZK_tukey_k, ZK_tukey_s, ZK_tukey_i,labels = c("A","B","C"), nrow = 3, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+#ZK_tukey
+
+```
+
+#### DCC
+
+```{r echo=FALSE}
+# cor.test(filter(ZK, Diagnostic == "CTL")$K, filter(ZK, Diagnostic == "CTL")$Age)
+
+ ggplot(filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, logAvgThickness_age_decay)) +
+  geom_boxplot() +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+ZK_boxplot_k <- ggplot(filter(dados_datasetscomp_malformation,     Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, K_age_decay)) +
+  geom_boxplot() +
+  theme_pubr() +
+    labs(y =  "K (age corrected)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+# ZK_boxplot_k
+
+ZK_boxplot_s <- ggplot(filter(dados_datasetscomp_malformation,     Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, S_age_decay)) +
+  geom_boxplot() +
+  theme_pubr() +
+    labs(y =  "S (age corrected)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+# ZK_boxplot_s
+
+ZK_boxplot_i <- ggplot(filter(dados_datasetscomp_malformation,     Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"), aes(Diagnostic, I_age_decay)) +
+  geom_boxplot() +
+  theme_pubr() + 
+  labs(y =  "I (age corrected)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=9))
+
+# ZK_boxplot_i
+ 
+# ZK_boxplot <- ggarrange(ZK_boxplot_k, ggarrange(ZK_boxplot_s, ZK_boxplot_i,labels = c("B","C"), nrow = 2, ncol = 1, font.label = list(size = 11)),labels = c("A"), nrow = 1, ncol = 2, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+# 
+# ZK_boxplot
+
+a <- aov(logAvgThickness_age_decay ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+
+ggplot(data = a.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in logAvgThickness (age corrected) mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+a <- aov(K_age_decay ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(a)
+a.TukeyHSD <- as.data.frame(TukeyHSD(a)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(a)$`Diagnostic`))
+a.TukeyHSD <- as_tibble(cbind(Contrasts, a.TukeyHSD))
+rownames(a.TukeyHSD) <- NULL
+colnames(a.TukeyHSD)[1] <- c("Contrast")
+a.TukeyHSD <- a.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(a.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+
+ZK_tukey_k <- ggplot(data = a.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in K (age corrected) mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+# ZK_tukey_k
+
+b <- aov(S_age_decay ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(b)
+b.TukeyHSD <- as.data.frame(TukeyHSD(b)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(b)$`Diagnostic`))
+b.TukeyHSD <- as_tibble(cbind(Contrasts, b.TukeyHSD))
+rownames(b.TukeyHSD) <- NULL
+colnames(b.TukeyHSD)[1] <- c("Contrast")
+b.TukeyHSD <- b.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(b.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_s <- ggplot(data = b.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in S (age corrected) mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+# ZK_tukey_s
+
+c <- aov(I_age_decay ~ Diagnostic, data = filter(dados_datasetscomp_malformation, Sample == "IDOR-CCD" |
+      Sample == "IDOR-CCD-Control" |
+      Sample == "UCSF-CCD" |
+      Sample == "UCSF-Control" |
+      Sample == "CALTECH-CCD" |
+      Sample == "CALTECH-Control"))
+summary(c)
+c.TukeyHSD <- as.data.frame(TukeyHSD(c)$`Diagnostic`)
+Contrasts <- as.data.frame(rownames(TukeyHSD(c)$`Diagnostic`))
+c.TukeyHSD <- as_tibble(cbind(Contrasts, c.TukeyHSD))
+rownames(c.TukeyHSD) <- NULL
+colnames(c.TukeyHSD)[1] <- c("Contrast")
+c.TukeyHSD <- c.TukeyHSD %>%
+  mutate(Diagnostic.1 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,1], Diagnostic.2 = str_split(c.TukeyHSD$Contrast, pattern = "-", simplify = TRUE)[,2])
+
+ZK_tukey_i <- ggplot(data = c.TukeyHSD, aes(x = Contrast,
+    y = diff,
+    ymin = lwr,
+    ymax = upr)) +
+    geom_hline(yintercept = 0,
+               linetype = "11",
+               colour = "grey60") +
+    geom_pointrange() +
+  geom_text(aes(label = str_c("p adj = ", signif(`p adj`, digits = 2))),   nudge_x = 0.38) +
+    coord_flip() +
+    labs(title = "95% family-wise confidence level", y =  "Diff in I (age corrected) mean levels of Diagnostic", x = "Contrast") +
+    theme_pubr() 
+
+# ZK_tukey_i
+
+ZK_tukey <- ggarrange(ZK_tukey_k, ZK_tukey_s, ZK_tukey_i,labels = c("A","B","C"), nrow = 3, ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "top")
+
+ZK_tukey
+
+```

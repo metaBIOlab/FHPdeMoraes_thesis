@@ -1,0 +1,354 @@
+---
+title: "Typical"
+author: "Fernanda Hansen P. de Moraes"
+date: "05/03/2021"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(readxl)
+library(kableExtra)
+library(lme4)
+library(MuMIn)
+library(lsmeans)
+library(effects)
+library(ggpubr)
+library(arm)
+
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+setwd("~/Downloads")
+
+rh_thickness <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "rh.thickness") %>%
+  dplyr::select(c(SUBJ, rh_MeanThickness_thickness)) %>%
+  mutate(group = "base",
+         t = rh_MeanThickness_thickness) %>%
+  dplyr::select(c(SUBJ, group, t))
+  
+rh_thickness_meanecho <- read_excel("Extract_stats_para_Hansen.xlsx", 
+    sheet = "rh.thickness_MeanEcho") %>%
+  dplyr::select(c(SUBJ, rh_MeanThickness_thickness)) %>%
+  mutate(group = "meanecho",
+         t = rh_MeanThickness_thickness) %>%
+  dplyr::select(c(SUBJ, group, t))
+
+age <- read_excel("Extract_stats_para_Hansen.xlsx", 
+    sheet = "Age in months", col_types = c("skip", 
+        "text", "text", "numeric")) %>%
+  mutate(Age = Age_months/12)
+
+data <- full_join(rh_thickness, rh_thickness_meanecho) %>%
+  full_join(age)
+ 
+```
+
+# Datasets description
+
+We included multiple datasets from different sites to estimate, accounting methodological and "subject" biases, typical values for K, S and I.
+
+```{r description, echo=FALSE}
+data %>%
+  group_by(group) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
+    AvgT =  paste(signif(mean(t), 4), "±", signif(sd(t), 4)),
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+```
+
+```{r}
+ggplot(data, aes( x = Age, y = t, color = group, fill = group, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+
+# AvgThickness \~ Age: rh_MeanThickness_thickness.
+
+## slope + intercept
+```{r}
+m.1 <- lme4::lmer(t ~ Age * group + (1|group) , data = data)
+
+#performance::check_model(m.1)
+
+anova(m.1)
+summary(m.1)
+sigma.hat(m.1) # incertezas
+r.squaredGLMM(m.1) # R quadrado
+
+# mean <- lsmeans(m.1, ~ group, var="Age")
+# m.lstk <- lstrends(m.1, ~ group, var="Age")
+# pairs <- pairs(m.lstk) 
+
+# mean <- as_tibble(mean)
+# m.lstk <- as_tibble(m.lstk)
+
+# tableT <- full_join(mean, m.lstk, by = c("group")) %>% mutate(percent = Age.trend*100/abs(lsmean), Variable = "T")
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+coefs
+
+e <- effect("Age:group", m.1)
+e <- as.data.frame(e)
+
+ggplot(e, aes(x = Age, y = fit,ymin=lower, ymax=upper, shape = group)) + geom_pointrange() + geom_line() + theme_pubr() + labs(x = "Age [years]", y = "rh_MeanThickness_thickness", shape = "group") + 
+  theme(axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10), text = element_text(size = 10))
+
+```
+
+Diferença entre os intercepts dos dois grupos:
+```{r}
+re <- as_tibble(ranef(m.1))
+re
+
+ggplot(re, aes(y = condval, x = as.character(grp))) +
+  geom_errorbar(aes(ymin = condval+1.96*condsd, ymax = condval-1.96*condsd), width = 0.2) +
+  geom_point() + geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_pubr() + 
+  theme(axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10),
+    text = element_text(size = 10),
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  ) + labs(y ="T variation", x = "Sample", caption = "bars represents 95 CI")
+
+re <- re %>% mutate(T_shift = condval, group = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+data <- full_join(data, re) %>% mutate(t_harmonized = t - T_shift)
+```
+
+```{r}
+ggplot(data, aes( x = Age, y = t_harmonized, color = group, fill = group, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+## só intercept
+
+```{r}
+m.1 <- lme4::lmer(t ~ Age + (1|group) , data = data)
+
+#performance::check_model(m.1)
+
+anova(m.1)
+summary(m.1)
+sigma.hat(m.1) # incertezas
+r.squaredGLMM(m.1) # R quadrado
+
+# mean <- lsmeans(m.1, ~ group, var="Age")
+# m.lstk <- lstrends(m.1, ~ group, var="Age")
+# pairs <- pairs(m.lstk) 
+
+# mean <- as_tibble(mean)
+# m.lstk <- as_tibble(m.lstk)
+
+# tableT <- full_join(mean, m.lstk, by = c("group")) %>% mutate(percent = Age.trend*100/abs(lsmean), Variable = "T")
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+coefs
+
+```
+
+Diferença entre os intercepts dos dois grupos:
+```{r}
+re <- as_tibble(ranef(m.1))
+re
+
+ggplot(re, aes(y = condval, x = as.character(grp))) +
+  geom_errorbar(aes(ymin = condval+1.96*condsd, ymax = condval-1.96*condsd), width = 0.2) +
+  geom_point() + geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_pubr() + 
+  theme(axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10),
+    text = element_text(size = 10),
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  ) + labs(y ="T variation", x = "Sample", caption = "bars represents 95 CI")
+
+re <- re %>% mutate(T_shift = condval, group = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+data <- full_join(data, re) %>% mutate(t_harmonized = t - T_shift)
+```
+
+
+```{r}
+ggplot(data, aes( x = Age, y = t_harmonized, color = group, fill = group, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+# AvgThickness \~ Age: rh_caudalmiddlefrontal_thickness.
+
+```{r}
+rh_thickness <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "rh.thickness") %>%
+  dplyr::select(c(SUBJ, rh_caudalmiddlefrontal_thickness)) %>%
+  mutate(group = "base",
+         t = rh_caudalmiddlefrontal_thickness) %>%
+  dplyr::select(c(SUBJ, group, t))
+  
+rh_thickness_meanecho <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "rh.thickness_MeanEcho") %>%
+  dplyr::select(c(SUBJ, rh_caudalmiddlefrontal_thickness)) %>%
+  mutate(group = "meanecho",
+         t = rh_caudalmiddlefrontal_thickness) %>%
+  dplyr::select(c(SUBJ, group, t))
+
+age <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "Age in months", col_types = c("skip", 
+        "text", "text", "numeric")) %>%
+  mutate(Age = Age_months/12)
+
+data <- full_join(rh_thickness, rh_thickness_meanecho) %>%
+  full_join(age)
+```
+
+```{r , echo=FALSE}
+data %>%
+  group_by(group) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
+    AvgT =  paste(signif(mean(t), 4), "±", signif(sd(t), 4)),
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+```
+
+```{r}
+ggplot(data, aes( x = Age, y = t, color = group, fill = group, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+## slope + intercept
+```{r}
+m.1 <- lme4::lmer(t ~ Age * group + (1|group) , data = data)
+
+#performance::check_model(m.1)
+
+anova(m.1)
+summary(m.1)
+sigma.hat(m.1) # incertezas
+r.squaredGLMM(m.1) # R quadrado
+
+# mean <- lsmeans(m.1, ~ group, var="Age")
+# m.lstk <- lstrends(m.1, ~ group, var="Age")
+# pairs <- pairs(m.lstk) 
+
+# mean <- as_tibble(mean)
+# m.lstk <- as_tibble(m.lstk)
+
+# tableT <- full_join(mean, m.lstk, by = c("group")) %>% mutate(percent = Age.trend*100/abs(lsmean), Variable = "T")
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+coefs
+
+e <- effect("Age:group", m.1)
+e <- as.data.frame(e)
+
+ggplot(e, aes(x = Age, y = fit,ymin=lower, ymax=upper, shape = group)) + geom_pointrange() + geom_line() + theme_pubr() + labs(x = "Age [years]", y = "rh_caudalmiddlefrontal_thickness", shape = "group") + 
+  theme(axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10), text = element_text(size = 10))
+
+```
+
+Diferença entre os intercepts dos dois grupos:
+```{r}
+re <- as_tibble(ranef(m.1))
+re
+
+ggplot(re, aes(y = condval, x = as.character(grp))) +
+  geom_errorbar(aes(ymin = condval+1.96*condsd, ymax = condval-1.96*condsd), width = 0.2) +
+  geom_point() + geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_pubr() + 
+  theme(axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10),
+    text = element_text(size = 10),
+    axis.text.x = element_text(angle = 45, hjust = 1, size=9)
+  ) + labs(y ="T variation", x = "Sample", caption = "bars represents 95 CI")
+
+re <- re %>% mutate(T_shift = condval, group = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+data <- full_join(data, re) %>% mutate(t_harmonized = t - T_shift)
+```
+
+```{r}
+ggplot(data, aes( x = Age, y = t_harmonized, color = group, fill = group, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+# Dispersao
+
+```{r}
+rh_thickness <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "rh.thickness") %>%
+  dplyr::select(-c(BrainSegVolNotVent, eTIV)) %>%
+  mutate(group = "base") %>%
+  pivot_longer(!c(SUBJ, group), names_to = "region", values_to = "thickness")
+  
+rh_thickness_meanecho <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "rh.thickness_MeanEcho") %>%
+  dplyr::select(-c(BrainSegVolNotVent, eTIV)) %>%
+  mutate(group = "meanecho") %>%
+  pivot_longer(!c(SUBJ, group), names_to = "region", values_to = "thickness")
+
+age <- read_excel("~/Downloads/Extract_stats_para_Hansen.xlsx", 
+    sheet = "Age in months", col_types = c("skip", 
+        "text", "text", "numeric")) %>%
+  mutate(Age = Age_months/12)
+
+data <- full_join(rh_thickness, rh_thickness_meanecho) %>%
+  full_join(age)
+
+data_wide <- data %>%
+  pivot_wider(names_from = group, values_from = thickness) %>%
+  mutate(diff = meanecho - base)
+
+ggplot(data_wide, aes(x = SUBJ, y = diff, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(x = "SUBJs")
+
+ggplot(data_wide, aes(x = SUBJ, y = 100*diff/base, alpha = 0.4))+
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  guides(alpha = "none") +
+  theme_pubr() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  labs(x = "SUBJs")
+```
+

@@ -1,0 +1,15 @@
+"","grpvar","term","grp","condval","condsd"
+"1","Sample:Diagnostic","(Intercept)","ADNI:AD",0.0203540111762481,0.00848810520616537
+"2","Sample:Diagnostic","(Intercept)","ADNI:CTL",-0.0978426911026612,0.00670890338571342
+"3","Sample:Diagnostic","(Intercept)","AHEAD:CTL",-0.0986398533336783,0.0196794792653209
+"4","Sample:Diagnostic","(Intercept)","AOMICPIOP1:CTL",-0.0982387565184779,0.0137138378809956
+"5","Sample:Diagnostic","(Intercept)","AOMICPIOP2:CTL",-0.097850126323124,0.013215899032384
+"6","Sample:Diagnostic","(Intercept)","HCPr900:CTL",-0.0993574995874811,0.00666843981212942
+"7","Sample:Diagnostic","(Intercept)","IDOR:AD",-0.020354010434663,0.0540754810186743
+"8","Sample:Diagnostic","(Intercept)","IDOR:CTL",-0.0950998181318291,0.0226789955437236
+"9","Sample:Diagnostic","(Intercept)","IDOR:MCI",-3.72971435658914e-12,0.034461230437402
+"10","Sample:Diagnostic","(Intercept)","IXI-Guys:CTL",-0.0995350049468669,0.0111652351971887
+"11","Sample:Diagnostic","(Intercept)","IXI-HH:CTL",-0.0969209148344316,0.0146990295728832
+"12","Sample:Diagnostic","(Intercept)","IXI-IOP:CTL",-0.101750554447535,0.0239371295353104
+"13","Sample:Diagnostic","(Intercept)","NKI:CTL",-0.0976174976365434,0.0152558329903533
+"14","Sample:Diagnostic","(Intercept)","OASIS:CTL",0.982852723700463,0.0249815436473656

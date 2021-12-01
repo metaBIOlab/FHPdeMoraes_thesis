@@ -1,0 +1,799 @@
+---
+title: "CSF biomarkers cut-off proposal for Memory Clinic-IDOR subjects"
+author: "Fernanda Hansen P. de Moraes"
+date: "13/07/2021"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+setwd("~/idor/Gyrification/RRRRRR/comparing_samples/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama funcoes caso necessário
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+path <- str_c("~/idor/Gyrification/STATS/long_tables/")
+
+path_yujiangscript <- str_c("~/idor/Gyrification/STATS/Wang_code_extraction/")
+
+path_yujiangscript_newsurfaces <- str_c("~/idor/Gyrification/STATS/Wang_code_extraction/")
+  
+path_lobes <- str_c("~/idor/Gyrification/STATS/LobesScaling/")
+ 
+path_sessions <- str_c("~/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+dados_datasetscomp <- dados_datasetscomp %>%
+    filter(Sample == "IDOR")
+
+dados_datasetscomp_hemi <- dados_datasetscomp %>%
+    filter(ROI == "hemisphere")
+
+CSF <- dados_datasetscomp %>%
+  filter(!is.na(TAU),!is.na(`AB1-42`), ROI == "hemisphere") %>%
+  mutate(Ab42 = `AB1-42`,
+         Ab40 = `AB1-40`,
+         Ab42_Ab40 = AB1_ratio)
+
+set.seed(1)
+
+```
+
+# Data description
+
+```{r}
+filter(dados_datasetscomp, ROI == "hemisphere", !is.na(TAU), !is.na(`AB1-42`)) %>%
+  group_by(Diagnostic) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+#   age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
+    AvgT = paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
+# AT = paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
+# AE = paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2)),
+    K = paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
+    S = paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
+    I = paste(signif(mean(I), 2), "±", signif(sd(I), 2)),
+    TAU = paste(signif(mean(TAU, na.rm = TRUE), 2), "±", signif(sd(TAU, na.rm = TRUE), 2)),
+    ABETA = paste(signif(mean(`AB1-42`, na.rm = TRUE), 2), "±", signif(sd(`AB1-42`, na.rm = TRUE), 2)),
+    ABETA40 = paste(signif(mean(`AB1-40`, na.rm = TRUE), 2), "±", signif(sd(`AB1-40`, na.rm = TRUE), 2)),
+    ABETA_ratio = paste(signif(mean(AB1_ratio, na.rm = TRUE), 2), "±", signif(sd(AB1_ratio, na.rm = TRUE), 2)),
+    TAU_AB1_42_ratio  = paste(signif(mean(TAU_AB1_42_ratio, na.rm = TRUE), 2), "±", signif(sd(TAU_AB1_42_ratio, na.rm = TRUE), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+```
+
+```{r}
+ggplot(CSF, aes(x = Diagnostic, y = Ab42)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  stat_compare_means(method = "anova", label.y = 1500) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(Ab42 ~ Diagnostic, CSF))
+TukeyHSD(aov(Ab42 ~ Diagnostic, CSF))
+
+ggplot(CSF, aes(x = Diagnostic, y = Ab42_Ab40)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  stat_compare_means(method = "anova", label.y = 0.65) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(Ab42_Ab40 ~ Diagnostic, CSF))
+TukeyHSD(aov(Ab42_Ab40 ~ Diagnostic, CSF))
+
+ggplot(CSF, aes(x = Diagnostic, y = TAU)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  stat_compare_means(method = "anova", label.y = 1300) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(TAU ~ Diagnostic, CSF))
+TukeyHSD(aov(TAU ~ Diagnostic, CSF))
+
+```
+
+# How to define CTL A+ or T+? What should be the cutoff?
+
+Diseased = AD + MCI subjects
+
+```{r}
+CSF <- CSF %>%
+  mutate(
+    diseased = ifelse(Diagnostic == "AD" | Diagnostic == "MCI", "yes", "no")
+  )
+```
+
+# CTL vs AD
+
+Multiple Optimal Cutpoint analysis to infer the methodological differences. 
+Positive class: AD;
+Negative class: NDC;
+Direction: defined automatic for each CSF biomarkers.
+
+## Ab1-42
+
+```{r}
+# cpAB142 <-
+#   cutpointr(
+#     filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     Ab42,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = sum_sens_spec,
+#     na.rm = TRUE
+#   )
+# summary(cpAB142)
+# plot(cpAB142)
+# 
+# cpAB142 <-
+#   cutpointr(
+#     filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     Ab42,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = odds_ratio,
+#     na.rm = TRUE
+#   )
+# summary(cpAB142)
+# plot(cpAB142)
+
+cpAB142 <-
+  cutpointr(
+    filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+    Ab42,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE)
+summary(cpAB142)
+plot(cpAB142)
+
+```
+
+## Ab1-42/Ab1-40
+
+```{r}
+# cpAb42_Ab40 <-
+#   cutpointr(
+#     filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     Ab42_Ab40,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = sum_sens_spec,
+#     na.rm = TRUE
+#   )
+# summary(cpAb42_Ab40)
+# plot(cpAb42_Ab40)
+# 
+# cpAb42_Ab40 <-
+#   cutpointr(
+#     filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     Ab42_Ab40,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = odds_ratio,
+#     na.rm = TRUE
+#   )
+# summary(cpAb42_Ab40)
+# plot(cpAb42_Ab40)
+
+cpAb42_Ab40 <-
+    cutpointr(
+        filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+        Ab42_Ab40,
+        Diagnostic,
+        pos_class = "AD",
+        neg_class = "CTL",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 100,
+        use_midpoints = TRUE)
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+```
+
+## t-Tau
+
+```{r}
+# cpTAU <-
+#   cutpointr(
+#     filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     TAU,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = sum_sens_spec,
+#     na.rm = TRUE
+#   )
+# summary(cpTAU)
+# plot(cpTAU)
+# 
+# cpTAU <-
+#   cutpointr(
+#     filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     TAU,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = odds_ratio,
+#     na.rm = TRUE
+#   )
+# summary(cpTAU)
+# plot(cpTAU)
+
+cpTAU <-
+    cutpointr(
+        filter(CSF, Diagnostic == "AD" | Diagnostic == "CTL"),
+        TAU,
+        Diagnostic,
+        pos_class = "AD",
+        neg_class = "CTL",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 100,
+        use_midpoints = TRUE)
+summary(cpTAU)
+plot(cpTAU)
+
+```
+
+## N (K is our degeneration marker here)
+
+```{r}
+# cpK <-
+#   cutpointr(
+#     filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     K,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = sum_sens_spec,
+#     na.rm = TRUE
+#   )
+# summary(cpK)
+# plot(cpK)
+# 
+# cpK <-
+#   cutpointr(
+#     filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     K,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = odds_ratio,
+#     na.rm = TRUE
+#   )
+# summary(cpK)
+# plot(cpK)
+
+cpK <-
+    cutpointr(
+        filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+        K,
+        Diagnostic,
+        pos_class = "AD",
+        neg_class = "CTL",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 100,
+        use_midpoints = TRUE)
+summary(cpK)
+plot(cpK)
+
+```
+
+
+## N (T is our degeneration marker here)
+
+```{r}
+# cpT <-
+#   cutpointr(
+#     filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     AvgThickness,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = sum_sens_spec,
+#     na.rm = TRUE
+#   )
+# summary(cpT)
+# plot(cpT)
+# 
+# cpT <-
+#   cutpointr(
+#     filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+#     AvgThickness,
+#     Diagnostic,
+#     pos_class = "AD",
+#     neg_class = "CTL",
+#     method = maximize_metric,
+#     metric = odds_ratio,
+#     na.rm = TRUE
+#   )
+# summary(cpT)
+# plot(cpT)
+
+cpT <-
+    cutpointr(
+        filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+       AvgThickness,
+        Diagnostic,
+        pos_class = "AD",
+        neg_class = "CTL",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 100,
+       use_midpoints = TRUE)
+summary(cpT)
+plot(cpT)
+
+```
+
+```{r}
+cpT <-
+    cutpointr(
+        filter(dados_datasetscomp_hemi, Diagnostic == "AD" | Diagnostic == "CTL"),
+       logAvgThickness,
+        Diagnostic,
+        pos_class = "AD",
+        neg_class = "CTL",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 100,
+       use_midpoints = TRUE)
+summary(cpT)
+plot(cpT)
+
+```
+
+## comparing with published cut-offs (Lehmann et al., 2018)
+
+```{r}
+
+ggplot(CSF, aes(x = Diagnostic, y = Ab42)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  geom_hline(aes(yintercept = cpAB142$optimal_cutpoint)) +
+  geom_hline(aes(yintercept = 500), linetype = "dashed") +
+  guides(alpha = "none") +
+  labs(caption= "Dashed line - Lehmann et al.,2108; Solid line - proposed cutpoint")+
+  theme_pubr()
+
+ggplot(CSF, aes(x = Diagnostic, y = Ab42_Ab40)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  geom_hline(aes(yintercept = cpAb42_Ab40$optimal_cutpoint)) +
+  labs(caption= "Dashed line - Lehmann et al.,2108; Solid line - proposed cutpoint") +
+  geom_hline(aes(yintercept = 0.1), linetype = "dashed") +
+  guides(alpha = "none") +
+  theme_pubr()
+
+```
+
+
+# Is K different in CTL with A+ or T+? (cut-off subsample)
+
+```{r eval=FALSE, include=FALSE}
+CSF <- CSF %>%
+  mutate(Ab = ifelse(Ab42 < cpAB142$optimal_cutpoint, str_c("<", signif(cpAB142$optimal_cutpoint,2)), str_c(">", signif(cpAB142$optimal_cutpoint,2))),
+         Ab_ratio = ifelse(Ab42_Ab40 < cpAb42_Ab40$optimal_cutpoint, str_c("<", signif(cpAb42_Ab40$optimal_cutpoint,2)), str_c(">", signif(cpAb42_Ab40$optimal_cutpoint,2))),
+         Tau = ifelse(TAU > cpTAU$optimal_cutpoint|TAU == cpTAU$optimal_cutpoint, str_c(">=", signif(cpTAU$optimal_cutpoint,2)), str_c("<", signif(cpTAU$optimal_cutpoint,2))),
+         N = ifelse(K < cpK$optimal_cutpoint, str_c("<", signif(cpK$optimal_cutpoint,2)), str_c(">", signif(cpK$optimal_cutpoint,2)))
+         )
+ 
+filter(CSF, ROI == "hemisphere") %>%
+  group_by(Diagnostic, Ab, Ab_ratio, Tau) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab, y = K)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+  stat_compare_means() +
+  theme_pubr()
+
+summary(aov(K ~ Ab, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Diagnostic, y = K, color = Ab)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab42, y = K, color = Diagnostic)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = cpAB142$optimal_cutpoint) +
+    geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr() 
+
+summary(aov(K ~ Ab*Diagnostic, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab*Diagnostic, filter(CSF, ROI == "hemisphere")))
+
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab_ratio, y = K)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+summary(aov(K ~ Ab_ratio, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab_ratio, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Diagnostic, y = K, color = Ab_ratio)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab42_Ab40, y = K, color = Diagnostic)) +
+  geom_point(aes(size = Age, alpha = 0.4)) +
+  geom_vline(xintercept = cpAb42_Ab40$optimal_cutpoint) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr() 
+
+summary(aov(K ~ Ab_ratio*Diagnostic, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab_ratio*Diagnostic, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Tau, y = K)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+summary(aov(K ~ Tau, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Tau, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Diagnostic, y = K, color = Tau)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr() 
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = TAU, y = K, color = Diagnostic)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = cpTAU$optimal_cutpoint) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr() 
+
+summary(aov(K ~ Tau*Diagnostic, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Tau*Diagnostic, filter(CSF, ROI == "hemisphere")))
+
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = S, y = K, color = Tau)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = I, y = K, color = Tau)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = S, y = K, color = Ab_ratio)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = I, y = K, color = Ab_ratio)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+# Is K different in CTL with A+ or T+? (proposed cut-off for memory clinic)
+
+```{r echo=FALSE}
+CSF <- CSF %>%
+  mutate(Ab = ifelse(Ab42 > 365, "< 365", "> 365"),
+         Ab_ratio  = ifelse(Ab42_Ab40 < 0.065, "< 0.065", "> 0.065"),
+         Tau = ifelse(TAU > 420 |TAU == 420, ">= 420", "< 420"))
+
+filter(CSF, ROI == "hemisphere") %>%
+  group_by(Diagnostic, Ab, Ab_ratio, Tau) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab, y = K)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr() 
+
+summary(aov(K ~ Ab, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Diagnostic, y = K, color = Ab)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr() 
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab42, y = K, color = Diagnostic)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = 365) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(K ~ Ab*Diagnostic, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab*Diagnostic, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab_ratio, y = K)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+summary(aov(K ~ Ab_ratio, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab_ratio, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Diagnostic, y = K, color = Ab_ratio)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Ab42_Ab40, y = K, color = Diagnostic)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = 0.065) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(K ~ Ab_ratio*Diagnostic, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Ab_ratio*Diagnostic, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Tau, y = K)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr()
+
+summary(aov(K ~ Tau, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Tau, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = Diagnostic, y = K, color = Tau)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr() 
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = TAU, y = K, color = Diagnostic)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = 420) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(K ~ Tau*Diagnostic, filter(CSF, ROI == "hemisphere")))
+TukeyHSD(aov(K ~ Tau*Diagnostic, filter(CSF, ROI == "hemisphere")))
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = S, y = K, color = factor(Tau, levels = c(">= 420", "< 420")))) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  labs(color = "Tau") + 
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = I, y = K, color = factor(Tau, levels = c(">= 420", "< 420")))) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+    labs(color = "Tau") + 
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = S, y = K, color = Ab_ratio)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+ggplot(filter(CSF, ROI == "hemisphere"), aes(x = I, y = K, color = Ab_ratio)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+#### first peak only for IDOR
+
+```{r}
+d <- density(filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "AD")$K)
+valley <- optimize(approxfun(d$x,d$y), interval=c(-0.55,-0.53))$minimum
+
+dados_datasetscomp_lowAD <- filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "AD" ,  K > valley) %>% dplyr::select(c(SUBJ, Diagnostic, hemi))
+
+dados_datasetscomp_highAD <- filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "AD" ,  K < valley | K == valley )%>% dplyr::select(c(SUBJ, Diagnostic, hemi))
+
+dados_datasetscomp_highAD_all <- anti_join(dados_datasetscomp, dados_datasetscomp_lowAD)
+
+dados_datasetscomp_lowAD_all <- anti_join(dados_datasetscomp, dados_datasetscomp_highAD)
+
+ggplot(dados_datasetscomp_highAD_all, aes(x = K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+    geom_density() +
+    guides(alpha = "none") +
+    theme_pubr() +
+  facet_grid(ROI ~. )
+```
+
+#### The category is: bimodal distribution
+```{r}
+CSF <- CSF %>%
+  mutate(ADlevel = ifelse(K > valley, str_c(">", signif(valley,2)), str_c("<=", signif(valley,2))))
+
+ggplot(CSF, aes(x = Diagnostic, y = K, color = ADlevel)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  guides(alpha = "none") +
+    stat_compare_means() +
+  theme_pubr() 
+
+ggplot(CSF, aes(x = TAU, y = K, color = ADlevel)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = 420) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+ggplot(CSF, aes(x = AB1_ratio, y = K, color = ADlevel)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+  geom_vline(xintercept = 0.065) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+ggplot(CSF, aes(x = AB1_ratio, y = K, color = ADlevel)) +
+  geom_point(aes(size = Age), alpha = 0.4) +
+    geom_vline(xintercept = 0.065) +
+      geom_hline(yintercept = cpK$optimal_cutpoint) +
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+
+##### High AD
+
+```{r}
+cpK <-
+  cutpointr(
+    filter(dados_datasetscomp_highAD_all, Diagnostic == "AD" |
+             Diagnostic == "CTL", ROI == "hemisphere"),
+    K,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE
+  )
+summary(cpK)
+plot(cpK)
+
+cpT <-
+  cutpointr(
+    filter(dados_datasetscomp_highAD_all, Diagnostic == "AD" |
+             Diagnostic == "CTL", ROI == "hemisphere"),
+    AvgThickness,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE
+  )
+summary(cpT)
+plot(cpT)
+```
+
+#### Low AD
+
+```{r}
+cpK <-
+  cutpointr(
+    filter(dados_datasetscomp_lowAD_all, Diagnostic == "AD" |
+             Diagnostic == "CTL", ROI == "hemisphere"),
+    K,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE
+  )
+summary(cpK)
+plot(cpK)
+
+cpT <-
+  cutpointr(
+    filter(dados_datasetscomp_lowAD_all, Diagnostic == "AD" |
+             Diagnostic == "CTL", ROI == "hemisphere"),
+    AvgThickness,
+    Diagnostic,
+    pos_class = "AD",
+    neg_class = "CTL",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 100,
+    use_midpoints = TRUE
+  )
+summary(cpT)
+plot(cpT)
+```

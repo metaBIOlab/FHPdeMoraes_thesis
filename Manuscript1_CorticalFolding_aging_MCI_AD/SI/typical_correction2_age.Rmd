@@ -1,0 +1,190 @@
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/comparing_samples/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama funcoes caso necessário
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+  
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+dados_datasetscomp <- dados_datasetscomp %>% filter(Sample != "HCP500r")
+
+# dados_datasetscomp <- dados_datasetscomp %>% filter(Age == 18 | Age > 18)
+
+```
+
+
+```{r}
+dados_datasetscomp_rate <- filter(dados_datasetscomp, ROI == "hemisphere", Diagnostic == "CTL" | Diagnostic == "MCI"| Diagnostic == "AD", Sample != "IDOR-CCD-Control")
+dados_datasetscomp_rate$Diagnostic <- factor(dados_datasetscomp_rate$Diagnostic, levels = c("CTL", "MCI","AD"))
+dados_datasetscomp_rate$Sample <- as.factor(dados_datasetscomp_rate$Sample)
+
+N_SUBJ <- dados_datasetscomp_rate %>% group_by(Diagnostic) %>% summarise(N_SUBJ = n_distinct(SUBJ))
+
+```
+
+# Age error
+
+## AvgThickness \~ Age
+
+```{r echo=FALSE}
+m.1 <- lme4::lmer(AvgThickness ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+# performance::check_model(m.1)
+
+anova(m.1)
+summary(m.1)
+sigma.hat(m.1)
+# r.squaredGLMM(m.1)
+
+re <- as_tibble(ranef(m.1))
+
+re <- filter(re, grpvar == "Sample") %>% mutate(T_shift = condval, Sample = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+dados_datasetscomp_rate <- full_join(dados_datasetscomp_rate, re) %>% mutate(AvgThickness_c = AvgThickness - T_shift)
+
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ AvgThickness * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+```{r echo=FALSE}
+m.1 <- lme4::lmer(AvgThickness_c ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ AvgThickness_c * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+## K \~ Age
+
+```{r}
+m.1 <- lme4::lmer(K ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+re <- as_tibble(ranef(m.1))
+
+rek <- filter(re, grpvar == "Sample") %>% mutate(K_shift = condval, Sample = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+dados_datasetscomp_rate <- full_join(dados_datasetscomp_rate, rek) %>% mutate(K_c = K - K_shift)
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ K * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+```
+
+```{r}
+m.1 <- lme4::lmer(K_c ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ K_c * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+```
+
+## I \~ Age
+
+```{r eval=FALSE, include=FALSE}
+m.1 <- lme4::lmer(I ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+re <- as_tibble(ranef(m.1))
+
+re <- filter(re, grpvar == "Sample") %>% mutate(I_shift = condval, Sample = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+dados_datasetscomp_rate <- full_join(dados_datasetscomp_rate, re) %>% mutate(I_c = I - I_shift)
+
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ I * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+```{r}
+m.1 <- lme4::lmer(I_c ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ I_c * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+## S \~ Age
+
+```{r eval=FALSE, include=FALSE}
+m.1 <- lme4::lmer(S ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+
+re <- as_tibble(ranef(m.1))
+
+re <- filter(re, grpvar == "Sample") %>% mutate(S_shift = condval, Sample = grp) %>% dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+dados_datasetscomp_rate <- full_join(dados_datasetscomp_rate, re) %>% mutate(S_c = S - S_shift)
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ S * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+```{r}
+m.1 <- lme4::lmer(S_c ~ Age * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+
+```{r}
+m.1 <- lme4::lmer(Age ~ S_c * Diagnostic + (1|Sample/Diagnostic), data = dados_datasetscomp_rate)
+
+sigma.hat(m.1)
+
+```
+

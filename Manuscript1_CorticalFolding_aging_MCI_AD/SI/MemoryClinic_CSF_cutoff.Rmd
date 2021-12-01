@@ -1,0 +1,510 @@
+---
+title: "CSF biomarkers cut-off proposal for Memory Clinic-IDOR subjects"
+author: "Fernanda Hansen P. de Moraes"
+date: "14/07/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+setwd("~/Documentos/Gyrification/RRRRRR/comparing_samples/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama funcoes caso necessário
+source("02-funcoes.R")
+
+library(readxl)
+# CSF <- read_excel("~/Documentos/Gyrification/data/Medicoes liquor pacientes memory clinic.xlsx", 
+#     col_types = c("text", "numeric", "text", 
+#         "numeric", "numeric", "numeric", 
+#         "numeric", "numeric", "numeric", 
+#         "numeric", "skip")) %>%
+#   mutate(DX = factor(DX))
+
+CSF <-
+  read_excel("~/Documentos/Gyrification/data/Medicoes liquor pacientes memory clinic3.xlsx") %>%
+  mutate(DX = factor(DX))
+
+set.seed(1)
+```
+
+# Data description
+
+```{r}
+CSF %>%
+  group_by(DX) %>%
+  summarise(
+    N = n_distinct(Subjects),
+    Age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    TAU = paste(signif(mean(Total_tau, na.rm = TRUE), 2), "±", signif(sd(Total_tau, na.rm = TRUE), 2)),
+    Ab42 = paste(signif(mean(Ab42, na.rm = TRUE), 2), "±", signif(sd(Ab42, na.rm = TRUE), 2)),
+    Ab40 = paste(signif(mean(Ab40, na.rm = TRUE), 2), "±", signif(sd(Ab40, na.rm = TRUE), 2)),
+    Ab42_Ab40 = paste(signif(mean(Ab42_Ab40, na.rm = TRUE), 2), "±", signif(sd(Ab42_Ab40, na.rm = TRUE), 2))) %>%
+  kable(digits = 2) %>%
+  kable_styling()
+```
+
+```{r}
+ggplot(CSF, aes(x = DX, y = Ab42)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  stat_compare_means(method = "anova", label.y = 1500) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(Ab42 ~ DX, CSF))
+TukeyHSD(aov(Ab42 ~ DX, CSF))
+
+ggplot(CSF, aes(x = DX, y = Ab42_Ab40)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  stat_compare_means(method = "anova", label.y = 0.65) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(Ab42_Ab40 ~ DX, CSF))
+TukeyHSD(aov(Ab42_Ab40 ~ DX, CSF))
+
+ggplot(CSF, aes(x = DX, y = Total_tau)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  stat_compare_means(method = "anova", label.y = 1300) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+summary(aov(Total_tau ~ DX, CSF))
+TukeyHSD(aov(Total_tau ~ DX, CSF))
+
+```
+
+# CTL vs AD
+
+Multiple Optimal Cutpoint analysis to infer the methodological differences. 
+Positive class: AD;
+Negative class: NDC;
+Direction: defined automatic for each CSF biomarkers.
+
+## Ab1-42
+
+```{r}
+cpAB142 <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Ab42,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE
+  )
+summary(cpAB142)
+plot(cpAB142)
+
+# cpAB142 <-
+#   cutpointr(
+#     filter(CSF, DX == "AD" | DX == "NDC"),
+#     Ab42,
+#     DX,
+#     pos_class = "AD",
+#     neg_class = "NDC",
+#     method = maximize_metric,
+#     metric = youden,
+#     na.rm = TRUE
+#   )
+# summary(cpAB142)
+# plot(cpAB142)
+
+cpAB142 <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Ab42,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = odds_ratio,
+    na.rm = TRUE
+  )
+summary(cpAB142)
+plot(cpAB142)
+
+cpAB142 <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Ab42,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 1000  )
+summary(cpAB142)
+plot(cpAB142)
+
+```
+
+## Ab1-42/Ab1-40
+
+```{r}
+cpAb42_Ab40 <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Ab42_Ab40,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE
+  )
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+# cpAb42_Ab40 <-
+#   cutpointr(
+#     filter(CSF, DX == "AD" | DX == "NDC"),
+#     Ab42_Ab40,
+#     DX,
+#     pos_class = "AD",
+#     neg_class = "NDC",
+#     method = maximize_metric,
+#     metric = youden,
+#     na.rm = TRUE
+#   )
+# summary(cpAb42_Ab40)
+# plot(cpAb42_Ab40)
+
+cpAb42_Ab40 <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Ab42_Ab40,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = odds_ratio,
+    na.rm = TRUE
+  )
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+cpAb42_Ab40 <-
+    cutpointr(
+        filter(CSF, DX == "AD" | DX == "NDC"),
+        Ab42_Ab40,
+        DX,
+        pos_class = "AD",
+        neg_class = "NDC",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 1000    )
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+```
+
+## t-Tau
+
+```{r}
+cpTAU <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Total_tau,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE
+  )
+summary(cpTAU)
+plot(cpTAU)
+
+# cpTAU <-
+#   cutpointr(
+#     filter(CSF, DX == "AD" | DX == "NDC"),
+#     Total_tau,
+#     DX,
+#     pos_class = "AD",
+#     neg_class = "NDC",
+#     method = maximize_metric,
+#     metric = youden,
+#     na.rm = TRUE
+#   )
+# summary(cpTAU)
+# plot(cpTAU)
+
+cpTAU <-
+  cutpointr(
+    filter(CSF, DX == "AD" | DX == "NDC"),
+    Total_tau,
+    DX,
+    pos_class = "AD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = odds_ratio,
+    na.rm = TRUE
+  )
+summary(cpTAU)
+plot(cpTAU)
+
+cpTAU <-
+    cutpointr(
+        filter(CSF, DX == "AD" | DX == "NDC"),
+        Total_tau,
+        DX,
+        pos_class = "AD",
+        neg_class = "NDC",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 1000    )
+summary(cpTAU)
+plot(cpTAU)
+
+```
+
+## comparing with published cut-offs (Lehmann et al., 2018)
+
+```{r}
+
+ggplot(CSF, aes(x = DX, y = Ab42)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  geom_hline(aes(yintercept = cpAB142$optimal_cutpoint)) +
+  geom_hline(aes(yintercept = 500), linetype = "dashed") +
+  guides(alpha = "none") +
+  labs(caption= "Dashed line - Lehmann et al.,2108; Solid line - proposed cutpoint")+
+  theme_pubr()
+
+ggplot(CSF, aes(x = DX, y = Ab42_Ab40)) +
+  geom_boxplot() +
+  geom_jitter(alpha = 0.4) +
+  geom_hline(aes(yintercept = cpAb42_Ab40$optimal_cutpoint)) +
+  labs(caption= "Dashed line - Lehmann et al.,2108; Solid line - proposed cutpoint") +
+  geom_hline(aes(yintercept = 0.1), linetype = "dashed") +
+  guides(alpha = "none") +
+  theme_pubr()
+
+```
+
+# N CTL with A+ or T+
+
+```{r}
+CSF <- CSF %>%
+  mutate(Ab = ifelse(Ab42 < cpAB142$optimal_cutpoint, str_c("<", signif(cpAB142$optimal_cutpoint,2)), str_c(">", signif(cpAB142$optimal_cutpoint,2))),
+        Ab_ratio  = ifelse(Ab42_Ab40 < cpAb42_Ab40$optimal_cutpoint, str_c("<", signif(cpAb42_Ab40$optimal_cutpoint,2)), str_c(">", signif(cpAb42_Ab40$optimal_cutpoint,2))),
+         Tau = ifelse(Total_tau > cpTAU$optimal_cutpoint|Total_tau == cpTAU$optimal_cutpoint, str_c(">=", signif(cpTAU$optimal_cutpoint,2)), str_c("<", signif(cpTAU$optimal_cutpoint,2))))
+
+CSF %>%
+  group_by(Diagnostic, Ab, Tau) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+```
+
+
+# CTL vs LBD
+
+Multiple Optimal Cutpoint analysis to infer the methodological differences. 
+Positive class: LBD;
+Negative class: NDC;
+Direction: defined automatic for each CSF biomarkers.
+
+## Ab1-42
+
+```{r eval=FALSE, include=FALSE}
+cpAB142 <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Ab42,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE
+  )
+summary(cpAB142)
+plot(cpAB142)
+
+# cpAB142 <-
+#   cutpointr(
+#     filter(CSF, DX == "LBD" | DX == "NDC"),
+#     Ab42,
+#     DX,
+#     pos_class = "LBD",
+#     neg_class = "NDC",
+#     method = maximize_metric,
+#     metric = youden,
+#     na.rm = TRUE
+#   )
+# summary(cpAB142)
+# plot(cpAB142)
+
+cpAB142 <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Ab42,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = odds_ratio,
+    na.rm = TRUE
+  )
+summary(cpAB142)
+plot(cpAB142)
+
+cpAB142 <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Ab42,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_boot_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE,
+    boot_runs = 1000  )
+summary(cpAB142)
+plot(cpAB142)
+
+```
+
+## Ab1-42/Ab1-40
+
+```{r eval=FALSE, include=FALSE}
+cpAb42_Ab40 <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Ab42_Ab40,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE
+  )
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+# cpAb42_Ab40 <-
+#   cutpointr(
+#     filter(CSF, DX == "LBD" | DX == "NDC"),
+#     Ab42_Ab40,
+#     DX,
+#     pos_class = "LBD",
+#     neg_class = "NDC",
+#     method = maximize_metric,
+#     metric = youden,
+#     na.rm = TRUE
+#   )
+# summary(cpAb42_Ab40)
+# plot(cpAb42_Ab40)
+
+cpAb42_Ab40 <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Ab42_Ab40,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = odds_ratio,
+    na.rm = TRUE
+  )
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+cpAb42_Ab40 <-
+    cutpointr(
+        filter(CSF, DX == "LBD" | DX == "NDC"),
+        Ab42_Ab40,
+        DX,
+        pos_class = "LBD",
+        neg_class = "NDC",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 1000    )
+summary(cpAb42_Ab40)
+plot(cpAb42_Ab40)
+
+```
+
+```{r eval=FALSE, include=FALSE}
+cpTAU <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Total_tau,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = sum_sens_spec,
+    na.rm = TRUE
+  )
+summary(cpTAU)
+plot(cpTAU)
+
+# cpTAU <-
+#   cutpointr(
+#     filter(CSF, DX == "LBD" | DX == "NDC"),
+#     Total_tau,
+#     DX,
+#     pos_class = "LBD",
+#     neg_class = "NDC",
+#     method = maximize_metric,
+#     metric = youden,
+#     na.rm = TRUE
+#   )
+# summary(cpTAU)
+# plot(cpTAU)
+
+cpTAU <-
+  cutpointr(
+    filter(CSF, DX == "LBD" | DX == "NDC"),
+    Total_tau,
+    DX,
+    pos_class = "LBD",
+    neg_class = "NDC",
+    method = maximize_metric,
+    metric = odds_ratio,
+    na.rm = TRUE
+  )
+summary(cpTAU)
+plot(cpTAU)
+
+cpTAU <-
+    cutpointr(
+        filter(CSF, DX == "LBD" | DX == "NDC"),
+        Total_tau,
+        DX,
+        pos_class = "LBD",
+        neg_class = "NDC",
+        method = maximize_boot_metric,
+        metric = sum_sens_spec,
+        na.rm = TRUE,
+        boot_runs = 1000    )
+summary(cpTAU)
+plot(cpTAU)
+
+
+```

@@ -1,0 +1,1080 @@
+---
+title: "Deaging and Harmonization procedures"
+author: "Fernanda Hansen P. de Moraes"
+output:
+  html_document: 
+    theme: paper
+    df_print: kable
+    fig_width: 8
+    fig_height: 6
+    toc: yes
+    number_sections: yes
+  pdf_document: 
+    toc: yes
+    number_sections: yes
+    keep_tex: yes
+    extra_dependencies: float
+  html_notebook: 
+    toc: yes
+    theme: readable
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	tidy.opts = list(width.cutoff = 60), tidy = TRUE,
+	fig.pos = "!H", out.extra = ""
+)
+
+```
+
+# Setup
+
+```{r}
+# set working directory
+setwd("~/GitHub/CorticalFoldingHumans_deaging_harmonization")
+```
+
+```{r packages}
+# load packages ----
+library(tidyverse)
+library(readxl)
+library(stringr)
+library(lubridate)
+library(kableExtra)
+library(ggpubr)
+library(broom)
+library(MASS)
+library(irr)
+library(effects)
+library(lme4)
+library(lsmeans)
+```
+
+```{r}
+# load datasets ----
+# removing OASIS as it does not have lobes information
+
+data <- read_csv("data.csv") %>%
+  filter(Sample != "OASIS")
+
+```
+
+
+```{r}
+# estimate localGI, k, K, S and I
+# correct for gaussian curvature for lobes estimates
+# estimate localGI, k, K, S and I for lobes
+
+data <- data %>%
+  mutate(
+    logAvgThickness = log10(AvgThickness),
+    logTotalArea = log10(TotalArea),
+    logExposedArea = log10(ExposedArea),
+    localGI = TotalArea / ExposedArea,
+    k = sqrt(AvgThickness) * TotalArea / (ExposedArea ^ 1.25),
+    K = 1 / 4 * log10(AvgThickness ^ 2) + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+    S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness) ^ 2 ,
+    I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness) ^ 2 ,
+    Knorm = K / sqrt(1 + (1 / 4) ^ 2 + (5 / 4) ^ 2),
+    Snorm = S / sqrt((3 / 2) ^ 2 + (3 / 4) ^ 2 + (9 / 4) ^ 2),
+    Inorm = I / sqrt(1 ^ 2 + 1 ^ 2 + 1 ^ 2),
+    c = as.double(ifelse(ROI == "hemisphere", NA, 4 * pi / GaussianCurvature)),
+    TotalArea_corrected = ifelse(ROI == "hemisphere", TotalArea, TotalArea * c),
+    ExposedArea_corrected = ifelse(ROI == "hemisphere", ExposedArea, ExposedArea * c),
+    logTotalArea_corrected = log10(TotalArea_corrected),
+    logExposedArea_corrected = log10(ExposedArea_corrected),
+    localGI_corrected = TotalArea_corrected / ExposedArea_corrected,
+    k_corrected = sqrt(AvgThickness) * TotalArea_corrected / (ExposedArea_corrected ^ 1.25),
+    K_corrected = log10(TotalArea_corrected) - 5 / 4 * log10(ExposedArea_corrected) + 1 / 4 * log10(AvgThickness) ^ 2,
+    I_corrected = log10(TotalArea_corrected) + log10(ExposedArea_corrected) + log10(AvgThickness) ^ 2,
+    S_corrected = 3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness) ^ 2
+  )
+
+```
+
+```{r}
+# Define variables as factor ----
+data$ROI <- as.factor(data$ROI)
+data$Diagnostic <- as.factor(data$Diagnostic)
+data$Sample <- as.factor(data$Sample)
+data$Gender <- as.factor(data$Gender)
+
+```
+
+```{r}
+# select CTL subjects ----
+
+data <- data %>% filter(Diagnostic == "CTL")
+
+```
+
+```{r}
+# target age for deaging ----
+Age.cor = 0 
+```
+
+# Dataset description
+
+```{r echo=FALSE}
+# Sample description
+# commom morphological measurements and age
+
+filter(data, ROI == "hemisphere") %>%
+  group_by(Sample) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
+    AvgT =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
+    AT =  paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
+    AE =  paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+
+# novel morphological measurements and age
+
+filter(data, ROI == "hemisphere") %>%
+  group_by(Sample) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
+    K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
+    S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
+    I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
+  ) %>% kable(digits = 2) %>% kable_styling()
+```
+
+# Deaging
+
+## Is it a linear function?
+
+Visual verification of morphological variables behaviour with aging.
+Considering not all brain regions ages in the same rate, we split it in
+the desired ROI.
+
+### For the hemisphere
+
+#### Base measurements
+
+```{r message=FALSE, warning=FALSE, , echo=FALSE}
+
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample ), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  guides(alpha= "none") +
+  theme_pubr() +
+    scale_x_continuous(name ="Age", 
+                    limits=c(0,100),
+                breaks=c(seq(0,100,25)))
+
+```
+
+```{r message=FALSE, warning=FALSE}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logTotalArea)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample ), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+    guides(alpha= "none") +
+  theme_pubr()+
+    scale_x_continuous(name ="Age", 
+                    limits=c(0,100),
+                breaks=c(seq(0,100,25)))
+
+```
+
+```{r}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logExposedArea)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample ), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+    guides(alpha= "none") +
+  theme_pubr()+
+    scale_x_continuous(name ="Age", 
+                    limits=c(0,100),
+                breaks=c(seq(0,100,25)))
+
+```
+
+#### Novel measurements
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample ), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+    guides(alpha= "none") +
+  theme_pubr()+
+    scale_x_continuous(name ="Age", 
+                    limits=c(0,100),
+                breaks=c(seq(0,100,25)))
+```
+
+```{r}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = S)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample ), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+    guides(alpha= "none") +
+  theme_pubr()+
+    scale_x_continuous(name ="Age", 
+                    limits=c(0,100),
+                breaks=c(seq(0,100,25)))
+```
+
+```{r}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = I)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  guides(alpha= "none") +
+  theme_pubr()+
+    scale_x_continuous(name ="Age", 
+                    limits=c(0,100),
+                breaks=c(seq(0,100,25)))
+
+```
+
+### For the lobes
+
+#### Base measurements
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI != "hemisphere"), aes(x = Age, y = logAvgThickness)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  facet_grid(ROI ~ .) +
+      guides(alpha= "none") +
+  theme_pubr()
+```
+
+```{r}
+ggplot(filter(data, ROI != "hemisphere"), aes(x = Age, y = logTotalArea)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  facet_grid(ROI ~ .) +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+```{r}
+ggplot(filter(data, ROI != "hemisphere"), aes(x = Age, y = logExposedArea)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  facet_grid(ROI ~ .) +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+#### Novel measurements
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI != "hemisphere"), aes(x = Age, y = K)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  facet_grid(ROI ~ .) +
+      guides(alpha= "none") +
+  theme_pubr()
+```
+
+```{r}
+ggplot(filter(data, ROI != "hemisphere"), aes(x = Age, y = S)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  facet_grid(ROI ~ .) +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+```{r}
+ggplot(filter(data, ROI != "hemisphere"), aes(x = Age, y = I)) +
+  geom_point(aes(alpha =0.4, color = Sample, fill = Sample), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm", color = "black") +
+  stat_cor() +
+  facet_grid(ROI ~ .) +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+## Removing age effect - substracting the slope
+
+We remove the age effect at the *base* measurements, Total Area, Exposed Area and Cortical Thickness.
+
+For the deaging process, we use Robust Linear Regressions, as it give weights to each data point and reduce the effects of outliers.
+
+The deaging process **NEED** to be based on **CONTROL** values. Age also affects brain structure, as seens in the figures above. If the deaging process was based on all subjects, we could remove the disease effect across aging. Also, the deaging process is unique for each ROI. Therefore, we regress the variable for each ROI in an independent process here.
+
+Further, we also need to separate for each Sample. All humans tends to have the same behaviour, but heterogeneous acquisition and processing could imply in a Type II Error addition in the results. This will be handle by the harmonization process.
+
+```{r}
+## AvgThickness ---
+# select only CTL subjects with logAvgThickness values.
+# divide by each ROI and sample
+# perform the robust linear regression and visualize all results as a data frame
+
+decay_AvgThickness <-
+  filter(data, Diagnostic == "CTL", !is.na(logAvgThickness), !is.nan(logAvgThickness), !is.infinite(logAvgThickness)) %>% 
+  droplevels() %>%
+  group_by(ROI, Sample) %>% 
+  do(fit_decay_AvgThickness = tidy(rlm(logAvgThickness ~ Age, data = .), conf.int=TRUE)) %>% unnest(cols = c(fit_decay_AvgThickness)) 
+
+# display the results for example
+decay_AvgThickness %>%
+  filter(ROI == "hemisphere") %>%
+  kable() %>%
+  kable_styling()
+```
+
+For removing the age effect, we are insterested in the slope. The slope represents the, supposed for this task, constant rate of decreasing of each variable. Future works can improve this process by describing this behaviour with higher levels functions. We will then create a new variable, called *c*, as the *correction constant*. To describe fully, we also include the standard error of each regression slope.
+
+```{r}
+decay_AvgThickness <- filter(decay_AvgThickness,term == "Age") %>%
+  mutate(c_AvgThickness = estimate,
+         std_error_c_AvgThickness = std.error) %>%
+  dplyr::select(c(ROI, Sample, c_AvgThickness, std_error_c_AvgThickness))
+```
+
+This process will be repeated for the Total Area and Exposed Area.
+
+```{r}
+## TotalArea ---
+decay_logTotalArea <- filter(data, Diagnostic == "CTL", !is.na(log10(TotalArea)), !is.nan(log10(TotalArea)), !is.infinite(log10(TotalArea))) %>%
+  droplevels() %>%
+  group_by(ROI, Sample) %>%
+  do(fit_decay_logTotalArea = tidy(rlm(log10(TotalArea) ~ Age, data = .),conf.int=TRUE)) %>%
+  unnest(cols = c(fit_decay_logTotalArea))
+
+decay_logTotalArea <- filter(decay_logTotalArea, term == "Age") %>%
+  mutate(c_logTotalArea = estimate,
+         std_error_c_logTotalArea = std.error) %>%
+  dplyr::select(c(ROI, Sample, c_logTotalArea, std_error_c_logTotalArea))
+
+## ExposedArea ---
+decay_logExposedArea <- filter(data, Diagnostic == "CTL", !is.na(ExposedArea), !is.nan(ExposedArea), !is.infinite(ExposedArea)) %>%
+  droplevels() %>%
+  group_by(ROI, Sample) %>%
+  do(fit_decay_logExposedArea = tidy(rlm(log10(ExposedArea) ~ Age, data = .), conf.int = TRUE)) %>%
+  unnest(cols = c(fit_decay_logExposedArea))
+
+decay_logExposedArea <- filter(decay_logExposedArea, term == "Age")  %>%
+  mutate(c_logExposedArea = estimate,
+         std_error_c_logExposedArea = std.error) %>%
+  dplyr::select(c(ROI, Sample, c_logExposedArea, std_error_c_logExposedArea))
+
+```
+
+With the correction constants, we will correct every variable and then estimate K, S and I and its normalized values. It is possible to specify any Age reference for the deaging.
+
+Considering the linear function $y = ax + b$, we will estimate the new y trying to have an slope closer to zero (as the original slope will be subtract by its own approximation extracted from the robust linear regression). We have them $y\_{new} = y - a(x - x\_{new})$, in our terms, $y\_{new} = y - c(x - Age.cor)$.
+
+```{r}
+data <- full_join(data, decay_AvgThickness) %>%
+  full_join(decay_logTotalArea) %>%
+  full_join(decay_logExposedArea) %>%
+  mutate(
+    logAvgThickness_age_decay = logAvgThickness - c_AvgThickness * (Age - Age.cor),
+    logTotalArea_age_decay = logTotalArea - c_logExposedArea * (Age - Age.cor),
+    logExposedArea_age_decay = logExposedArea - c_logExposedArea * (Age - Age.cor),
+    K_age_decay = logTotalArea_age_decay + 1/4*logAvgThickness_age_decay^2 - 5/4*logExposedArea_age_decay,
+    I_age_decay = logTotalArea_age_decay + logExposedArea_age_decay + logAvgThickness_age_decay^2,
+    S_age_decay = 3/2*logTotalArea_age_decay + 3/4*logExposedArea_age_decay - 9/4*logAvgThickness_age_decay^2,
+    Knorm_age_decay = K_age_decay/sqrt(1 + (1/4)^2 + (5/4)^2),
+    Snorm_age_decay = S_age_decay/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
+    Inorm_age_decay = I_age_decay/sqrt(1^2+1^2+1^2))
+```
+
+### Result (hemisphere only)
+
+To compare the values, we will have the raw measurements in light gray, and the new values in dark blue
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logAvgThickness, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logAvgThickness_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logTotalArea, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logTotalArea_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logTotalArea), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logTotalArea_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logExposedArea, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logExposedArea_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logExposedArea), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logExposedArea_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = K, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = K_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = K), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = K_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = S, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = S_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = S), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = S_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = I, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = I_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = I), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = I_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+### Changing the age reference, or age target
+
+Let's change to 25 years old. At this age we expect the brain already finished development and did not started aging.
+
+```{r}
+Age.cor = 25 # 
+
+data <- data %>%
+  mutate(
+    logAvgThickness_age_decay = logAvgThickness - c_AvgThickness * (Age - Age.cor),
+    logTotalArea_age_decay = logTotalArea_corrected - c_logExposedArea * (Age - Age.cor),
+    logExposedArea_age_decay = logExposedArea_corrected - c_logExposedArea * (Age - Age.cor),
+    K_age_decay = logTotalArea_age_decay - 5/4*logExposedArea_age_decay + 1/4*logAvgThickness_age_decay^2,
+    I_age_decay = logTotalArea_age_decay + logExposedArea_age_decay + logAvgThickness_age_decay^2,
+    S_age_decay = 3/2*logTotalArea_age_decay + 3/4*logExposedArea_age_decay - 9/4*logAvgThickness_age_decay^2,
+    Knorm_age_decay = K_age_decay/sqrt(1 + (1/4)^2 + (-5/4)^2),
+    Snorm_age_decay = S_age_decay/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
+    Inorm_age_decay = I_age_decay/sqrt(1^2+1^2+1^2))
+```
+
+How changing the correction Age affects of Cortical Thickness and K deaging:
+```{r , echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logAvgThickness, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logAvgThickness_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = K, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = K_age_decay, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = K), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = K_age_decay), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+# Harmonization
+
+The harmonization procedure is useful to combine multiple datasets to improve the statistical power, expand the findings to other Samples and studies and validating the findings of a local Sample to global results. The heterogeneous methodology limits these comparisons, so we will handle the differences to work the data.
+
+The harmonization procedure follow the same premises as the deaging, but here we assume all samples follow the same trend. We will them remove the Type II Error by subtracting for each datapoint the residue of its sample.
+
+## Visualization of Type II Error
+
+```{r, echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K, color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+```
+
+If we extrapolate the regression lines we have:
+
+```{r, echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K, color = Sample, fill = Sample), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE) +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+```
+
+We can see how the intercepts at 0 years old are different for the three Samples. With the harmonization procedure, our goal is to have the same intercept for all Samples, because we are assuming this difference is due to the different acquisition and processing materials and methods.
+
+To do this we need to consider the Sample as a random effect in a Linear Mixed Model. The residue will be then the difference between each Sample intercept and a *general* intercept for all datapoints (black dashed line).
+
+```{r, echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere"),
+       aes(x = Age, y = K),
+       alpha = 0.4) +
+  geom_smooth(method = "lm",
+              fullrange = TRUE,
+              aes(color = Sample, fill = Sample)) +
+  geom_smooth(
+    method = "lm",
+    fullrange = TRUE,
+    color = "black",
+    linetype = "dashed"
+  ) +
+  guides(alpha = "none") + # added some transparency to improve visualization
+  theme_pubr() +
+  xlim(0, 100) # human lifespan
+```
+
+Again, our reference are the Control subjects. To keep it simple, we will harmonize the samples only for the hemisphere in this example. The code including the lobes will be available right after.
+
+```{r}
+data_rate <-
+  filter(
+    data,
+    ROI == "hemisphere",
+    Diagnostic == "CTL"
+  )
+
+data_rate$Sample <- as.factor(data_rate$Sample)
+```
+
+## Removing the sample effect - substracting the intercept
+
+As in the deaging, we harmonize the raw measurements. We will use the Cortical Thickness as example again.
+
+```{r}
+## AvgThickness \~ Age ----
+
+m.1 <- lme4::lmer(logAvgThickness ~ Age + (1|Sample), data = data_rate) # run the linear mixed model
+
+as_tibble(ranef(m.1)) # random effects in tibble format
+
+ggplot(as_tibble(ranef(m.1)), aes(x = grp, y = condval)) + 
+  geom_pointrange(aes(ymin = condval - condsd, ymax = condval + condsd)) +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+re <- as_tibble(ranef(m.1)) %>% # extract the random effects
+  mutate(T_shift = condval, Sample = grp) %>% # the condval is the intercept difference for each sample. it is also a constant. here we will refer to it as shift
+  dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+data <- full_join(data, re) %>% mutate(logAvgThickness_shiftc = logAvgThickness - T_shift) # includign the constant in the dataset and estimanting the harmonizaed values
+```
+
+Condval equal to zero means the sample intercept is the same as the *general* regressing line.
+
+```{r}
+## TotalArea \~ Age ----
+
+m.1 <- lme4::lmer(log10(TotalArea) ~ Age + (1|Sample), data = data_rate)
+
+re <- as_tibble(ranef(m.1)) %>%
+  filter(grpvar == "Sample") %>%
+  mutate(AT_shift = condval, Sample = grp) %>%
+  dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+data <- full_join(data, re) %>% mutate(logTotalArea_shiftc = logTotalArea - AT_shift)
+
+## ExposedArea \~ Age ----
+
+m.1 <- lme4::lmer(log10(ExposedArea) ~ Age + (1|Sample), data = data_rate)
+
+re <- as_tibble(ranef(m.1)) %>%
+  filter(grpvar == "Sample") %>%
+  mutate(AE_shift = condval, Sample = grp) %>%
+  dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+data <- full_join(data, re) %>% mutate(logExposedArea_shiftc = logExposedArea - AE_shift)
+
+```
+
+Re-estimating values:
+
+```{r}
+data <- data %>%
+  mutate(
+    K_shiftc = logTotalArea_shiftc + 1/4*logAvgThickness_shiftc^2 - 5/4*logExposedArea_shiftc,
+    I_shiftc = logTotalArea_shiftc + logExposedArea_shiftc + logAvgThickness_shiftc^2,
+    S_shiftc = 3/2*logTotalArea_shiftc + 3/4*logExposedArea_shiftc - 9/4*logAvgThickness_shiftc^2,
+    Knorm_shiftc = K_age_decay/sqrt(1 + (1/4)^2 + (5/4)^2),
+    Snorm__shiftc = S_age_decay/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
+    Inorm_shiftc = I_age_decay/sqrt(1^2+1^2+1^2))
+```
+
+### Result (hemisphere only)
+
+To compare the values, we will have the raw measurements in light gray, and the new values in dark blue
+
+#### Base measurement - Average Cortical Thickness
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logAvgThickness, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logAvgThickness_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+Comparing with the raw data:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+t_a <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+t_b <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespa
+
+t_c <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness_shiftc,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+ t_d <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness_shiftc), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+ 
+ ggarrange(t_a, t_b, t_c, t_d, common.legend = TRUE, ncol = 2)
+```
+
+#### Novel measurement - K
+
+```{r , echo=FALSE}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = K, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = K_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = K), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = K_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = S, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = S_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = S), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = S_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = I, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = I_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = I), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = I_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+```
+
+Comparing with the raw data:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+k_a <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+ k_b <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+k_c <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K_shiftc,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+ k_d <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K_shiftc), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+ 
+ ggarrange(k_a, k_b, k_c, k_d, common.legend = TRUE, ncol = 2)
+```
+
+# Deaging and harmonization in one shot
+
+Combining the two processes is simple as extracting the slope from the linear mixed model used for the harmonization. Here, we also included the lobes.
+
+```{r}
+# filter CTL subjects (again, if you are running this script with other diangostics)
+data_rate <-
+  filter(data, Diagnostic == "CTL")
+
+# assure Sample is a factor
+data_rate$Sample <-
+  as.factor(data_rate$Sample)
+
+# assure ROI is a factor and is in the desired order
+data_rate$ROI <-
+  factor(data_rate$ROI,
+         levels = c("hemisphere", "F", "O", "P", "T"))
+```
+
+First, we run the lmer, then extract the residual for each sample and the *_shift* constant. After, we extract the *Age.trend* constant (called *c* in the previous deaging example).
+Finally, the code re-estimates the variable in all configurations: harmonized, deaged, and both.
+
+Here, we used the linear version of the variables. It does not affect the final result.
+
+```{r}
+
+## AvgThickness ---
+m.1 <- lme4::lmer(AvgThickness ~ Age * ROI + (1 | Sample:ROI), data = data_rate)
+
+re <- as_tibble(ranef(m.1)) %>%
+  filter(grpvar == "Sample:ROI") %>%
+  mutate(
+    T_shift = condval,
+    sd_T_shift = condsd,
+    Sample = str_split(grp,
+                       pattern = ":", simplify = TRUE)[, 1],
+    ROI = str_split(grp,
+                    pattern = ":", simplify = TRUE)[, 2]
+  ) %>%
+  dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+Age.trend <- as_tibble(lstrends(m.1, ~ ROI, var = "Age")) %>%
+  mutate(Age.trend_T = Age.trend) %>%
+  dplyr::select(c(ROI, Age.trend_T))
+
+data <- full_join(data, Age.trend) %>%
+  full_join(re) %>%
+  mutate(
+    AvgThickness_shiftc = AvgThickness - T_shift,
+    AvgThickness_age_decay = AvgThickness - Age.trend_T * (Age - Age.cor),
+    AvgThickness_age_decay_shiftc = AvgThickness - T_shift - Age.trend_T * (Age - Age.cor),
+    logAvgThickness_shiftc = log10(AvgThickness_shiftc),
+    logAvgThickness_age_decay = log10(AvgThickness_age_decay),
+    logAvgThickness_age_decay_shiftc = log10(AvgThickness_age_decay_shiftc)
+  )
+
+
+## TotalArea ---
+m.1 <- lme4::lmer(TotalArea ~ Age * ROI + (1 | Sample:ROI), data = data_rate)
+
+re <- as_tibble(ranef(m.1)) %>%
+  filter(grpvar == "Sample:ROI") %>%
+  mutate(
+    AT_shift = condval,
+    sd_AT_shift = condsd,
+    Sample = str_split(grp,
+                       pattern = ":", simplify = TRUE)[, 1],
+    ROI = str_split(grp,
+                    pattern = ":", simplify = TRUE)[, 2]
+  ) %>%
+  dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+Age.trend <- as_tibble(lstrends(m.1, ~ ROI, var = "Age")) %>%
+  mutate(Age.trend_AT = Age.trend) %>%
+  dplyr::select(c(ROI, Age.trend_AT))
+
+data <- full_join(data, re) %>%
+  full_join(Age.trend) %>%
+  mutate(
+    TotalArea_shiftc = TotalArea - AT_shift,
+    TotalArea_age_decay = TotalArea - Age.trend_AT * (Age - Age.cor),
+    TotalArea_age_decay_shiftc = TotalArea - AT_shift - Age.trend_AT * (Age - Age.cor),
+    logTotalArea_shiftc = log10(TotalArea_shiftc),
+    logTotalArea_age_decay = log10(TotalArea_age_decay), logTotalArea_age_decay_shiftc = log10(TotalArea_age_decay_shiftc))
+
+## ExposedArea ---
+m.1 <- lme4::lmer(ExposedArea ~ Age * ROI + (1 | Sample:ROI), data = data_rate)
+
+re <- as_tibble(ranef(m.1)) %>%
+  filter(grpvar == "Sample:ROI") %>%
+  mutate(
+    AE_shift = condval,
+    sd_AE_shift = condsd,
+    Sample = str_split(grp,
+                       pattern = ":", simplify = TRUE)[, 1],
+    ROI = str_split(grp,
+                    pattern = ":", simplify = TRUE)[, 2]
+  ) %>%
+  dplyr::select(-c(condval, grpvar, term, condsd, grp))
+
+Age.trend <- as_tibble(lstrends(m.1, ~ ROI, var = "Age")) %>%
+  mutate(Age.trend_AE = Age.trend) %>%
+  dplyr::select(c(ROI, Age.trend_AE))
+
+data <- full_join(data, re) %>%
+  full_join(Age.trend) %>%
+  mutate(
+    ExposedArea_shiftc = ExposedArea - AE_shift,
+    ExposedArea_age_decay = ExposedArea - Age.trend_AE * (Age - Age.cor),
+    ExposedArea_age_decay_shiftc = ExposedArea - AE_shift - Age.trend_AE * (Age - Age.cor),
+    logExposedArea_shiftc = log10(ExposedArea_shiftc),
+    logExposedArea_age_decay = log10(ExposedArea_age_decay),
+    logExposedArea_age_decay_shiftc = log10(ExposedArea_age_decay_shiftc)
+  )
+
+```
+
+Re-estimating K, S, and I:
+
+```{r}
+data <- data %>%
+  mutate(
+    K_age_decay = logTotalArea_age_decay + 1 / 4 * logAvgThickness_age_decay ^2 - 5 / 4 * logExposedArea_age_decay,
+    K_shiftc = logTotalArea_shiftc + 1 / 4 * logAvgThickness_shiftc ^2 - 5 / 4 * logExposedArea_shiftc,
+    K_age_decay_shiftc = logTotalArea_age_decay_shiftc + 1 / 4 * logAvgThickness_age_decay_shiftc ^2 - 5 / 4 * logExposedArea_age_decay_shiftc,
+    S_age_decay = 3 / 2 * logTotalArea_age_decay + 3 / 4 * logExposedArea_age_decay - 9 / 2 * logAvgThickness_shiftc^2,
+    S_shiftc = 3 / 2 * logTotalArea_shiftc + 3 / 4 * logExposedArea_shiftc - 9 / 2 * logAvgThickness_shiftc^2,
+    S_age_decay_shiftc = 3 / 2 * logTotalArea_age_decay_shiftc + 3 / 4 * logExposedArea_age_decay_shiftc - 9 / 2 * logAvgThickness_shiftc^2,
+    I_age_decay = logAvgThickness_age_decay + logTotalArea_age_decay + logExposedArea_age_decay^2,
+    I_shiftc = logAvgThickness_shiftc + logTotalArea_shiftc + logExposedArea_shiftc^2,
+    I_age_decay_shiftc = logAvgThickness_age_decay_shiftc + logTotalArea_age_decay_shiftc + logExposedArea_age_decay_shiftc^2,
+    Knorm_shiftc = K_shiftc / sqrt(1 + (1 / 4) ^ 2 + (5 / 2) ^ 2),
+    Snorm_shiftc = S_shiftc / sqrt((3 / 2) ^ 2 + (3 / 4) ^ 2 + (9 / 4) ^ 2),
+    Inorm_shiftc = I_shiftc / sqrt(1 ^ 2 + 1 ^ 2 + 1 ^ 2),
+    Knorm_age_decay = K_age_decay / sqrt(1 + (1 / 4) ^ 2 + (5 / 2) ^ 2),
+    Snorm_age_decay = S_age_decay / sqrt((3 / 2) ^ 2 + (3 / 4) ^ 2 + (9 / 4) ^ 2),
+    Inorm_age_decay = I_age_decay / sqrt(1 ^ 2 + 1 ^ 2 + 1 ^ 2),
+    Knorm_age_decay_shiftc = K_age_decay_shiftc / sqrt(1 + (1 / 4) ^ 2 + (5 / 2) ^ 2),
+    Snorm_age_decay_shiftc = S_age_decay_shiftc / sqrt((3 / 2) ^ 2 +  (3 / 4) ^ 2 + (9 / 4) ^ 2),
+    Inorm_age_decay_shiftc = I_age_decay_shiftc / sqrt(1 ^ 2 + 1 ^ 2 + 1 ^ 2)
+  )
+
+```
+
+## Results
+
+To compare the values, we will have the raw measurements in light gray, and the new values in dark blue.
+
+### Base measurements
+
+```{r}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logAvgThickness, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logAvgThickness_age_decay_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logAvgThickness_age_decay_shiftc), color = "darkblue") +
+        guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logTotalArea, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logTotalArea_age_decay_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logTotalArea), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logTotalArea_age_decay_shiftc), color = "darkblue") +
+  guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = logExposedArea, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = logExposedArea_age_decay_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = logExposedArea), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = logExposedArea_age_decay_shiftc), color = "darkblue") +
+  guides(alpha= "none") +
+  theme_pubr()
+
+```
+
+#### Comparing with the raw data:
+
+```{r}
+t_a <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4)) +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+ t_b <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+t_c <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness_age_decay_shiftc,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4)) +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+ t_d <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = logAvgThickness_age_decay_shiftc), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+ 
+ ggarrange(k_a, k_b, k_c, k_d, common.legend = TRUE, ncol = 2)
+```
+
+### Novel measurements
+
+```{r}
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = K, alpha = 0.4),  color = "grey", 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_point(aes(x = Age, y = K_age_decay_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = K), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = K_age_decay_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = S, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = S_age_decay_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = S), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = S_age_decay_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+
+ggplot(filter(data, ROI == "hemisphere")) +
+  geom_point(aes(x = Age, y = I, alpha = 0.4),  color = "grey") +
+  geom_point(aes(x = Age, y = I_age_decay_shiftc, alpha = 0.4), color = "darkblue") +
+  geom_smooth(method = "lm", aes(x = Age, y = I), color = "grey") +
+  geom_smooth(method = "lm", aes(x = Age, y = I_age_decay_shiftc), color = "darkblue") +
+      guides(alpha= "none") +
+  theme_pubr()
+```
+
+#### Comparing with the raw data:
+
+```{r message=FALSE, warning=FALSE}
+k_a <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+k_b <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+k_c <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K_age_decay_shiftc,  color = Sample, fill = Sample), alpha = 0.4) +
+  geom_point(aes(alpha =0.4), 
+             size = 4, 
+             pch = 21, 
+             colour = 'white') +
+  geom_smooth(method = "lm") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+
+k_d <- ggplot(filter(data, ROI == "hemisphere"), aes(x = Age, y = K_age_decay_shiftc), alpha = 0.4) +
+  geom_smooth(method = "lm", fullrange = TRUE, aes( color = Sample, fill = Sample)) +
+    geom_smooth(method = "lm", fullrange = TRUE, color = "black", linetype = "dashed") +
+  guides(alpha = "none") + # added some transparency to improve visualization  
+  theme_pubr() +
+  xlim(0,100) # human lifespan
+ 
+ ggarrange(k_a, k_b, k_c, k_d, common.legend = TRUE, ncol = 2)
+```
+
+# Limitations and expectations from future works
+
+We are aware that this work is just the begging of a long trajectory in data analysis. We want to use this space to describe some concerns and already known limitations.
+
+Both processes are still dependable on a Control subset of the data. We use the control subset as the reference since the deaging, and the harmonization can remove unwanted effects if applied directly to nontypical or pathological populations. Although, it could be helpful to measure the difference in morphological variables due to different methodologies in the same Sample (e.g., comparing acquisition protocols). 
+
+We could use higher-level functions or split the data into periods of years to avoid considering a constant rate of aging for all human lifespan. Here we are limited by the available and processed data. International consortium and open datasets should fulfill this task. We also want to keep the processes as simple as possible.
+
+We also expect future works to provide rates from smaller brain regions, leading to studies in precise ROI.

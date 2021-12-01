@@ -1,0 +1,440 @@
+---
+title: "Longitudinal"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+setwd("~/Documentos/Gyrification/RRRRRR/comparing_samples")
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama funcoes caso necessário
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+path <- str_c("~/Documentos/Gyrification/STATS/long_tables/")
+
+path_yujiangscript <- str_c("~/Documentos/Gyrification/STATS/Wang_code_extraction/")
+
+path_yujiangscript_newsurfaces <- str_c("~/Documentos/Gyrification/STATS/Wang_code_extraction/")
+  
+path_lobes <- str_c("~/Documentos/Gyrification/STATS/LobesScaling/")
+ 
+path_sessions <- str_c("~/Documentos/Gyrification/Processamento_longitudinal/V6/data/")
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep_long.R")
+
+dados <- dados_datasetscomp %>% filter(Sample == "BHRCS" | Sample == "AHEAD"| Sample == "BHRCS")
+
+# dados_datasetscomp <- dados_datasetscomp %>% filter(Age == 18 | Age > 18)
+
+write.csv(dados,"dados_BHRCS.csv")
+```
+
+# Descriptiom
+```{r}
+filter(dados_datasetscomp, ROI == "hemisphere") %>%
+  group_by(Session) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2))
+) %>% kable(digits = 2) %>% kable_styling()
+
+filter(dados_datasetscomp, ROI == "hemisphere") %>%
+  group_by(Session, Gender) %>%
+  summarise(
+    N = n_distinct(SUBJ),
+    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
+    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2))
+) %>% kable(digits = 2) %>% kable_styling()
+```
+
+# Incerteza e movimento - Euler number
+
+## AvgThickness
+```{r}
+m.1 <- lmerTest::lmer(log10(AvgThickness) ~ Age *Gender + (1|SUBJ) + (1|SUBJ:hemi:Eulernumber), data = filter(dados_BHRCS_raw, ROI == "hemisphere"))
+
+performance::check_model(m.1)
+anova(m.1)
+summary(m.1)
+lmerTest::rand(m.1)
+
+varcorr <- as.data.frame(VarCorr(m.1))
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+# coefs
+
+varprop <- matrix(c("AvgThickness",coefs$Estimate[1], varcorr$vcov[1], varcorr$sdcor[1], varcorr$vcov[1]/coefs$Estimate[1],varcorr$sdcor[1]/coefs$Estimate[1]),ncol=6,byrow=TRUE)
+colnames(varprop) <- c("Variable", "Intercept", "Variance", "Sd", "Varprop", "varstdprop")
+varprop <- as_tibble(varprop)
+
+sigma.hat(m.1)
+r.squaredGLMM(m.1)
+
+e <- allEffects(m.1)
+e <- as.data.frame(e[[1]])
+
+ggplot(e,
+       aes(
+         x = Age,
+         y = fit,
+         ymin = lower,
+         ymax = upper,
+         shape = Gender
+       )) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "AvgThickness", shape = "Diagnostic evolution through time")
+
+ranef <- as_tibble(ranef(m.1)) %>%
+  mutate(
+    Eulernumber = as.double(str_split(grp, pattern = ":", simplify = TRUE)[, 3]),
+    SUBJ = str_split(grp, pattern = ":", simplify = TRUE)[, 1],
+    hemi = str_split(grp, pattern = ":", simplify = TRUE)[, 2]
+  )
+
+
+ggplot(filter(ranef, grpvar ==  "SUBJ:hemi:Eulernumber"),
+       aes(Eulernumber, condval, ymin = condval - condsd, ymax = condval + condsd, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+  guides(alpha = "none") +
+    theme_pubr()
+
+# t <- filter(dados_BHRCS_raw, ROI == "hemisphere") %>%
+#   dplyr::select(c(SUBJ, hemi, AvgThickness, Eulernumber))
+# ranef <- ranef %>%
+#   dplyr::select(c(condval,condsd,Eulernumber, SUBJ, hemi))
+# 
+# ranef_2 <- full_join(t, ranef) %>%
+#   mutate(condval_ratio = condval/AvgThickness,
+#          condsd_ratio = condsd/AvgThickness)
+# 
+# ggplot(ranef_2,
+#        aes(Eulernumber, condval_ratio, ymin = condval_ratio - condsd_ratio, ymax = condval_ratio + condsd_ratio, alpha = 0.4)) +
+#   geom_point() +
+#   geom_errorbar() +
+#   geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+#   guides(alpha = "none") +
+#     theme_pubr()
+```
+
+## Total Area
+```{r}
+m.1 <- lmerTest::lmer(log10(TotalArea) ~ Age * Gender + (1|SUBJ) + (1|SUBJ:hemi:Eulernumber), data = filter(dados_BHRCS_raw, ROI == "hemisphere"))
+
+performance::check_model(m.1)
+anova(m.1)
+summary(m.1)
+lmerTest::rand(m.1)
+
+varcorr <- as.data.frame(VarCorr(m.1))
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+# coefs
+
+varprop2 <- matrix(c("TotalArea",coefs$Estimate[1], varcorr$vcov[1], varcorr$sdcor[1], varcorr$vcov[1]/coefs$Estimate[1],varcorr$sdcor[1]/coefs$Estimate[1]),ncol=6,byrow=TRUE)
+colnames(varprop2) <- c("Variable", "Intercept", "Variance", "Sd", "Varprop", "varstdprop")
+varprop2 <- as_tibble(varprop2)
+varprop <- full_join(varprop, varprop2)
+
+sigma.hat(m.1)
+r.squaredGLMM(m.1)
+
+e <- allEffects(m.1)
+e <- as.data.frame(e[[1]])
+
+ggplot(e,
+       aes(
+         x = Age,
+         y = fit,
+         ymin = lower,
+         ymax = upper,
+         shape = Gender
+       )) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "TotalArea", shape = "Diagnostic evolution through time")
+
+ranef <- as_tibble(ranef(m.1)) %>%
+  mutate(Eulernumber = as.double(str_split(grp, pattern = ":", simplify = TRUE)[, 3]),
+    SUBJ = str_split(grp, pattern = ":", simplify = TRUE)[, 1],
+    hemi = str_split(grp, pattern = ":", simplify = TRUE)[, 2])
+
+ggplot(filter(ranef, grpvar ==  "SUBJ:hemi:Eulernumber"),
+       aes(Eulernumber, condval, ymin = condval - condsd, ymax = condval + condsd, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+  guides(alpha = "none") +
+    theme_pubr()
+# 
+# t <- filter(dados_BHRCS_raw, ROI == "hemisphere") %>%
+#   dplyr::select(c(SUBJ, hemi, TotalArea, Eulernumber))
+# ranef <- ranef %>%
+#   dplyr::select(c(condval,condsd,Eulernumber, SUBJ, hemi))
+# 
+# ranef_2 <- full_join(t, ranef) %>%
+#   mutate(condval_ratio = condval/TotalArea,
+#          condsd_ratio = condsd/TotalArea)
+# 
+# ggplot(ranef_2,
+#        aes(Eulernumber, condval_ratio, ymin = condval_ratio - condsd_ratio, ymax = condval_ratio + condsd_ratio, alpha = 0.4)) +
+#   geom_point() +
+#   geom_errorbar() +
+#   geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+#   guides(alpha = "none") +
+#     theme_pubr()
+```
+
+## Exposed Area
+```{r}
+m.1 <- lmerTest::lmer(log10(ExposedArea) ~ Age * Gender + (1|SUBJ) + (1|SUBJ:hemi:Eulernumber), data = filter(dados_BHRCS_raw, ROI == "hemisphere"))
+
+performance::check_model(m.1)
+anova(m.1)
+summary(m.1)
+lmerTest::rand(m.1)
+
+varcorr <- as.data.frame(VarCorr(m.1))
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+# coefs
+
+varprop2 <- matrix(c("ExposedArea",coefs$Estimate[1], varcorr$vcov[1], varcorr$sdcor[1], varcorr$vcov[1]/coefs$Estimate[1],varcorr$sdcor[1]/coefs$Estimate[1]),ncol=6,byrow=TRUE)
+colnames(varprop2) <- c("Variable", "Intercept", "Variance", "Sd", "Varprop", "varstdprop")
+varprop2 <- as_tibble(varprop2)
+varprop <- full_join(varprop, varprop2)
+
+sigma.hat(m.1)
+r.squaredGLMM(m.1)
+
+e <- allEffects(m.1)
+e <- as.data.frame(e[[1]])
+
+ggplot(e,
+       aes(
+         x = Age,
+         y = fit,
+         ymin = lower,
+         ymax = upper,
+         shape = Gender
+       )) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "AE", shape = "Diagnostic evolution through time")
+
+ranef <- as_tibble(ranef(m.1)) %>%
+  mutate(Eulernumber = as.double(str_split(grp, pattern = ":", simplify = TRUE)[, 3]),
+    SUBJ = str_split(grp, pattern = ":", simplify = TRUE)[, 1],
+    hemi = str_split(grp, pattern = ":", simplify = TRUE)[, 2])
+
+ggplot(filter(ranef, grpvar ==  "SUBJ:hemi:Eulernumber"),
+       aes(Eulernumber, condval, ymin = condval - condsd, ymax = condval + condsd, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+  guides(alpha = "none") +
+    theme_pubr()
+
+# t <- filter(dados_BHRCS_raw, ROI == "hemisphere") %>%
+#   dplyr::select(c(SUBJ, hemi, ExposedArea, Eulernumber))
+# ranef <- ranef %>%
+#   dplyr::select(c(condval,condsd,Eulernumber, SUBJ, hemi))
+# 
+# ranef_2 <- full_join(t, ranef) %>%
+#   mutate(condval_ratio = condval/ExposedArea,
+#          condsd_ratio = condsd/ExposedArea)
+# 
+# ggplot(ranef_2,
+#        aes(Eulernumber, condval_ratio, ymin = condval_ratio - condsd_ratio, ymax = condval_ratio + condsd_ratio, alpha = 0.4)) +
+#   geom_point() +
+#   geom_errorbar() +
+#   geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+#   guides(alpha = "none") +
+#     theme_pubr()
+```
+
+## K
+```{r}
+m.1 <- lmerTest::lmer(K ~ Age * Gender + (1|SUBJ) + (1|SUBJ:hemi:Eulernumber), data = filter(dados_BHRCS_raw, ROI == "hemisphere"))
+
+performance::check_model(m.1)
+anova(m.1)
+summary(m.1)
+lmerTest::rand(m.1)
+
+varcorr <- as.data.frame(VarCorr(m.1))
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+# coefs
+
+varprop2 <- matrix(c("K",coefs$Estimate[1], varcorr$vcov[1], varcorr$sdcor[1], varcorr$vcov[1]/coefs$Estimate[1],varcorr$sdcor[1]/coefs$Estimate[1]),ncol=6,byrow=TRUE)
+colnames(varprop2) <- c("Variable", "Intercept", "Variance", "Sd", "Varprop", "varstdprop")
+varprop2 <- as_tibble(varprop2)
+varprop <- full_join(varprop, varprop2)
+
+sigma.hat(m.1)
+r.squaredGLMM(m.1)
+
+e <- allEffects(m.1)
+e <- as.data.frame(e[[1]])
+
+ggplot(e,
+       aes(
+         x = Age,
+         y = fit,
+         ymin = lower,
+         ymax = upper,
+         shape = Gender
+       )) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "K", shape = "Diagnostic evolution through time")
+
+ranef <- as_tibble(ranef(m.1)) %>%
+  mutate(Eulernumber = as.double(str_split(grp, pattern = ":", simplify = TRUE)[, 3]),
+    SUBJ = str_split(grp, pattern = ":", simplify = TRUE)[, 1],
+    hemi = str_split(grp, pattern = ":", simplify = TRUE)[, 2])
+
+ggplot(filter(ranef, grpvar ==  "SUBJ:hemi:Eulernumber"),
+       aes(Eulernumber, condval, ymin = condval - condsd, ymax = condval + condsd, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+  guides(alpha = "none") +
+  theme_pubr()
+
+# t <- filter(dados_BHRCS_raw, ROI == "hemisphere") %>%
+#   dplyr::select(c(SUBJ, hemi, K, Eulernumber))
+# ranef <- ranef %>%
+#   dplyr::select(c(condval,condsd,Eulernumber, SUBJ, hemi))
+# 
+# ranef_2 <- full_join(t, ranef) %>%
+#   mutate(condval_ratio = condval/K,
+#          condsd_ratio = condsd/K)
+# 
+# ggplot(ranef_2,
+#        aes(Eulernumber, condval_ratio, ymin = condval_ratio - condsd_ratio, ymax = condval_ratio + condsd_ratio, alpha = 0.4)) +
+#   geom_point() +
+#   geom_errorbar() +
+#   geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+#   guides(alpha = "none") +
+#     theme_pubr()
+```
+
+## S
+```{r}
+m.1 <- lmerTest::lmer(S ~ Age * Gender + (1|SUBJ) + (1|SUBJ:hemi:Eulernumber), data = filter(dados_BHRCS_raw, ROI == "hemisphere"))
+
+performance::check_model(m.1)
+anova(m.1)
+summary(m.1)
+lmerTest::rand(m.1)
+
+varcorr <- as.data.frame(VarCorr(m.1))
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+# coefs
+
+varprop2 <- matrix(c("S",coefs$Estimate[1], varcorr$vcov[1], varcorr$sdcor[1], varcorr$vcov[1]/coefs$Estimate[1],varcorr$sdcor[1]/coefs$Estimate[1]),ncol=6,byrow=TRUE)
+colnames(varprop2) <- c("Variable", "Intercept", "Variance", "Sd", "Varprop", "varstdprop")
+varprop2 <- as_tibble(varprop2)
+varprop <- full_join(varprop, varprop2)
+
+sigma.hat(m.1)
+r.squaredGLMM(m.1)
+
+e <- allEffects(m.1)
+e <- as.data.frame(e[[1]])
+
+ggplot(e,
+       aes(
+         x = Age,
+         y = fit,
+         ymin = lower,
+         ymax = upper,
+         shape = Gender
+       )) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "S", shape = "Diagnostic evolution through time")
+
+ranef <- as_tibble(ranef(m.1)) %>%
+  mutate(Eulernumber = as.double(str_split(grp, pattern = ":", simplify = TRUE)[, 3]),
+    SUBJ = str_split(grp, pattern = ":", simplify = TRUE)[, 1],
+    hemi = str_split(grp, pattern = ":", simplify = TRUE)[, 2])
+
+
+ggplot(filter(ranef, grpvar ==  "SUBJ:hemi:Eulernumber"),
+       aes(Eulernumber, condval, ymin = condval - condsd, ymax = condval + condsd, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+## I
+```{r}
+m.1 <- lmerTest::lmer(I ~ Age * Gender + (1|SUBJ) + (1|SUBJ:hemi:Eulernumber), data = filter(dados_BHRCS_raw, ROI == "hemisphere"))
+
+performance::check_model(m.1)
+anova(m.1)
+summary(m.1)
+lmerTest::rand(m.1)
+
+varcorr <- as.data.frame(VarCorr(m.1))
+
+coefs <- data.frame(coef(summary(m.1)))
+coefs$p.z <- 2 * (1 - pnorm(abs(coefs$t.value)))
+# coefs
+
+varprop2 <- matrix(c("I",coefs$Estimate[1], varcorr$vcov[1], varcorr$sdcor[1], varcorr$vcov[1]/coefs$Estimate[1],varcorr$sdcor[1]/coefs$Estimate[1]),ncol=6,byrow=TRUE)
+colnames(varprop2) <- c("Variable", "Intercept", "Variance", "Sd", "Varprop", "varstdprop")
+varprop2 <- as_tibble(varprop2)
+varprop <- full_join(varprop, varprop2)
+
+sigma.hat(m.1)
+r.squaredGLMM(m.1)
+
+e <- allEffects(m.1)
+e <- as.data.frame(e[[1]])
+
+ggplot(e,
+       aes(
+         x = Age,
+         y = fit,
+         ymin = lower,
+         ymax = upper,
+         shape = Gender
+       )) + geom_pointrange() + geom_line() + theme_pubr() + labs(y = "I", shape = "Diagnostic evolution through time")
+
+ranef <- as_tibble(ranef(m.1)) %>%
+  mutate(Eulernumber = as.double(str_split(grp, pattern = ":", simplify = TRUE)[, 3]),
+    SUBJ = str_split(grp, pattern = ":", simplify = TRUE)[, 1],
+    hemi = str_split(grp, pattern = ":", simplify = TRUE)[, 2])
+
+ggplot(filter(ranef, grpvar ==  "SUBJ:hemi:Eulernumber"),
+       aes(Eulernumber, condval, ymin = condval - condsd, ymax = condval + condsd, alpha = 0.4)) +
+  geom_point() +
+  geom_errorbar() +
+  geom_vline(xintercept = mean(filter(dados, ROI == "hemisphere")$Eulernumber)) +
+  guides(alpha = "none") +
+  theme_pubr()
+```
+
+```{r}
+varprop$Intercept <- as.double(varprop$Intercept)
+varprop$Variance <- as.double(varprop$Variance)
+varprop$Sd <- as.double(varprop$Sd)
+varprop$Varprop <- as.double(varprop$Varprop)
+varprop$varstdprop <- as.double(varprop$varstdprop)
+  
+ggplot(varprop, aes(x = Variable, y = Varprop, ymin = Varprop-varstdprop, ymax = Varprop+varstdprop )) +
+    geom_point() +
+    geom_errorbar() +
+    theme_pubr() + coord_flip()
+```

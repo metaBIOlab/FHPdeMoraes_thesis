@@ -1,0 +1,124 @@
+---
+title: "Typical"
+author: "Fernanda Hansen P. de Moraes"
+date: "05/03/2021"
+output: 
+  html_document: 
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message=FALSE)
+knitr::opts_chunk$set(warning=FALSE)
+```
+
+```{r preparo, message=FALSE, warning=FALSE, include=FALSE}
+# PREPARO
+
+# define a area de trabalho
+setwd("C:/Users/ferna/Documents/idor/Gyrification/RRRRRR/comparing_samples/") # se no computador
+
+# carrega os pacotes utilizados
+source("01-call_packages.R")
+
+# Chama funcoes caso necessário
+source("02-funcoes.R")
+
+# onde estao os arquivos de resultados:
+path <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/long_tables/")
+
+path_yujiangscript <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+
+path_yujiangscript_newsurfaces <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/Wang_code_extraction/")
+  
+path_lobes <- str_c("C:/Users/ferna/Documents/idor/Gyrification/STATS/LobesScaling/")
+ 
+path_sessions <- str_c("C:/Users/ferna/Documents/idor/Gyrification/Processamento_longitudinal/V6/data/")
+
+Age.cor = 25
+
+# Prepara os dados para analise
+source("05-analises_prep.R")
+
+dados_datasetscomp <- dados_datasetscomp %>% filter(Sample == "ADNI")
+
+# dados_datasetscomp <- dados_datasetscomp %>% filter(Age == 18 | Age > 18)
+
+ write.csv(dados_datasetscomp,"dados_datasetscomp_ADNI.csv")
+```
+# AGE
+```{r}
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Snorm_age_decay, color = Diagnostic, size = as.numeric(Age_interval10), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr()+
+  labs(size = "Age") +
+  guides(alpha = FALSE)
+
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Inorm_age_decay, color = Diagnostic, size = as.numeric(Age_interval10), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr() +
+  labs(size = "Age") +
+  guides(alpha = FALSE)
+```
+# TAU
+```{r}
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Snorm_age_decay, color = Diagnostic, size = as.numeric(TAU_bl), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr()+
+  labs(size = "TAU") +
+  guides(alpha = FALSE)
+
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Inorm_age_decay, color = Diagnostic, size = as.numeric(TAU_bl), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr() +
+  labs(size = "TAU") +
+  guides(alpha = FALSE)
+```
+# ABETA
+```{r}
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Snorm_age_decay, color = Diagnostic, size = as.numeric(ABETA_bl), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr()+
+  labs(size = "ABETA") +
+  guides(alpha = FALSE)
+
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Inorm_age_decay, color = Diagnostic, size = as.numeric(
+ABETA_bl
+), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr() +
+  labs(size = "ABETA") +
+  guides(alpha = FALSE)
+```
+# MMSE
+```{r}
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Snorm_age_decay, color = Diagnostic, size = as.numeric(MMSE), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr()+
+  labs(size = "MMSE") +
+  guides(alpha = FALSE)
+
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Inorm_age_decay, color = Diagnostic, size = as.numeric(
+MMSE
+), alpha = 0.5)) +
+  geom_point() +
+  theme_pubr() +
+  labs(size = "MMSE") +
+  guides(alpha = FALSE)
+```
+
+# Hippocampus volume /ICV
+```{r}
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Snorm_age_decay, color = Diagnostic, size = Hippocampus/ICV, alpha = 0.5)) +
+  geom_point() +
+  theme_pubr()+
+  labs(size = "Hippocampus/ICV") +
+  guides(alpha = FALSE)
+
+ggplot(data = filter(dados_datasetscomp, ROI == "hemisphere"), aes(Knorm_age_decay, Inorm_age_decay, color = Diagnostic, size = Hippocampus/ICV, alpha = 0.5)) +
+  geom_point() +
+  theme_pubr() +
+  labs(size = "Hippocampus/ICV") +
+  guides(alpha = FALSE)
+```

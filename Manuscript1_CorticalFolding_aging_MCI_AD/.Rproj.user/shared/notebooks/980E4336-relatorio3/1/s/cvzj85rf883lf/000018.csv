@@ -1,6 +1,0 @@
-"0","ggplot(data = dados_lobos_v1, aes(Age, K_age_decay, color = Diagnostic, fill = Diagnostic)) +"
-"0","  stat_regline_equation() +"
-"0","  geom_smooth(method = ""lm"", se = TRUE) +"
-"0","  theme_pubr() + facet_wrap(ROI ~ . ) + labs(y = ""K (After age correction)"")"
-"2","`geom_smooth()` using formula 'y ~ x'
-"

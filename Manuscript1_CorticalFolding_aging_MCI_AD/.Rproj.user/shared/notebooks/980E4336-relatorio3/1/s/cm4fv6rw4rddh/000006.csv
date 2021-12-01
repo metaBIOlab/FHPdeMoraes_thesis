@@ -1,8 +1,0 @@
-"0","#kruskal.test(estimate, Diagnostic, data = filter(diagnostic_Coef, term == ""logExposedArea""))"
-"0",""
-"0","ggplot(data = dados_hemi_v1, aes(logExposedArea, 1/2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic)) +"
-"0","  geom_point() +"
-"0","  geom_smooth(method = ""lm"", se = TRUE) +"
-"0","  theme_pubr()"
-"2","`geom_smooth()` using formula 'y ~ x'
-"

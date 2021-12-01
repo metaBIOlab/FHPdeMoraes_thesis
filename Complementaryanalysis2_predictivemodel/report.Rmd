@@ -1,5 +1,5 @@
 ---
-title: "Complementary Analysis 1 from Fernanda Hansen P. de Moraes Thesis - Cortical folding alterations in humans due to aging and diseases"
+title: "Complementary Analysis 2 from Fernanda Hansen P. de Moraes Thesis - Cortical folding alterations in humans due to aging and diseases"
 author: "Fernanda Hansen Pacheco de Moraes"
 date: "30-november-2021"
 output:
@@ -18,9 +18,9 @@ knitr::opts_chunk$set(
 	warning = FALSE)
 ```
 
-Description of the procedures and analysis present in Complementary Analysis 1, Simple multinomial predictive models and diagnostic discrimination, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
+Description of the procedures and analysis present in Complementary Analysis 2, **Simple multinomial predictive models and diagnostic discrimination**, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
 
-Part of the data used here cannot be shared due to restrictions of the Ethic Comittee. Data can be shared upon reasonable request to the corresponding author. To fullfil these limitation, we will generate random data to simulate the results.
+Part of the data used here cannot be shared due to restrictions of the Ethic Committee. Data can be shared upon reasonable request to the corresponding author. To fulfill these limitation, we will generate random data to simulate the results.
 
 Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our aim is to improve the code as needed!
 

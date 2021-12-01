@@ -25,7 +25,12 @@ knitr::opts_chunk$set(
 	echo = TRUE,
 	message = FALSE,
 	warning = FALSE,
+<<<<<<< HEAD
 	cache = TRUE
+=======
+	cache = TRUE,
+	messAge = FALSE
+>>>>>>> 8dfdbd0d8f4164c8d69dd7a0d13a9415aaa24620
 )
 ```
 
@@ -42,6 +47,10 @@ library(kableExtra)
 library(broom)
 library(MASS)
 library(cutpointr)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 8dfdbd0d8f4164c8d69dd7a0d13a9415aaa24620
 ```
 
 # set seed for random process

@@ -27,8 +27,8 @@ Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our
 knitr::opts_chunk$set(
 	echo = FALSE,
 	warning = FALSE,
-	messAge = FALSE,
-	cache = TRUE
+	cache = TRUE,
+	messAge = FALSE
 )
 ```
 
@@ -44,6 +44,7 @@ library(ggpubr)
 library(kableExtra)
 library(broom)
 library(MASS)
+library(cutpointr)
 
 ```
 

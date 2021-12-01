@@ -140,6 +140,7 @@ dados <- dados %>%
 
 ```
 
+# Deaging
 ```{r deaging}
 # define age for deaging
 Age.cor = 25

@@ -1,7 +1,7 @@
 ---
-title: "Relatorio PRJ Girificacao"
+title: "Manuscript 1 from Fernanda Hansen P. de Moraes Thesis - Cortical folding alterations in humans due to aging and diseases"
 author: "Fernanda Hansen Pacheco de Moraes"
-date: "11 de dezembro de 2018"
+date: "1 dec 2021"
 output:
   html_document: 
     df_print: kable
@@ -17,6 +17,12 @@ editor_options:
   chunk_output_type: inline
 ---
 
+Description of the procedures and analysis present in Manuscript 1, **Independent morphological correlates to aging, Mild Cognitive Impairment**, and Alzheimer’s Disease, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
+
+Part of the data used here cannot be shared due to restrictions of the Ethic Committee. Data can be shared upon reasonable request to the corresponding author. To fulfill these limitation, we will generate random data to simulate the results.
+
+Get in touch with us (fernandahmoraes@gmail.com) in case any help is needed, our aim is to improve the code as needed!
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
 	echo = FALSE,
@@ -26,161 +32,192 @@ knitr::opts_chunk$set(
 )
 ```
 
-```{r preparo, warning=FALSE, include=FALSE, messAge=FALSE}
-# PREPARO
+```{r working directory}
+setwd("~/GitHub/FHPdeMoraes_thesis/Manuscript1_CorticalFolding_aging_MCI_AD")
+```
 
-# define a area de trabalho
-# setwd("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/STATISTICS/V6/")# se no idor
-# setwd("E:/idor/Gyrification/") # se no pendrive
-# setwd("C:/Users/fernanda.hansen/Desktop/aging/V6/") # se no pendrive
-setwd("~/idor/Gyrification/RRRRRR/aging/V6")
+```{r call packages}
+library(readr)
+library(tidyverse)
+library(lubridate)
+library(ggpubr)
+library(kableExtra)
+library(broom)
+library(MASS)
 
-# carrega os pacotes utilizados
-source("01-call_packages.R")
+```
 
-source("02-funcoes.R")
-# onde estao os arquivos de resultados:
-#path_yujiangscript <- str_c("~/Documentos/Gyrification/data/resultados")
+# set seed for random process
+```{r}
+set.seed(1)
 
-alpha_beta <- str_c("~/idor/Gyrification/data/resultados/")
-  
-# path_lobes <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/PROC_DATA/STATS/LobesScaling/")
-path_lobes <- str_c("~/idor/Gyrification/STATS/")
- 
-# path_sessions <- str_c("Z:/PRJ1513_GIRIFICACAO_CONTROLES/03_PROCS/RAW_DATA/BIDS/")
-path_sessions <- str_c("~/idor/Gyrification/Processamento_longitudinal/V6/data/")
+```
 
-# importa os resultados
-source("03-import_files.R") # arquivos dos sujeitos
+```{r}
+test_coef <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+}
+```
 
-# organiza os arquivos
-source("04-organiza.R")
+```{r import files}
+dados_raw <- read_csv("dados_raw.csv")
+```
 
-dados_raw <- dados
-write.csv(dados_raw, "dados_raw.csv")
+```{r create new variables}
+# estimate cortical folding variables
+dados_raw <- dados_raw %>%
+  mutate( # create new variables
+  logAvgThickness = log10(AvgThickness),
+  logTotalArea = log10(TotalArea),
+  logExposedArea = log10(ExposedArea),
+  localGI = TotalArea / ExposedArea,
+  k = sqrt(AvgThickness) * TotalArea / (ExposedArea ^ 1.25),
+  K = 1 / 4 * log10(AvgThickness^2)  + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+  S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^2) ,
+  I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^2),
+  c = as.double(ifelse(ROI == "hemisphere", NA, 4 * pi / GaussianCurvature)),
+  TotalArea_corrected = ifelse(ROI == "hemisphere", TotalArea, TotalArea * c),
+  ExposedArea_corrected = ifelse(ROI == "hemisphere", ExposedArea, ExposedArea * c),
+  logTotalArea_corrected = log10(TotalArea_corrected),
+  logExposedArea_corrected = log10(ExposedArea_corrected),
+  localGI_corrected = ifelse(
+    ROI == "hemisphere",
+    TotalArea / ExposedArea,
+    TotalArea_corrected / ExposedArea_corrected
+  ),
+  k_corrected = ifelse(
+    ROI == "hemisphere",
+    sqrt(AvgThickness) * log10(TotalArea) / (log10(ExposedArea) ^ 1.25),
+    sqrt(AvgThickness) * log10(TotalArea_corrected) / (log10(ExposedArea_corrected^1.25) )
+  ),
+  K_corrected =  ifelse(
+    ROI == "hemisphere",
+    1 / 4 * log10(AvgThickness^ 2)+ log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+    1 / 4 * log10(AvgThickness^ 2) + log10(TotalArea_corrected) - 5 / 4 * log10(ExposedArea_corrected)
+  ),
+  I_corrected = ifelse(
+    ROI == "hemisphere",
+    log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^ 2) ,
+    log10(TotalArea_corrected) + log10(ExposedArea_corrected) + log10(AvgThickness^ 2) 
+  ),
+  S_corrected = ifelse(
+    ROI == "hemisphere",
+    3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^ 2) ,
+    3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness^ 2) 
+  )
+)
 
-verificar_lGI_zero <- filter(dados, ExposedArea == 0 | is.na(localGI))
-write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")
+# create age intervals
+dados_raw$Age_interval <- cut(dados_raw$Age,
+                                       breaks = c(0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100),
+                                       right = FALSE,
+                                       include.lowest = TRUE)
 
-# retira os outros diagnosticos e deixa so quem tem machine definido
-dados_all <- dados %>% filter(
+dados_raw$Age_interval10 <- cut(dados_raw$Age,
+                                         breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100),
+                                         right = FALSE,
+                                         include.lowest = TRUE)
+```
+
+```{r data cleanup}
+dados_all <- dados_raw %>% filter(
     Diagnostic == "CONTROLE" |
       Diagnostic == "CCL" |
       Diagnostic == "ALZ", !is.na(logAvgThickness), ExposedArea != 0 | !is.na(localGI), !is.infinite(logExposedArea)) %>% 
   droplevels()
 
-dados_excluidos <- anti_join(dados_raw, dados_all)
-write.csv(dados_excluidos, "dados_excluidos.csv")
-
 dados <- dados_all
+```
 
+```{r}
+# rename diagnostics
+dados$Diagnostic[dados$Diagnostic == "CONTROLE"] <- "CTL"
+dados$Diagnostic[dados$Diagnostic == "ALZ"] <- "AD"
+dados$Diagnostic[dados$Diagnostic == "CCL"] <- "MCI"
+dados$Diagnostic <- factor(dados$Diagnostic, levels = c("AD", "MCI","CTL"))
+
+# filter data
+dados <- dados %>%
+  filter(machine == "Philips-Achieva", # include only subjects acquired at Philips Achieva 3T
+                          ESC == 8 | ESC > 8, # include only subjects with 8 years of scholarship or more
+                          Session == 1) %>% # use only data from Session 1
+  droplevels() # delete factor levels
+
+```
+
+# Deaging
+```{r deaging}
+# define age for deaging
 Age.cor = 25
 
-# Prepara os dados para analise
-source("05-analises_prep.R")
+## Avg thickness ----
+decay_AvgThickness <-
+  filter(dados, Diagnostic == "CTL") %>%
+  droplevels() %>%
+  group_by(ROI) %>%
+  do(fit_decay_AvgThickness = tidy(rlm(AvgThickness ~ Age, data = .), conf.int=TRUE)) %>% unnest(cols = c(fit_decay_AvgThickness)) %>%
+  filter(term == "Age") %>%
+    mutate(c_AvgThickness = estimate,
+         std_error_c_AvgThickness = std.error) %>%
+  dplyr::select(c(ROI, c_AvgThickness, std_error_c_AvgThickness))
 
-dados$Diagnostic <- factor(dados$Diagnostic, levels = c("ALZ", "CCL","CONTROLE"))
-dados$Diagnostic <- revalue(dados$Diagnostic, c("CONTROLE"="CTL", "ALZ"="AD", "CCL" = "MCI"))
+## TotalArea ----
+decay_TotalArea <- filter(dados, Diagnostic == "CTL", !is.na(TotalArea), !is.nan(TotalArea), !is.infinite(TotalArea)) %>%
+  droplevels() %>%
+  group_by(ROI) %>%
+  do(fit_decay_TotalArea = tidy(rlm(TotalArea ~ Age, data = .),conf.int=TRUE)) %>%
+  unnest(cols = c(fit_decay_TotalArea)) %>%
+  filter(term == "Age") %>%
+  mutate(c_TotalArea = estimate,
+         std_error_c_TotalArea = std.error) %>%
+  dplyr::select(c(ROI, c_TotalArea, std_error_c_TotalArea))
 
-dados <- filter(dados, machine == "Philips-Achieva")
+## ExposedArea ----
+decay_ExposedArea <- filter(dados, Diagnostic == "CTL", !is.na(ExposedArea), !is.nan(ExposedArea), !is.infinite(ExposedArea)) %>%
+  droplevels() %>%
+  group_by(ROI) %>%
+  do(fit_decay_ExposedArea = tidy(rlm(ExposedArea ~ Age, data = .), conf.int = TRUE)) %>%
+  unnest(cols = c(fit_decay_ExposedArea)) %>%
+  filter(term == "Age") %>%
+  mutate(c_ExposedArea = estimate,
+         std_error_c_ExposedArea = std.error) %>%
+  dplyr::select(c(ROI, c_ExposedArea, std_error_c_ExposedArea))
 
-# separa em arquivo de hemisferios e de lobos
+dados <- full_join(dados, decay_AvgThickness) %>%
+  full_join(decay_TotalArea) %>%
+  full_join(decay_ExposedArea) %>%
+  mutate(
+    AvgThickness_age_decay = AvgThickness - c_AvgThickness * (Age - Age.cor),
+    logAvgThickness_age_decay = log10(AvgThickness_age_decay),
+    TotalArea_age_decay = TotalArea - c_TotalArea * (Age - Age.cor),
+    logTotalArea_age_decay = log10(TotalArea_age_decay),
+    ExposedArea_age_decay = ExposedArea - c_ExposedArea * (Age - Age.cor),
+    logExposedArea_age_decay = log10(ExposedArea_age_decay),
+    K_age_decay = log10(TotalArea_age_decay) + 1/4*log10(AvgThickness_age_decay^2) - 5/4*log10(ExposedArea_age_decay),
+    I_age_decay = log10(TotalArea_age_decay) + log10(ExposedArea_age_decay) + log10(AvgThickness_age_decay^2),
+    S_age_decay = 3/2*log10(TotalArea_age_decay) + 3/4*log10(ExposedArea_age_decay) - 9/4*log10(AvgThickness_age_decay^2))
 
-dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, !is.na(K_age_decay), SUBJ != "SUBJ211", SUBJ != "SUBJ223")) %>% droplevels()
+dados$logAvgThickness <- as.double(dados$logAvgThickness)
+dados$logExposedArea<- as.double(dados$logExposedArea)
+dados$logTotalArea   <- as.double(dados$logTotalArea)
 
-dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere", Session == 1) %>% droplevels()
-
-dados_hemi_v1 <- unique(filter(dados, ROI == "hemisphere", Session == 1, !is.na(K_age_decay)))
-
-write.csv(dados_v1,"dados_v1.csv")
-
-set.seed(1)
 ```
-
-# Metodo
 
 ```{r}
+dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere") %>%
+  droplevels()
 
-paste("N subjects LGI = 0 = ", n_distinct(filter(verificar_lGI_zero, machine == "Philips-Achieva", !is.na(Age), Diagnostic =="CCL" | Diagnostic == "ALZ" | Diagnostic == "CONTROLE", Session == "1")$SUBJ))
+# lobe data
+dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P",  !is.na(K_age_decay), SUBJ != "SUBJ211", SUBJ != "SUBJ223")) %>%
+  droplevels()
 
-unique(filter(verificar_lGI_zero, machine == "Philips-Achieva", !is.na(Age), Diagnostic =="CCL" | Diagnostic == "ALZ" | Diagnostic == "CONTROLE", Session == "1")$SUBJ)
-filter(verificar_lGI_zero, machine == "Philips-Achieva", !is.na(Age), Diagnostic =="CCL" | Diagnostic == "ALZ" | Diagnostic == "CONTROLE", Session == "1") %>% kable() %>% kable_styling()
+# hemisphere data
+dados_hemi_v1 <- unique(filter(dados, ROI == "hemisphere", !is.na(K_age_decay)))
 ```
 
-# Distribuição da Sample
-
-## Escolaridade mínima 8 anos
-
-```{r}
-
-ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = ESC, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + 
-  geom_boxplot() + theme_pubr() +
-  stat_compare_means(method = "anova")
-
-paste("Escolaridade minima = ", min(dados_hemi_v1$ESC), "N de sujeitos com escolaridade = 4 anos, = ", n_distinct(filter(dados_hemi_v1, ESC == 4)$SUBJ))
-
-paste("N de sujeitos com escolaridade = 5 anos, = ", n_distinct(filter(dados_hemi_v1, ESC == 5)$SUBJ))
-
-paste("N de sujeitos com escolaridade = 7 anos, = ", n_distinct(filter(dados_hemi_v1, ESC == 7)$SUBJ))
-
-dados <- filter(dados, ESC == 8 | ESC > 8)
-
-dados_lobos_v1 <- unique(filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P", Session == 1, !is.na(K_age_decay), SUBJ != "SUBJ211", SUBJ != "SUBJ223")) %>% droplevels()
-
-dados_v1 <- filter(dados, ROI == "F" | ROI == "T" | ROI == "O" | ROI == "P" | ROI == "hemisphere", Session == 1) %>% droplevels()
-
-dados_hemi_v1 <- unique(filter(dados, ROI == "hemisphere", Session == 1, !is.na(K_age_decay)))
-
-```
-
-
-## Numero de sujeitos
-
-### Todos da lista
-```{r N sujeitos, echo=FALSE, warning=FALSE, message=FALSE}
-summary_dados_all <- filter(dados_raw, Session == 1) %>%
-  group_by(machine, Diagnostic) %>%
-  summarise(
-  N = n_distinct(SUBJ),
-  Mean = mean(Age),
-  Max = max(Age),
-  Min = min(Age),
-  Median = median(Age),
-  Std = sd(Age)
-  )
-  summary_dados_all %>% kable(digits = 2) %>% kable_styling()
-  
-paste("N sujeitos = ",n_distinct(filter(dados_raw, Session == 1)$SUBJ))  
-paste("N sujeitos Philips = ",n_distinct(filter(dados_raw, Session == 1, machine == "Philips-Achieva")$SUBJ))
-paste("N sujeitos Philips CTL, MCI e AD = ",n_distinct(filter(dados_raw, Session == 1, machine == "Philips-Achieva", Diagnostic =="CCL" | Diagnostic == "ALZ" | Diagnostic == "CONTROLE")$SUBJ))
-
-
-# SUBJ_raw <- unique( dplyr::select(filter(dados_raw, Session == 1, machine == "Philips-Achieva", Diagnostic =="CCL" | Diagnostic == "ALZ" | Diagnostic == "CONTROLE"), c(SUBJ)))
-# SUBJ_v1 <- unique( dplyr::select(dados_hemi_v1, c(SUBJ)))
-# anti_join(SUBJ_raw, SUBJ_v1)
-# filter(dados_raw, Session == 1, SUBJ == "SUBJ081"| SUBJ == "SUBJ139" | SUBJ == "SUBJ211" | SUBJ == "SUBJ223") %>% kable(digits =2) %>% kable_styling()
-# filter(dados, Session == 1, SUBJ == "SUBJ081"| SUBJ == "SUBJ139" | SUBJ == "SUBJ211" | SUBJ == "SUBJ223") %>% kable(digits =2) %>% kable_styling()
-
-```
-
-### Todos processados pelo FreeSurfer com sucesso
-```{r N sujeitos FS, echo=FALSE, warning=FALSE, message=FALSE}
-summary_dados_all <- filter(dados_all, Session == 1) %>%
-  group_by(Diagnostic, machine) %>%
-  summarise(
-  N = n_distinct(SUBJ),
-  Mean = mean(Age),
-  Max = max(Age),
-  Min = min(Age),
-  Median = median(Age),
-  Std = sd(Age)
-  )
-  summary_dados_all %>% kable(digits = 2) %>% kable_styling()
-  
-  paste("N sujeitos = ",n_distinct(filter(dados_all, Session == 1)$SUBJ))  
-```
-
-### Somente Philips
+# Data description
 
 ```{r N sujeitos Philips, echo=FALSE, message=FALSE, warning=FALSE}
 dados_hemi_v1 %>%
@@ -190,40 +227,14 @@ dados_hemi_v1 %>%
     age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
     age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
     ESC = paste(signif(mean(ESC), 2), "±", signif(sd(ESC), 2)),
-    COGNITIVE_INDEX = paste(signif(mean(COGNITIVE_INDEX), 2), "±", signif(sd(COGNITIVE_INDEX), 2)),
-    TAU = paste(signif(mean(TAU), 2), "±", signif(sd(TAU), 2)),
-    AB1_40 = paste(signif(mean(`AB1-40`), 2), "±", signif(sd(`AB1-40`), 2)),
-    AB1_42 = paste(signif(mean(`AB1-42`), 2), "±", signif(sd(`AB1-42`), 2)),
-    Lipoxin = paste(signif(mean(Lipoxina), 2), "±", signif(sd(Lipoxina), 2)),
-    AvgT =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
+    T =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
     AT =  paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
     AE =  paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2)),
     k =  paste(signif(mean(k), 2), "±", signif(sd(k), 2)),
     K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
     S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
     I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
-  ) %>% kable(digits = 2) %>% kable_styling()
-
-dados_hemi_v1 %>%
-  group_by(Gender, Diagnostic) %>%
-  summarise(
-    N = n_distinct(SUBJ),
-    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
-    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
-    ESC = paste(signif(mean(ESC), 2), "±", signif(sd(ESC), 2)),
-    COGNITIVE_INDEX = paste(signif(mean(COGNITIVE_INDEX), 2), "±", signif(sd(COGNITIVE_INDEX), 2)),
-    TAU = paste(signif(mean(TAU), 2), "±", signif(sd(TAU), 2)),
-    AB1_40 = paste(signif(mean(`AB1-40`), 2), "±", signif(sd(`AB1-40`), 2)),
-    AB1_42 = paste(signif(mean(`AB1-42`), 2), "±", signif(sd(`AB1-42`), 2)),
-    Lipoxin = paste(signif(mean(Lipoxina), 2), "±", signif(sd(Lipoxina), 2)),
-    AvgT =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
-    AT =  paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
-    AE =  paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2)),
-    k =  paste(signif(mean(k), 2), "±", signif(sd(k), 2)),
-    K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
-    S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
-    I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
-  ) %>% kable(digits = 2) %>% kable_styling()
+  )
 
 lm_Age <- lm(Age ~ Diagnostic, data = dados_hemi_v1)
 anova(lm_Age)
@@ -235,13 +246,6 @@ anova(lm_esc)
 ESC_diag_TK <- TukeyHSD(aov(ESC ~ Diagnostic, data = dados_hemi_v1))
 ESC_diag_TK
 
-lm_COGNITIVE_INDEX <-
-  lm(COGNITIVE_INDEX ~ Diagnostic, data = dados_hemi_v1)
-anova(lm_COGNITIVE_INDEX)
-COGINDX_diag_TK <-
-  TukeyHSD(aov(COGNITIVE_INDEX ~ Diagnostic, data = dados_hemi_v1))
-COGINDX_diag_TK
-
 paste("N sujeitos = ", n_distinct(dados_hemi_v1$SUBJ))
 paste("N sujeitos lobos = ", n_distinct(dados_lobos_v1$SUBJ))
 
@@ -250,24 +254,6 @@ SUBJ_lobos <- unique(dplyr::select(dados_lobos_v1, c(SUBJ)))
 anti_join(SUBJ_lobos, SUBJ_hemi)
 
 ```
-
-### Sujeitos excluídos
-
-```{r N sujeitos excluidos, echo=FALSE, message=FALSE, warning=FALSE}
-
-excl <-
-  dados_excluidos %>% dplyr::select(c(SUBJ, Age, Diagnostic, machine, ROI, localGI)) %>% filter(ROI == "hemisphere") %>% distinct(SUBJ, .keep_all = TRUE)
-  
-  excl %>% kable(digits = 2) %>% kable_styling()
-
-  paste("N sujeitos = ",n_distinct(excl$SUBJ))  
-```
-
-### lista sujeitos
-```{r subjs, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
-dados_hemi_v1 %>% dplyr::select(SUBJ, acq_date, Age, Gender, Diagnostic) %>% unique() %>% kable(digits = 2) %>% kable_styling()
-```
-
 
 ```{r distribuicao da Sample}
 ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = Age, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + 
@@ -281,56 +267,14 @@ ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = K, color = Gender, fill = G
 
 ```
 
-```{r}
-dados_hemi_v1 %>%
-group_by(Diagnostic)  %>%
-summarise(
-N = n_distinct(SUBJ),
-    age = paste(signif(mean(Age), 2), "±", signif(sd(Age), 2)),
-    age_range = paste(signif(min(Age), 2), "; ", signif(max(Age), 2)),
-    ESC = paste(signif(mean(ESC), 2), "±", signif(sd(ESC), 2)),
-    COGNITIVE_INDEX = paste(signif(mean(COGNITIVE_INDEX), 2), "±", signif(sd(COGNITIVE_INDEX), 2)),
-    TAU = paste(signif(mean(TAU), 2), "±", signif(sd(TAU), 2)),
-    AB1_40 = paste(signif(mean(`AB1-40`), 2), "±", signif(sd(`AB1-40`), 2)),
-    AB1_42 = paste(signif(mean(`AB1-42`), 2), "±", signif(sd(`AB1-42`), 2)),
-    Lipoxin = paste(signif(mean(Lipoxina), 2), "±", signif(sd(Lipoxina), 2)),
-    AvgT =  paste(signif(mean(AvgThickness), 2), "±", signif(sd(AvgThickness), 2)),
-    AT =  paste(signif(mean(TotalArea), 2), "±", signif(sd(TotalArea), 2)),
-    AE =  paste(signif(mean(ExposedArea), 2), "±", signif(sd(ExposedArea), 2)),
-    k =  paste(signif(mean(k), 2), "±", signif(sd(k), 2)),
-    K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
-    S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
-    I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))) %>% kable(digits = 2) %>% kable_styling()
+# Results
 
-```
-
-
-# Resultados
-
-## Aplicacao do modelo
-
-Todos os sujeitos
-```{r model Mota & Houzel, echo=FALSE}
-
-# lm_amostra <- dados_datasetscomp %>%
-#   group_by(Sample) %>%
-#   do(fit_amostra = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
-# 
-# ggplot(dados_datasetscomp, aes(logExposedArea, 1/2*logAvgThickness + logTotalArea)) +
-#   geom_point(aes(color = Sample)) +
-#   geom_smooth(method = "lm", se = FALSE) +
-#   theme_pubr()
-# 
-# lm_amostra %>% kable(digits = 2) %>% kable_styling()
-
-```
-
-### Apenas humanos IDOR
+## Cortical Folding Model
 
 ```{r modelo_humanos, echo=FALSE, warning=FALSE, messAge=FALSE}
 lm_fit_comp_idor <- dados_hemi_v1 %>%
   group_by(Diagnostic) %>%
-  do(fit_comp_idor = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
+  do(fit_comp_idor = tidy(lm(log10(sqrt(AvgThickness)*TotalArea) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
 
 lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
 
@@ -338,23 +282,36 @@ N_subj_diag <- dados_hemi_v1 %>%
   group_by(Diagnostic) %>%
   summarise(N_SUBJ = n_distinct(SUBJ))
 
-fig2a <- ggplot(
-  dados_hemi_v1,
-  aes(logExposedArea, 1 / 2 * logAvgThickness + logTotalArea, color = Diagnostic, fill = Diagnostic, alpha =0.4)
-  ) +
+fig2a <- ggplot(dados_hemi_v1,
+                aes(
+                  log10(ExposedArea),
+                  log10(sqrt(AvgThickness)*TotalArea),
+                  color = Diagnostic,
+                  fill = Diagnostic,
+                  alpha = 0.4
+                )) +
   geom_point() +
   geom_smooth(method = "lm", se = TRUE) +
-  geom_abline(slope = 1.25, intercept = coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit))[1], color = "black") +
-  labs(x = expression('log'[10]*'A'['E']),
-       y = expression('log'[10]*'A'['T']*sqrt('T'))) +
-guides(alpha = "none")+
+  geom_abline(slope = 1.25,
+              intercept = coef(lm(
+                log10(sqrt(AvgThickness)* TotalArea) ~ log10(ExposedArea),
+                data = dados_hemi_v1,
+                na.action = na.omit
+              ))[1],
+              color = "black") +
+  labs(x = expression('log'[10] * 'A'['E']),
+       y = expression('log'[10] * 'A'['T'] * sqrt('T'))) +
+  guides(alpha = "none") +
   theme_pubr() +
-  theme(axis.title = element_text(size = 11),
-    axis.text = element_text(size = 10), text = element_text(size = 10)) +
-  scale_x_continuous(limits=c(4.45,4.65))
+  theme(
+    axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10),
+    text = element_text(size = 10)
+  ) +
+  scale_x_continuous(limits = c(4.45, 4.65))
 
 fig2b <- ggplot(
-  data = filter(lm_fit_comp_idor, term == "logExposedArea"),
+  data = filter(lm_fit_comp_idor, term == "log10(ExposedArea)"),
   aes(
   x = Diagnostic,
   y = estimate, color = Diagnostic

@@ -1,3 +1,0 @@
-"0","ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = Age, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + "
-"0","  geom_boxplot() + theme_pubr() +"
-"0","  stat_compare_means(method = ""anova"")"

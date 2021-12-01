@@ -1,6 +1,0 @@
-"0",""
-"0","lm_diagnostic <- dados_hemi_v1 %>%"
-"0","  group_by(Diagnostic) %>%"
-"0","  do(fit_diagnostic = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()"
-"0",""
-"0","lm_diagnostic %>% kable(digits = 2) %>% kable_styling()"

@@ -1,3 +1,0 @@
-"0","ggplot(filter(dados_hemi_v1, Age_interval != ""[45,50)""& Age_interval != ""[50,55)""& Age_interval != ""[40,45)""& Age_interval != ""[55,60)""), aes(x = Age_interval, y = logAvgThickness_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
-"0","  geom_boxplot()  + theme_pubr()"
-"0",""

@@ -1,6 +1,0 @@
-"0","ggplot(data = filter(dados_lobos_v1, Diagnostic == ""CTL""), aes(Age, K_age_decay, alpha = 0.4)) +"
-"0","  geom_smooth(se = TRUE) +"
-"0","  stat_regline_equation() +"
-"0","  theme_pubr() + facet_wrap(ROI ~ . )"
-"2","`geom_smooth()` using method = 'loess' and formula 'y ~ x'
-"

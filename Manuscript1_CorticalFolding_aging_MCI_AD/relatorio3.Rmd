@@ -57,6 +57,7 @@ source("03-import_files.R") # arquivos dos sujeitos
 source("04-organiza.R")
 
 dados_raw <- dados
+write.csv(dados_raw, "dados_raw.csv")
 
 verificar_lGI_zero <- filter(dados, ExposedArea == 0 | is.na(localGI))
 write.csv(verificar_lGI_zero, "verificar_lGI_zero.csv")

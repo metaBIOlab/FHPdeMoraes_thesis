@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-Description of the procedures and analysis present in Complementary Analysis 1, Methodological robustness of image processing, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree
+Description of the procedures and analysis present in Complementary Analysis 1, **Methodological robustness of image processing**, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree
 
 Part of the data used here cannot be shared due to restrictions of the Ethic Comittee. Data can be shared upon reasonable request to the corresponding author. To fullfil these limitation, we will generate (in next versions) random data to simulate the results.
 

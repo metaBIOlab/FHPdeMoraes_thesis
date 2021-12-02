@@ -4,7 +4,10 @@ author: "Fernanda Hansen Pacheco de Moraes"
 date: "1 dec 2021"
 output:
   html_document: 
+<<<<<<< HEAD
+=======
     df_print: kable
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     fig_caption: yes
     fig_width: 8
     number_sections: yes
@@ -14,7 +17,11 @@ editor_options:
   chunk_output_type: inline
 ---
 
+<<<<<<< HEAD
+Description of the procedures and analysis present in Manuscript 1, **Independent morphological correlates to aging, Mild Cognitive Impairment, and Alzheimer’s Disease**, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
+=======
 Description of the procedures and analysis present in Manuscript 1, **Independent morphological correlates to aging, Mild Cognitive Impairment**, and Alzheimer’s Disease, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 
 Part of the data used here cannot be shared due to restrictions of the Ethic Committee. Data can be shared upon reasonable request to the corresponding author. To fulfill these limitation, we will generate random data to simulate the results.
 
@@ -28,9 +35,13 @@ knitr::opts_chunk$set(
 <<<<<<< HEAD
 	cache = TRUE
 =======
+<<<<<<< HEAD
+	cache = TRUE
+=======
 	cache = TRUE,
 	messAge = FALSE
 >>>>>>> 8dfdbd0d8f4164c8d69dd7a0d13a9415aaa24620
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 )
 ```
 
@@ -48,9 +59,15 @@ library(broom)
 library(MASS)
 library(cutpointr)
 <<<<<<< HEAD
+library(ggstatsplot)
+library(effects)
+
+=======
+<<<<<<< HEAD
 =======
 
 >>>>>>> 8dfdbd0d8f4164c8d69dd7a0d13a9415aaa24620
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```
 
 # set seed for random process
@@ -111,7 +128,14 @@ dados_raw <- dados_raw %>%
     ROI == "hemisphere",
     3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^ 2) ,
     3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness^ 2) 
+<<<<<<< HEAD
+  ),
+    Knorm = K_corrected/sqrt(1 + (1/4)^2 + (5/4)^2),
+  Snorm = S_corrected/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
+  Inorm = I_corrected/sqrt(1^2 + 1^2 + 1^1)
+=======
   )
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 )
 
 # create age intervals
@@ -1854,10 +1878,15 @@ a %>% filter(`p adj` < 0.05 |`p adj` == 0.05 )
 
 ```
 
+<<<<<<< HEAD
+### S and I - AD and CTL
+
+=======
 
 ### S and I - AD and CTL
 
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```{r K I S}
 mean_K_I_S <-
   dados_hemi_v1 %>% group_by(Diagnostic) %>% summarise(
@@ -1867,12 +1896,21 @@ mean_K_I_S <-
     SD_I = sd(Inorm, na.rm = TRUE),
     mean.S = mean(Snorm, na.rm = TRUE),
     SD_S = sd(Snorm, na.rm = TRUE),
+<<<<<<< HEAD
+    # mean.K_age_decay = mean(Knorm_age_decay, na.rm = TRUE),
+    # SD_K_age_decay = sd(Knorm_age_decay, na.rm = TRUE),
+    # mean.I_age_decay = mean(Inorm_age_decay, na.rm = TRUE),
+    # SD_I_age_decay = sd(Inorm_age_decay, na.rm = TRUE),
+    # mean.S_age_decay = mean(Snorm_age_decay, na.rm = TRUE),
+    # SD_S_age_decay = sd(Snorm_age_decay, na.rm = TRUE),
+=======
     mean.K_age_decay = mean(Knorm_age_decay, na.rm = TRUE),
     SD_K_age_decay = sd(Knorm_age_decay, na.rm = TRUE),
     mean.I_age_decay = mean(Inorm_age_decay, na.rm = TRUE),
     SD_I_age_decay = sd(Inorm_age_decay, na.rm = TRUE),
     mean.S_age_decay = mean(Snorm_age_decay, na.rm = TRUE),
     SD_S_age_decay = sd(Snorm_age_decay, na.rm = TRUE),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     N_SUBJ = n_distinct(SUBJ)
     )
 
@@ -1884,6 +1922,17 @@ mean_K_I_S_lobes <-
     SD_I = sd(Inorm, na.rm = TRUE),
     mean.S = mean(Snorm, na.rm = TRUE),
     SD_S = sd(Snorm, na.rm = TRUE),
+<<<<<<< HEAD
+    # mean.K_age_decay = mean(Knorm_age_decay, na.rm = TRUE),
+    # SD_K_age_decay = sd(Knorm_age_decay, na.rm = TRUE),
+    # mean.I_age_decay = mean(Inorm_age_decay, na.rm = TRUE),
+    # SD_I_age_decay = sd(Inorm_age_decay, na.rm = TRUE),
+    # mean.S_age_decay = mean(Snorm_age_decay, na.rm = TRUE),
+    # SD_S_age_decay = sd(Snorm_age_decay, na.rm = TRUE),
+    N_SUBJ = n_distinct(SUBJ)
+    )
+
+=======
     mean.K_age_decay = mean(Knorm_age_decay, na.rm = TRUE),
     SD_K_age_decay = sd(Knorm_age_decay, na.rm = TRUE),
     mean.I_age_decay = mean(Inorm_age_decay, na.rm = TRUE),
@@ -1894,6 +1943,7 @@ mean_K_I_S_lobes <-
     )
 
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 fig3a <- ggplot(mean_K_I_S, aes(x = mean.K, y = mean.S, color = Diagnostic)) +
   geom_point() +
   geom_line(group =1, color = "gray") +
@@ -1902,7 +1952,10 @@ fig3a <- ggplot(mean_K_I_S, aes(x = mean.K, y = mean.S, color = Diagnostic)) +
   theme(axis.title = element_text(size = 11),
     axis.text = element_text(size = 10), text = element_text(size = 10))
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 fig3c <- ggplot(mean_K_I_S, aes(x = mean.K, y = mean.I, color = Diagnostic)) +
   geom_point() +
   geom_line(group =1, color = "gray") +
@@ -1936,6 +1989,16 @@ mean_K_I_S_ADCTL <-
     SD_I = sd(Inorm, na.rm = TRUE),
     mean.S = mean(Snorm, na.rm = TRUE),
     SD_S = sd(Snorm, na.rm = TRUE),
+<<<<<<< HEAD
+    # mean.T_age_decay = mean(logAvgThickness_age_decay, na.rm = TRUE),
+    # SD_T_age_decay = sd(logAvgThickness_age_decay, na.rm = TRUE),
+    # mean.K_age_decay = mean(Knorm_age_decay, na.rm = TRUE),
+    # SD_K_age_decay = sd(Knorm_age_decay, na.rm = TRUE),
+    # mean.I_age_decay = mean(Inorm_age_decay, na.rm = TRUE),
+    # SD_I_age_decay = sd(Inorm_age_decay, na.rm = TRUE),
+    # mean.S_age_decay = mean(Snorm_age_decay, na.rm = TRUE),
+    # SD_S_age_decay = sd(Snorm_age_decay, na.rm = TRUE),
+=======
     mean.T_age_decay = mean(logAvgThickness_age_decay, na.rm = TRUE),
     SD_T_age_decay = sd(logAvgThickness_age_decay, na.rm = TRUE),
     mean.K_age_decay = mean(Knorm_age_decay, na.rm = TRUE),
@@ -1944,6 +2007,7 @@ mean_K_I_S_ADCTL <-
     SD_I_age_decay = sd(Inorm_age_decay, na.rm = TRUE),
     mean.S_age_decay = mean(Snorm_age_decay, na.rm = TRUE),
     SD_S_age_decay = sd(Snorm_age_decay, na.rm = TRUE),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     N_SUBJ = n_distinct(SUBJ)
   )
 
@@ -2055,10 +2119,17 @@ ggplot(data = filter(aov_summary_KSI_ADCTL, `p adj` < 0.05 |
   labs(title = "95% family-wise confidence level", y =  "Differences in mean levels of Diagnostic", x = "ROI", caption = "only significant differences, p adj =< 0.05)") +
   theme_pubr()
 
+<<<<<<< HEAD
+# aov_summary_KSI_ADCTL
+
+filter(aov_summary_KSI_ADCTL, `p adj` < 0.05 |
+                         `p adj` == 0.05)
+=======
 aov_summary_KSI_ADCTL %>% kable() %>% kable_styling()
 
 filter(aov_summary_KSI_ADCTL, `p adj` < 0.05 |
                          `p adj` == 0.05) %>% kable() %>% kable_styling()
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 
 ```
 
@@ -2173,7 +2244,11 @@ ggplot(data = dados_hemi_v1_CD_biochq, aes(x = Diagnostic, y = clinical_test_val
 
 ```
 
+<<<<<<< HEAD
+### K:
+=======
 K:
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```{r clincal data, eval=FALSE, include=FALSE}
 
 ggplot(data = filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina)), aes(K, Lipoxina, color = Diagnostic, fill = Diagnostic)) +
@@ -2238,7 +2313,11 @@ ggplot(data = filter(dados_hemi_v1, TAU_AB1_ratio != 0 | !is.na(TAU_AB1_ratio)),
 
 ```
 
+<<<<<<< HEAD
+### Avg Thickness:
+=======
 Avg Thickness:
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```{r clincal data logAvgThickness, eval=FALSE, include=FALSE}
 
 ggplot(data = filter(dados_hemi_v1, Lipoxina != 0 | !is.na(Lipoxina)), aes(logAvgThickness, Lipoxina, color = Diagnostic, fill = Diagnostic)) +
@@ -2317,9 +2396,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% 
   mutate(Diagnostic = "All", ROI = "Hemisphere", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
@@ -2333,9 +2418,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% 
   mutate(ROI = "Hemisphere", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
@@ -2348,9 +2439,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% 
   mutate(Diagnostic = "All", ROI = "Hemisphere", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
@@ -2363,9 +2460,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% mutate(ROI = "Hemisphere", kind = "biochemical", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov_all <- full_join(Corr_cov1, Corr_cov3)
@@ -2388,9 +2491,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>%  mutate(Diagnostic = "All", ROI = "Frontal lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov6 <- filter(dados_lobos_v1_F_CD_behaviour, clinical_test == "TMT B-A" | clinical_test == "relogio" | clinical_test == "DIGIT SPAN BACK") %>%
@@ -2402,9 +2511,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>%  mutate(ROI = "Frontal lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov_all <- full_join(Corr_cov_all, Corr_cov5)
@@ -2424,9 +2539,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>%  mutate(Diagnostic = "All", ROI = "Parietal lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov10 <- filter(dados_lobos_v1_P_CD_behaviour, clinical_test == "relogio") %>%
@@ -2438,9 +2559,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>%  mutate(ROI = "Parietal lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov_all <- full_join(Corr_cov_all, Corr_cov9)
@@ -2461,9 +2588,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% 
   mutate(Diagnostic = "All", ROI = "Occipital lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
@@ -2476,9 +2609,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% 
   mutate(ROI = "Occipital lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
@@ -2500,9 +2639,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>%  mutate(Diagnostic = "All", ROI = "Temporal lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov18 <- filter(dados_lobos_v1_T_CD_behaviour, clinical_test == "A7/A5") %>%
@@ -2514,9 +2659,15 @@ summarise(
     cor.conf.low = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[1],2),
     cor.conf.high = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$conf.int[2],2),
     pvalue = signif(cor.test(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson")$p.value,4),
+<<<<<<< HEAD
+    # eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
+    # eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
+    # eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+=======
     eff.size = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$d,2),
     eff.size.conf.low = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$l.d,2),
     eff.size.conf.high = signif(res(Correlation, var.r = NULL,(df+2)/2, level = 95, dig = 2, verbose = FALSE)$u.d,2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
     Covariance = signif(cov(morphological_parameter_value, clinical_test_value, use = "complete", method = "pearson"),2)) %>% mutate(ROI = "Temporal lobe", kind = "behaviour", Age_correction = ifelse(str_detect(morphological_parameter, "_age_decay", negate = FALSE),"yes","no"))
 
 Corr_cov_all <- full_join(Corr_cov_all, Corr_cov17)
@@ -2554,13 +2705,20 @@ filter(Corr_cov_all, morphological_parameter == "K" | morphological_parameter ==
 
 ```
 
+<<<<<<< HEAD
+### K:
+=======
 K:
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```{r corr cov K, eval=FALSE, include=FALSE}
 
 filter(Corr_cov_filter, morphological_parameter == "K") %>% dplyr::select(-c(cor.conf.low,cor.conf.high, Covariance,kind )) %>% t() %>% kable(digits = 2) %>% kable_styling()
 filter(Corr_cov_filter, morphological_parameter == "K", pval.adj < 0.05) %>% dplyr::select(-c(cor.conf.low,cor.conf.high, Covariance,kind )) %>% t() %>% kable(digits = 2) %>% kable_styling()
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ggplot(filter(Corr_cov, clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "A7/A5" | clinical_test == "relogio", morphological_parameter == "K", Diagnostic == "All"), aes(x = clinical_test, y = Correlation, color = ROI, fill = ROI, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(Age_correction ~ ., labeller = label_both)
 
 ggplot(filter(Corr_cov, clinical_test == "COGNITIVE_INDEX" | clinical_test == "TMT B-A" | clinical_test == "A7/A5" | clinical_test == "relogio", ROI == "Hemisphere", morphological_parameter == "K"), aes(x = clinical_test, y = Correlation, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(Age_correction ~ ., labeller = label_both)
@@ -2574,10 +2732,16 @@ ggplot(filter(Corr_cov, clinical_test == "Lipoxina" | clinical_test == "AB1-40" 
 
 ggplot(filter(Corr_cov, clinical_test == "Lipoxina" | clinical_test == "AB1-40" | clinical_test == "AB1-42" | clinical_test == "TAU" | clinical_test == "AB1_ratio" | clinical_test == "TAU_AB1_42_ratio" | clinical_test == "TAU_AB1_ratio", ROI == "Hemisphere", morphological_parameter == "K"), aes(x = clinical_test, y = Correlation, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + geom_col(position = "dodge") + geom_text(aes(label = ifelse(pval.adj < 0.05, "*", "")), color = "black", position = position_dodge(width = 1)) + theme_pubr() + facet_grid(Age_correction ~ ., labeller = label_both)
 
+<<<<<<< HEAD
+```
+
+### Avg Thickness:
+=======
   
 ```
 
 Avg Thickness:
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```{r corr Covariance AvgThickness, eval=FALSE, include=FALSE}
 
 filter(Corr_cov_filter, morphological_parameter == "logAvgThickness") %>% dplyr::select(-c(cor.conf.low,cor.conf.high, Covariance,kind )) %>% t() %>% kable(digits = 2) %>% kable_styling()
@@ -2597,6 +2761,8 @@ ggplot(filter(Corr_cov, clinical_test == "Lipoxina" | clinical_test == "AB1-40" 
 
 ```
 
+<<<<<<< HEAD
+=======
 S: 
 ```{r corr Covariance S, eval=FALSE, include=FALSE}
 
@@ -2629,6 +2795,7 @@ filter(Corr_cov, morphological_parameter == "I", pval.adj < 0.05) %>% t() %>% ka
 ```
 
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ### clinical data - ancova
 
 ```{r clinical data - ancova, eval=FALSE, warning=FALSE, include=FALSE, messAge=FALSE, pAged.print=TRUE}
@@ -2832,7 +2999,10 @@ ggplot(data = dados_hemi_v1, aes(K, `AB1-40`, color = Diagnostic, fill = Diagnos
 model7.0 <- lm(`AB1-40` ~ K, data = dados_hemi_v1)
 summary(model7.0)
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 model7.1 <- lm(K ~ `AB1-40`*Diagnostic*Age*ESC, data = dados_hemi_v1)
 Anova(model7.1, type="II") %>% kable(digits = 2) %>% kable_styling()
 
@@ -2848,7 +3018,10 @@ plot(fitted(model7.2),
 anova(model7.1,model7.2) %>% kable(digits = 2) %>% kable_styling()
 etaSquared(model7.2) %>% kable(digits = 2) %>% kable_styling()
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ggplot(data = dados_hemi_v1, aes(K, `AB1-42`, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
   geom_point() + stat_cor() + 
   geom_smooth(method = "lm", se = TRUE) +
@@ -2857,7 +3030,10 @@ ggplot(data = dados_hemi_v1, aes(K, `AB1-42`, color = Diagnostic, fill = Diagnos
 model8.0 <- lm(`AB1-42` ~ K, data = dados_hemi_v1)
 summary(model8.0)
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 model8.1 <- lm(`AB1-42` ~ K*Diagnostic*Age*ESC, data = dados_hemi_v1)
 Anova(model8.1, type="II") %>% kable(digits = 2) %>% kable_styling()
 
@@ -2889,7 +3065,10 @@ model9.2 <- lm(TAU ~ K+ Diagnostic + Age + ESC, data = dados_hemi_v1)
 Anova(model9.2, type="II") %>% kable(digits = 2) %>% kable_styling()
 summary(model9.2)
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 hist(residuals(model9.2),
      col="darkgray")
 plot(fitted(model9.2),
@@ -2898,7 +3077,10 @@ plot(fitted(model9.2),
 anova(model9.1,model9.2) %>% kable(digits = 2) %>% kable_styling()
 etaSquared(model9.2) %>% kable(digits = 2) %>% kable_styling()
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ggplot(data = dados_hemi_v1, aes(K_corrected, AB1_ratio, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
   geom_point() + stat_cor() + 
   geom_smooth(method = "lm", se = TRUE) +
@@ -2907,7 +3089,10 @@ ggplot(data = dados_hemi_v1, aes(K_corrected, AB1_ratio, color = Diagnostic, fil
 model10.0 <- lm(AB1_ratio ~ K, data = dados_hemi_v1)
 summary(model10.0)
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 model10.1 <- lm(AB1_ratio ~ K_corrected*Diagnostic*Age*ESC, data = dados_hemi_v1)
 Anova(model10.1, type="II") %>% kable(digits = 2) %>% kable_styling()
 
@@ -2915,7 +3100,10 @@ model10.2 <- lm(AB1_ratio ~ K_corrected + Diagnostic + Age + ESC, data = dados_h
 Anova(model10.2, type="II") %>% kable(digits = 2) %>% kable_styling()
 summary(model10.2)
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 hist(residuals(model10.2),
      col="darkgray")
 plot(fitted(model10.2),
@@ -2924,7 +3112,10 @@ plot(fitted(model10.2),
 anova(model10.1,model10.2) %>% kable(digits = 2) %>% kable_styling()
 etaSquared(model10.2) %>% kable(digits = 2) %>% kable_styling()
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ggplot(data = dados_hemi_v1, aes(K, TAU_AB1_42_ratio, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
   geom_point() + stat_cor() + 
   geom_smooth(method = "lm", se = TRUE) +
@@ -2974,7 +3165,10 @@ plot(fitted(model12.2),
 anova(model12.1,model12.2) %>% kable(digits = 2) %>% kable_styling()
 etaSquared(model12.2) %>% kable(digits = 2) %>% kable_styling()
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 ```
 
 ### clinical data -focused analysis ----

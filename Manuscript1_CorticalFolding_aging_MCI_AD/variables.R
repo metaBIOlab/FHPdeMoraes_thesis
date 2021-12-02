@@ -18,9 +18,12 @@ dados_datasetscomp <- dados_datasetscomp %>%
   K = 1 / 4 * log10(AvgThickness^2)  + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
   S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^2) ,
   I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^2) ,
+<<<<<<< HEAD
+=======
   Knorm = K/sqrt(1 + (1/4)^2 + (5/4)^2),
   Snorm = S/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
   Inorm = I/sqrt(1^2 + 1^2 + 1^2),
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
   c = as.double(ifelse(ROI == "hemisphere", NA, 4 * pi / GaussianCurvature)),
   WhiteSurfArea = WhiteArea,
   GMvolume = GreymatterVol,
@@ -52,7 +55,14 @@ dados_datasetscomp <- dados_datasetscomp %>%
     ROI == "hemisphere",
     3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^ 2) ,
     3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness^ 2) 
+<<<<<<< HEAD
+  ),
+  Knorm = K_corrected/sqrt(1 + (1/4)^2 + (5/4)^2),
+  Snorm = S_corrected/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
+  Inorm = I_corrected/sqrt(1^2 + 1^2 + 1^2)
+=======
   )
+>>>>>>> 2cd58b57a60b5462bd45b56a298f23e392b8163f
 )
 
 dados_datasetscomp$hemi[dados_datasetscomp$hemi == "left"] <- "L"

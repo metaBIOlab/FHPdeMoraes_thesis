@@ -1,9 +1,9 @@
 {
     "id": "3D566134",
-    "path": "~/Documentos/Gyrification/RRRRRR/aging/V6/relatorio3.Rmd",
+    "path": "~/GitHub/FHPdeMoraes_thesis/Manuscript1_CorticalFolding_aging_MCI_AD/relatorio3.Rmd",
     "project_path": "relatorio3.Rmd",
     "type": "r_markdown",
-    "hash": "2587487347",
+    "hash": "596532495",
     "contents": "",
     "dirty": false,
     "created": 1626790487144.0,
@@ -11,19 +11,20 @@
     "relative_order": 9,
     "properties": {
         "source_window_id": "",
-        "Source": "Sourcel58b8ocbi24f",
-        "docOutlineVisible": "0",
-        "docOutlineSize": "338",
-        "cursorPosition": "1299,9",
-        "scrollLine": "1270",
-        "last_setup_crc32": "2BE100833ac18287"
+        "Source": "Sourcehw3m6et1gik1",
+        "docOutlineVisible": "1",
+        "docOutlineSize": "212",
+        "cursorPosition": "2589,0",
+        "scrollLine": "0",
+        "last_setup_crc32": "",
+        "chunk_output_type": "inline"
     },
     "folds": "",
-    "lastKnownWriteTime": 1628175926,
+    "lastKnownWriteTime": 1638455306,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1628188763653,
+    "last_content_update": 1638455306029,
     "read_only": false,
     "read_only_alternatives": []
 }

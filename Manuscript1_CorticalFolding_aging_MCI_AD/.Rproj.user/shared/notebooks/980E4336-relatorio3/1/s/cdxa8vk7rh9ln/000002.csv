@@ -1,2 +1,0 @@
-"0","ggplot(dados_hemi_v1, aes(x = Diagnostic, y = S, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
-"0","  geom_boxplot()  + theme_pubr()"

@@ -1,7 +1,0 @@
-"0",""
-"0","ggplot(data = dados_hemi_v1, aes(Age, I, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +"
-"0","  geom_point() +"
-"0","  geom_smooth(method = ""lm"", se = TRUE) +"
-"0","  theme_pubr()"
-"2","`geom_smooth()` using formula 'y ~ x'
-"

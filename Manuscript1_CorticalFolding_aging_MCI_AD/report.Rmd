@@ -52,9 +52,9 @@ set.seed(1)
 ```
 
 ```{r}
-test_coef <- function(reg, coefnum, val){
+test_coef <- function(reg, coefnum, val) {
   co <- coef(summary(reg))
-  tstat <- (co[coefnum,1]-val)/co[coefnum,2]
+  tstat <- (co[coefnum, 1] - val) / co[coefnum, 2]
   2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
 }
 ```
@@ -66,49 +66,54 @@ dados_raw <- read_csv("dados_raw.csv")
 ```{r create new variables}
 # estimate cortical folding variables
 dados_raw <- dados_raw %>%
-  mutate( # create new variables
-  logAvgThickness = log10(AvgThickness),
-  logTotalArea = log10(TotalArea),
-  logExposedArea = log10(ExposedArea),
-  localGI = TotalArea / ExposedArea,
-  k = sqrt(AvgThickness) * TotalArea / (ExposedArea ^ 1.25),
-  K = 1 / 4 * log10(AvgThickness^2)  + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
-  S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^2) ,
-  I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^2),
-  c = as.double(ifelse(ROI == "hemisphere", NA, 4 * pi / GaussianCurvature)),
-  TotalArea_corrected = ifelse(ROI == "hemisphere", TotalArea, TotalArea * c),
-  ExposedArea_corrected = ifelse(ROI == "hemisphere", ExposedArea, ExposedArea * c),
-  logTotalArea_corrected = log10(TotalArea_corrected),
-  logExposedArea_corrected = log10(ExposedArea_corrected),
-  localGI_corrected = ifelse(
-    ROI == "hemisphere",
-    TotalArea / ExposedArea,
-    TotalArea_corrected / ExposedArea_corrected
-  ),
-  k_corrected = ifelse(
-    ROI == "hemisphere",
-    sqrt(AvgThickness) * log10(TotalArea) / (log10(ExposedArea) ^ 1.25),
-    sqrt(AvgThickness) * log10(TotalArea_corrected) / (log10(ExposedArea_corrected^1.25) )
-  ),
-  K_corrected =  ifelse(
-    ROI == "hemisphere",
-    1 / 4 * log10(AvgThickness^ 2)+ log10(TotalArea) - 5 / 4 * log10(ExposedArea),
-    1 / 4 * log10(AvgThickness^ 2) + log10(TotalArea_corrected) - 5 / 4 * log10(ExposedArea_corrected)
-  ),
-  I_corrected = ifelse(
-    ROI == "hemisphere",
-    log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness^ 2) ,
-    log10(TotalArea_corrected) + log10(ExposedArea_corrected) + log10(AvgThickness^ 2) 
-  ),
-  S_corrected = ifelse(
-    ROI == "hemisphere",
-    3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness^ 2) ,
-    3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness^ 2) 
-  ),
-    Knorm = K_corrected/sqrt(1 + (1/4)^2 + (5/4)^2),
-  Snorm = S_corrected/sqrt((3/2)^2 + (3/4)^2 + (9/4)^2),
-  Inorm = I_corrected/sqrt(1^2 + 1^2 + 1^1)
-)
+  mutate(
+    # create new variables
+    logAvgThickness = log10(AvgThickness),
+    logTotalArea = log10(TotalArea),
+    logExposedArea = log10(ExposedArea),
+    localGI = TotalArea / ExposedArea,
+    k = sqrt(AvgThickness) * TotalArea / (ExposedArea ^ 1.25),
+    K = 1 / 4 * log10(AvgThickness ^ 2)  + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+    S = 3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness ^
+                                                                                 2) ,
+    I = log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness ^ 2),
+    c = as.double(ifelse(
+      ROI == "hemisphere", NA, 4 * pi / GaussianCurvature
+    )),
+    TotalArea_corrected = ifelse(ROI == "hemisphere", TotalArea, TotalArea * c),
+    ExposedArea_corrected = ifelse(ROI == "hemisphere", ExposedArea, ExposedArea * c),
+    logTotalArea_corrected = log10(TotalArea_corrected),
+    logExposedArea_corrected = log10(ExposedArea_corrected),
+    localGI_corrected = ifelse(
+      ROI == "hemisphere",
+      TotalArea / ExposedArea,
+      TotalArea_corrected / ExposedArea_corrected
+    ),
+    k_corrected = ifelse(
+      ROI == "hemisphere",
+      sqrt(AvgThickness) * log10(TotalArea) / (log10(ExposedArea) ^ 1.25),
+      sqrt(AvgThickness) * log10(TotalArea_corrected) / (log10(ExposedArea_corrected ^
+                                                                 1.25))
+    ),
+    K_corrected =  ifelse(
+      ROI == "hemisphere",
+      1 / 4 * log10(AvgThickness ^ 2) + log10(TotalArea) - 5 / 4 * log10(ExposedArea),
+      1 / 4 * log10(AvgThickness ^ 2) + log10(TotalArea_corrected) - 5 / 4 * log10(ExposedArea_corrected)
+    ),
+    I_corrected = ifelse(
+      ROI == "hemisphere",
+      log10(TotalArea) + log10(ExposedArea) + log10(AvgThickness ^ 2) ,
+      log10(TotalArea_corrected) + log10(ExposedArea_corrected) + log10(AvgThickness ^ 2)
+    ),
+    S_corrected = ifelse(
+      ROI == "hemisphere",
+      3 / 2 * log10(TotalArea) + 3 / 4 * log10(ExposedArea) - 9 /  4 * log10(AvgThickness ^ 2) ,
+      3 / 2 * log10(TotalArea_corrected) + 3 / 4 * log10(ExposedArea_corrected) - 9 /  4 * log10(AvgThickness ^ 2)
+    ),
+    Knorm = K_corrected / sqrt(1 + (1 / 4) ^ 2 + (5 / 4) ^ 2),
+    Snorm = S_corrected / sqrt((3 / 2) ^ 2 + (3 / 4) ^ 2 + (9 / 4) ^ 2),
+    Inorm = I_corrected / sqrt(1 ^ 2 + 1 ^ 2 + 1 ^ 1)
+  )
 
 # create age intervals
 dados_raw$Age_interval <- cut(dados_raw$Age,
@@ -155,20 +160,33 @@ Age.cor = 25
 
 ## Avg thickness ----
 decay_AvgThickness <-
-  filter(dados, Diagnostic == "CTL") %>%
+  filter(
+    dados,
+    Diagnostic == "CTL",!is.na(TotalArea),!is.nan(TotalArea),!is.infinite(TotalArea)
+  ) %>%
   droplevels() %>%
   group_by(ROI) %>%
-  do(fit_decay_AvgThickness = tidy(rlm(AvgThickness ~ Age, data = .), conf.int=TRUE)) %>% unnest(cols = c(fit_decay_AvgThickness)) %>%
+  do(fit_decay_AvgThickness = tidy(rlm(AvgThickness ~ Age, data = .), conf.int =
+                                     TRUE)) %>%
+  unnest(cols = c(fit_decay_AvgThickness)) %>%
   filter(term == "Age") %>%
-    mutate(c_AvgThickness = estimate,
+  mutate(c_AvgThickness = estimate,
          std_error_c_AvgThickness = std.error) %>%
   dplyr::select(c(ROI, c_AvgThickness, std_error_c_AvgThickness))
 
 ## TotalArea ----
-decay_TotalArea <- filter(dados, Diagnostic == "CTL", !is.na(TotalArea), !is.nan(TotalArea), !is.infinite(TotalArea)) %>%
+decay_TotalArea <-
+  filter(
+    dados,
+    Diagnostic == "CTL",
+    !is.na(TotalArea),
+    !is.nan(TotalArea),
+    !is.infinite(TotalArea)
+  ) %>%
   droplevels() %>%
   group_by(ROI) %>%
-  do(fit_decay_TotalArea = tidy(rlm(TotalArea ~ Age, data = .),conf.int=TRUE)) %>%
+  do(fit_decay_TotalArea = tidy(rlm(TotalArea ~ Age, data = .), conf.int =
+                                  TRUE)) %>%
   unnest(cols = c(fit_decay_TotalArea)) %>%
   filter(term == "Age") %>%
   mutate(c_TotalArea = estimate,
@@ -176,7 +194,14 @@ decay_TotalArea <- filter(dados, Diagnostic == "CTL", !is.na(TotalArea), !is.nan
   dplyr::select(c(ROI, c_TotalArea, std_error_c_TotalArea))
 
 ## ExposedArea ----
-decay_ExposedArea <- filter(dados, Diagnostic == "CTL", !is.na(ExposedArea), !is.nan(ExposedArea), !is.infinite(ExposedArea)) %>%
+decay_ExposedArea <-
+  filter(
+    dados,
+    Diagnostic == "CTL",
+    !is.na(ExposedArea),
+    !is.nan(ExposedArea),
+    !is.infinite(ExposedArea)
+  ) %>%
   droplevels() %>%
   group_by(ROI) %>%
   do(fit_decay_ExposedArea = tidy(rlm(ExposedArea ~ Age, data = .), conf.int = TRUE)) %>%
@@ -186,6 +211,7 @@ decay_ExposedArea <- filter(dados, Diagnostic == "CTL", !is.na(ExposedArea), !is
          std_error_c_ExposedArea = std.error) %>%
   dplyr::select(c(ROI, c_ExposedArea, std_error_c_ExposedArea))
 
+## join
 dados <- full_join(dados, decay_AvgThickness) %>%
   full_join(decay_TotalArea) %>%
   full_join(decay_ExposedArea) %>%
@@ -201,7 +227,7 @@ dados <- full_join(dados, decay_AvgThickness) %>%
     S_age_decay = 3/2*log10(TotalArea_age_decay) + 3/4*log10(ExposedArea_age_decay) - 9/4*log10(AvgThickness_age_decay^2))
 
 dados$logAvgThickness <- as.double(dados$logAvgThickness)
-dados$logExposedArea<- as.double(dados$logExposedArea)
+dados$logExposedArea <- as.double(dados$logExposedArea)
 dados$logTotalArea   <- as.double(dados$logTotalArea)
 
 ```
@@ -237,34 +263,28 @@ dados_hemi_v1 %>%
     I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
   )
 
-lm_Age <- lm(Age ~ Diagnostic, data = dados_hemi_v1)
-anova(lm_Age)
-Age_diag_tk <- TukeyHSD(aov(Age ~ Diagnostic, data = dados_hemi_v1))
-Age_diag_tk
-
-lm_esc <- lm(ESC ~ Diagnostic, data = dados_hemi_v1)
-anova(lm_esc)
-ESC_diag_TK <- TukeyHSD(aov(ESC ~ Diagnostic, data = dados_hemi_v1))
-ESC_diag_TK
-
 paste("N sujeitos = ", n_distinct(dados_hemi_v1$SUBJ))
 paste("N sujeitos lobos = ", n_distinct(dados_lobos_v1$SUBJ))
-
-SUBJ_hemi <- unique(dplyr::select(dados_hemi_v1, c(SUBJ)))
-SUBJ_lobos <- unique(dplyr::select(dados_lobos_v1, c(SUBJ)))
-anti_join(SUBJ_lobos, SUBJ_hemi)
-
 ```
 
 ```{r }
 ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = Age, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + 
-  geom_boxplot() + theme_pubr() +
-  stat_compare_means(method = "anova")
+  geom_boxplot() +
+  theme_pubr() +
+  stat_compare_means(method = "anova") +
+  guides(alpha = "none")
 
+ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = ESC, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_boxplot() +
+  theme_pubr() +
+  stat_compare_means(method = "anova") +
+  guides(alpha = "none")
 
-ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = K, color = Gender, fill = Gender, alpha = 0.4)) +
-  geom_boxplot() + theme_pubr() +
-  stat_compare_means(method = "anova")
+ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_boxplot() +
+  theme_pubr() +
+  stat_compare_means(method = "anova") +
+  guides(alpha = "none")
 
 ```
 
@@ -275,9 +295,11 @@ ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = K, color = Gender, fill = G
 ```{r modelo_humanos, echo=FALSE, warning=FALSE, messAge=FALSE}
 lm_fit_comp_idor <- dados_hemi_v1 %>%
   group_by(Diagnostic) %>%
-  do(fit_comp_idor = tidy(lm(log10(sqrt(AvgThickness)*TotalArea) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
+  do(fit_comp_idor = tidy(lm(log10(sqrt(AvgThickness)*TotalArea) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int = TRUE)) %>% unnest()
 
-lm_fit_comp_idor %>% kable(digits = 2) %>% kable_styling()
+lm_fit_comp_idor %>%
+  kable(digits = 2) %>%
+  kable_styling()
 
 N_subj_diag <- dados_hemi_v1 %>%
   group_by(Diagnostic) %>%
@@ -286,7 +308,7 @@ N_subj_diag <- dados_hemi_v1 %>%
 fig2a <- ggplot(dados_hemi_v1,
                 aes(
                   log10(ExposedArea),
-                  log10(sqrt(AvgThickness)*TotalArea),
+                  log10(sqrt(AvgThickness) * TotalArea),
                   color = Diagnostic,
                   fill = Diagnostic,
                   alpha = 0.4
@@ -295,7 +317,7 @@ fig2a <- ggplot(dados_hemi_v1,
   geom_smooth(method = "lm", se = TRUE) +
   geom_abline(slope = 1.25,
               intercept = coef(lm(
-                log10(sqrt(AvgThickness)* TotalArea) ~ log10(ExposedArea),
+                log10(sqrt(AvgThickness) * TotalArea) ~ log10(ExposedArea),
                 data = dados_hemi_v1,
                 na.action = na.omit
               ))[1],
@@ -332,7 +354,7 @@ fig2b <- ggplot(
 fig2a
 fig2b
 
-paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor t deste teste?", abs(coef(summary(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit)))[2,1]-1.25)/coef(summary(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit)))[2,2])
+paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor t deste teste?", abs(coef(summary(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit)))[2,1] - 1.25)/coef(summary(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit)))[2,2])
 paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit), 2, 1.25))
 
 ```
@@ -355,32 +377,43 @@ summary(aov_Age)
 
 ```{r eval=FALSE, include=FALSE}
 ggplot(data = dados_hemi_v1, aes(Age, AvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_cor() +
+  geom_point() +
+  stat_cor() +
   geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
+  theme_pubr() +
+  guides(alpha = "none")
 
 ggplot(data = dados_hemi_v1, aes(Age, logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_cor() +
+  geom_point() +
+  stat_cor() +
   geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
+  theme_pubr() +
+  guides(alpha = "none")
 
 ggplot(data = dados_hemi_v1, aes(Age, logAvgThickness_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_regline_equation() +
+  geom_point() +
+  stat_regline_equation() +
   geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
+  theme_pubr() +
+  guides(alpha = "none")
 
 ggplot(data = dados_hemi_v1, aes(Age, TotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_cor() +
+  geom_point() +
+  stat_cor() +
   geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
+  theme_pubr() +
+  guides(alpha = "none")
 
 ggplot(data = dados_hemi_v1, aes(Age, logTotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_cor() +
+  geom_point() +
+  stat_cor() +
   geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
+  theme_pubr() +
+  guides(alpha = "none")
 
 ggplot(data = dados_hemi_v1, aes(Age, logTotalArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_regline_equation() +
+  geom_point() +
+  stat_regline_equation() +
   geom_smooth(method = "lm", se = TRUE) +
   theme_pubr()
 
@@ -527,7 +560,7 @@ K:
 #   theme(axis.title = element_text(size = 11),
 #     axis.text = element_text(size = 10), text = element_text(size = 10))
 
-fig1b <- ggplot(data = dados_hemi_v1, aes(Age, K, color = Diagnostic, fill = Diagnostic, alpha =0.4)) +
+fig1b <- ggplot(data = dados_hemi_v1, aes(Age, K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
   geom_point() +
   geom_smooth(method = "lm", se = TRUE) +
   theme_pubr() +

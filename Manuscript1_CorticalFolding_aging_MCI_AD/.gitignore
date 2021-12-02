@@ -1,8 +1,8 @@
-relatorio3_cache/
-relatorio3_file/
+relatorio3_cache/*
+relatorio3_file/*
 dados_raw.csv
 *.knit.md
-report_cache/
-report_file/
+report_cache/*
+report_file/*
 .RDataTmp
 .Rhistory

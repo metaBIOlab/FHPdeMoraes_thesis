@@ -1,5 +1,5 @@
 ---
-title: "Complementary Analysis 1 from Fernanda Hansen P. de Moraes Thesis - Cortical folding alterations in humans due to aging and diseases"
+title: "Complementary Analysis 1 from Thesis - Cortical folding alterations in humans due to aging and diseases"
 author: "Fernanda Hansen Pacheco de Moraes"
 date: "30-november-2021"
 output:
@@ -479,7 +479,7 @@ longcor1 <- ggplot(long_comp,
   scale_x_log10() +
   scale_y_log10()
 
-# ggsave("longcor1.png", plot = longcor1, dpi=1200, width = 11, height = 11, units = "cm", device = "png")
+ggsave("longcor1.png", plot = longcor1, dpi=1200, width = 11, height = 11, units = "cm", device = "png")
 
 longcor1 <- annotate_figure(longcor1,
                             bottom = text_grob(
@@ -636,7 +636,7 @@ FS_CFT1 <- ggplot(method_comp,
   scale_x_log10() +
   scale_y_log10()
 
-# ggsave("FS_CFT1.png", plot = FS_CFT1, dpi = 1200, width = 11, height = 11, units = "cm", device = "png")
+ggsave("FS_CFT1.png", plot = FS_CFT1, dpi = 1200, width = 11, height = 11, units = "cm", device = "png")
 
 FS_CFT1 <- annotate_figure(FS_CFT1,
                            bottom = text_grob(
@@ -839,7 +839,7 @@ EEdiameter <- annotate_figure(EEdiameter,
 
 EEdiameter
 
-# ggsave("EEdiameter.png", plot = EEdiameter, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
+ggsave("EEdiameter.png", plot = EEdiameter, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
 ```
 
 ```{r}
@@ -852,7 +852,7 @@ EEdiameter2 <- ggplot(data = diameter_comp,
   labs(y = "ExposedArea [mm²]", x = "se sphere diameter [mm]") +
   scale_x_continuous(breaks = c(5, 15, 20, 30, 50, 75, 100))
 
-# ggsave("EEdiameter2.png", plot = EEdiameter2, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
+ggsave("EEdiameter2.png", plot = EEdiameter2, dpi=1200, width = 18, height = 11, units = "cm", device = "png")
 
 EEdiameter2 <- annotate_figure(EEdiameter2,
                                bottom = text_grob(

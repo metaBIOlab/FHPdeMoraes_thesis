@@ -32,6 +32,20 @@ knitr::opts_chunk$set(
 setwd("~/GitHub/FHPdeMoraes_thesis/Manuscript1_CorticalFolding_aging_MCI_AD")
 ```
 
+```{r functions, message=FALSE, warning=FALSE}
+## define functions
+
+# test angular coeficinet versus theoretical value
+test_coef <- function(reg, coefnum, val){
+  co <- coef(summary(reg))
+  tstat <- (co[coefnum,1] - val)/co[coefnum,2]
+  2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
+}
+
+# wrap text
+wrapper <- function(x, ...) paste(strwrap(x, ...), collapse = "\n")
+```
+
 ```{r call packages}
 library(readr)
 library(tidyverse)
@@ -49,14 +63,6 @@ library(effects)
 # set seed for random process
 ```{r}
 set.seed(1)
-```
-
-```{r}
-test_coef <- function(reg, coefnum, val) {
-  co <- coef(summary(reg))
-  tstat <- (co[coefnum, 1] - val) / co[coefnum, 2]
-  2 * pt(abs(tstat), reg$df.residual, lower.tail = FALSE)
-}
 ```
 
 ```{r import files}
@@ -261,50 +267,61 @@ dados_hemi_v1 %>%
     K =  paste(signif(mean(K), 2), "±", signif(sd(K), 2)),
     S =  paste(signif(mean(S), 2), "±", signif(sd(S), 2)),
     I =  paste(signif(mean(I), 2), "±", signif(sd(I), 2))
-  )
-
-paste("N sujeitos = ", n_distinct(dados_hemi_v1$SUBJ))
-paste("N sujeitos lobos = ", n_distinct(dados_lobos_v1$SUBJ))
-```
-
-```{r }
-ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = Age, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) + 
-  geom_boxplot() +
-  theme_pubr() +
-  stat_compare_means(method = "anova") +
-  guides(alpha = "none")
-
-ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = ESC, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_boxplot() +
-  theme_pubr() +
-  stat_compare_means(method = "anova") +
-  guides(alpha = "none")
-
-ggplot(data = dados_hemi_v1, aes(x = Diagnostic, y = K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_boxplot() +
-  theme_pubr() +
-  stat_compare_means(method = "anova") +
-  guides(alpha = "none")
-
+  ) %>%
+  kable(digits = 2) %>%
+  kable_styling()
 ```
 
 # Results
 
 ## Cortical Folding Model
 
-```{r modelo_humanos, echo=FALSE, warning=FALSE, messAge=FALSE}
-lm_fit_comp_idor <- dados_hemi_v1 %>%
-  group_by(Diagnostic) %>%
-  do(fit_comp_idor = tidy(lm(log10(sqrt(AvgThickness)*TotalArea) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int = TRUE)) %>% unnest()
+```{r}
+summary(lm(
+  1 / 2 * log10(AvgThickness) + log10(TotalArea) ~ log10(ExposedArea),
+  data = dados_hemi_v1,
+  na.action = na.omit
+))
 
-lm_fit_comp_idor %>%
-  kable(digits = 2) %>%
-  kable_styling()
+tidy(lm(
+  1 / 2 * log10(AvgThickness) + log10(TotalArea) ~ log10(ExposedArea),
+  data = dados_hemi_v1,
+  na.action = na.omit
+), conf.int = TRUE)
 
-N_subj_diag <- dados_hemi_v1 %>%
-  group_by(Diagnostic) %>%
-  summarise(N_SUBJ = n_distinct(SUBJ))
+paste(
+  "Student's t test comapring slope with theoretical value 1.25. t = ",
+  signif(abs(coef(summary(
+    lm(
+      1 / 2 * log10(AvgThickness) + log10(TotalArea) ~ log10(ExposedArea),
+      data = dados_hemi_v1,
+      na.action = na.omit
+    )
+  ))[2, 1] - 1.25) / coef(summary(
+    lm(
+      1 / 2 * log10(AvgThickness) + log10(TotalArea) ~ log10(ExposedArea),
+      data = dados_hemi_v1,
+      na.action = na.omit
+    )
+  ))[2, 2], 3) 
+)
+paste(
+  "Student's t test comapring slope with theoretical value 1.25. p value = ",
+  signif(test_coef(
+    lm(
+      1 / 2 * log10(AvgThickness) + log10(TotalArea) ~ log10(ExposedArea),
+      data = dados_hemi_v1,
+      na.action = na.omit
+    ),
+    2,
+    1.25
+  ),3)
+)
+```
 
+# Figure 1 A
+
+```{r}
 fig2a <- ggplot(dados_hemi_v1,
                 aes(
                   log10(ExposedArea),
@@ -326,14 +343,23 @@ fig2a <- ggplot(dados_hemi_v1,
        y = expression('log'[10] * 'A'['T'] * sqrt('T'))) +
   guides(alpha = "none") +
   theme_pubr() +
-  theme(
-    axis.title = element_text(size = 11),
-    axis.text = element_text(size = 10),
-    text = element_text(size = 10)
-  ) +
   scale_x_continuous(limits = c(4.45, 4.65))
+```
 
-fig2b <- ggplot(
+```{r}
+lm_fit_comp_idor <- dados_hemi_v1 %>%
+  group_by(Diagnostic) %>%
+  do(fit_comp_idor = tidy(lm(log10(sqrt(AvgThickness)*TotalArea) ~ log10(ExposedArea), data = ., na.action = na.omit), conf.int = TRUE)) %>% unnest()
+
+lm_fit_comp_idor %>%
+  kable(digits = 2) %>%
+  kable_styling()
+
+N_subj_diag <- dados_hemi_v1 %>%
+  group_by(Diagnostic) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+
+ggplot(
   data = filter(lm_fit_comp_idor, term == "log10(ExposedArea)"),
   aes(x = Diagnostic,
       y = estimate, color = Diagnostic)
@@ -343,20 +369,195 @@ fig2b <- ggplot(
   geom_hline(yintercept = 1.25, linetype = "dashed") +
   theme_pubr() +
   labs(y = "Slope") +
-  theme(
-    axis.title = element_text(size = 11),
-    axis.text = element_text(size = 10),
-    text = element_text(size = 10),
-    legend.position = "none"
+  theme(legend.position = "none"
   )
-# +  geom_text(aes(label = N_subj_diag$N_SUBJ), nudge_y = 0.3)
+```
 
-fig2a
-fig2b
+## Correlation within cortical fodling variables and age healthy subjects)
 
-paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor t deste teste?", abs(coef(summary(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit)))[2,1] - 1.25)/coef(summary(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit)))[2,2])
-paste("Verificando a diferenca entre o coeficiente obtido para a Sample e o teorico de 5/4, qual o valor p deste teste?", test_coef(lm(1 / 2 * logAvgThickness + logTotalArea ~ logExposedArea, data = dados_hemi_v1, na.action = na.omit), 2, 1.25))
+### Slope alpha (SI Appendix, Text SI)
+```{r}
+lm_Age <-
+  filter(
+    dados_hemi_v1,
+    Diagnostic == "CTL",
+    Age_interval != "[40,45)",
+    Age_interval != "[80,85)"
+  ) %>%
+  group_by(Age_interval) %>%
+  do(fit_Age = tidy(
+    lm(
+      1 / 2 * log10(AvgThickness) +  log10(TotalArea) ~  log10(ExposedArea),
+      data = .,
+      na.action = na.omit
+    ),
+    conf.int = TRUE
+  )) %>%
+  unnest(cols = c(fit_Age))
 
+N_subj <- filter(dados_hemi_v1, Diagnostic == "CTL", Age_interval != "[40,45)", Age_interval != "[80,85)") %>%
+  group_by(Age_interval) %>%
+  summarise(N_SUBJ = n_distinct(SUBJ))
+                                           
+fig1a <- ggplot(
+  data = filter(lm_Age, term == "log10(ExposedArea)"),
+  aes(
+  x = Age_interval,
+  y = estimate
+  )
+  ) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_hline(yintercept = 1.25, linetype = "dashed") +
+  geom_text(aes(label = N_subj$N_SUBJ), nudge_y = 0.6) +
+  theme_pubr() +
+  labs(y = "Slope", x = "Age [years]") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+lm_Age <- lm_Age %>% mutate(Age_interval = as.double((str_sub(Age_interval,2,3))))
+
+cor.test(filter(lm_Age, term == "log10(ExposedArea)")$estimate, filter(lm_Age, term == "log10(ExposedArea)")$Age_interval)
+```
+
+### K (Figure 1 B)
+
+```{r}
+fig1b <- ggplot(data = dados_hemi_v1, aes(Age, K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() +
+    guides(alpha = "none", color = "none", fill = "none") + 
+  labs(x = "Age [years]")
+
+fig1b
+```
+
+```{r}
+cor.test(filter(dados_hemi_v1, Diagnostic == "CTL")$K, filter(dados_hemi_v1, Diagnostic == "CTL")$Age)
+```
+### S
+```{r}
+ggplot(data = dados_hemi_v1, aes(Age, S, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() +
+    guides(alpha = "none", color = "none", fill = "none") + 
+  labs(x = "Age [years]")
+```
+
+```{r}
+cor.test(filter(dados_hemi_v1, Diagnostic == "CTL")$S, filter(dados_hemi_v1, Diagnostic == "CTL")$Age)
+```
+
+### I
+```{r}
+ggplot(data = dados_hemi_v1, aes(Age, I, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() +
+    guides(alpha = "none", color = "none", fill = "none") + 
+  labs(x = "Age [years]")
+```
+
+```{r}
+cor.test(filter(dados_hemi_v1, Diagnostic == "CTL")$I, filter(dados_hemi_v1, Diagnostic == "CTL")$Age)
+```
+
+# Figure 1
+
+```{r, fig.cap="Age and diagnostic effects in cortical gyrification. We included 77~CTL (blue), 33~MCI (green) and 13~AD (red) subjects (A) Linear fitting for the model variables in each Diagnostic group, CTL (adjusted R²=0.85, p<0.0001), MCI (adjusted R²=0.88, p<0.0001), and AD (adjusted R²=0.86, p<0.0001). As the severity of the disease increase, the linear tendency is downshifted, with smaller linear intercepts (K). (B) K linear tendency with age with its 95% CI for the three diagnostics groups: AD (adjusted R²=0.026, p=0.21), MCI (adjusted R²=0.044, p=0.0051) and CTL (adjusted R²=0.097, p<0.0001.)"}
+fig1_alt_2 <-
+  ggarrange(
+    fig2a,
+    fig1b,
+    labels = c("A", "B"),
+    ncol = 1,
+    common.legend = TRUE,
+    legend = "bottom"
+  )
+fig1_alt_2
+
+```
+
+## Diagnostic discrimination and prediction.
+### K difference
+
+```{r}
+aov <- aov(K ~ Diagnostic, data = dados_hemi_v1)
+summary(aov)
+TukeyHSD(aov)
+```
+
+### K is reduced with age, as cortical thickness, total area and exposed area
+
+K decrease with age is shown on Figure 1 B.
+Cortical Thickness, Total area and Exposed area:
+```{r}
+T <- ggplot(data = dados_hemi_v1, aes(Age, AvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() +
+    guides(alpha = "none", color = "none", fill = "none") + 
+  labs(x = "Age [years]")
+
+AT <- ggplot(data = dados_hemi_v1, aes(Age, TotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() +
+    guides(alpha = "none", color = "none", fill = "none") + 
+  labs(x = "Age [years]", y = "Total Area 10^-5 ") +
+  scale_y_continuous(
+    labels = function(x)
+      x / 10000)
+
+AE <- ggplot(data = dados_hemi_v1, aes(Age, ExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_pubr() +
+    guides(alpha = "none", color = "none", fill = "none") + 
+  labs(x = "Age [years]", y = "Exposed Area 10^-5 ") +
+  scale_y_continuous(
+    labels = function(x)
+      x / 10000)
+
+
+ggarrange(T, AT, AE, ncol = 1, common.legend = TRUE, legend = "bottom")
+```
+
+### Lobes diagnostic discrimination
+
+#### Frontal Lobe
+
+```{r}
+aov <- aov(K ~ Diagnostic, data = filter(dados_lobos_v1, ROI == "F"))
+summary(aov)
+TukeyHSD(aov)
+```
+#### Occipital Lobe
+
+```{r}
+aov <- aov(K ~ Diagnostic, data = filter(dados_lobos_v1, ROI == "O"))
+summary(aov)
+TukeyHSD(aov)
+```
+
+#### Parietal Lobe
+
+```{r}
+aov <- aov(K ~ Diagnostic, data = filter(dados_lobos_v1, ROI == "P"))
+summary(aov)
+TukeyHSD(aov)
+```
+
+#### Temporal Lobe
+
+```{r}
+aov <- aov(K ~ Diagnostic, data = filter(dados_lobos_v1, ROI == "T"))
+summary(aov)
+TukeyHSD(aov)
 ```
 
 ## Influencia do envelhecimento e diagnostico na girificacao
@@ -375,213 +576,7 @@ summary(aov_Age)
 #TukeyHSD(aov_Age)
 ```
 
-```{r eval=FALSE, include=FALSE}
-ggplot(data = dados_hemi_v1, aes(Age, AvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  stat_cor() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr() +
-  guides(alpha = "none")
 
-ggplot(data = dados_hemi_v1, aes(Age, logAvgThickness, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  stat_cor() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr() +
-  guides(alpha = "none")
-
-ggplot(data = dados_hemi_v1, aes(Age, logAvgThickness_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  stat_regline_equation() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr() +
-  guides(alpha = "none")
-
-ggplot(data = dados_hemi_v1, aes(Age, TotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  stat_cor() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr() +
-  guides(alpha = "none")
-
-ggplot(data = dados_hemi_v1, aes(Age, logTotalArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  stat_cor() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr() +
-  guides(alpha = "none")
-
-ggplot(data = dados_hemi_v1, aes(Age, logTotalArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  stat_regline_equation() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
-
-ggplot(data = dados_hemi_v1, aes(Age, ExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_cor() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
-
-ggplot(data = dados_hemi_v1, aes(Age, logExposedArea, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_cor() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
-
-ggplot(data = dados_hemi_v1, aes(Age, logExposedArea_age_decay, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() + stat_regline_equation() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
-
-ggplot(data = filter(dados_hemi_v1, Diagnostic == "CTL"), aes(logExposedArea, 1/2*logAvgThickness + logTotalArea, color = Age_interval, fill = Age_interval)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr()
-
-```
-
-```{r envelhecimento, echo=FALSE, messAge=FALSE, warning=FALSE}
-
-lm_Age <- filter(dados_hemi_v1, Diagnostic == "CTL", Age_interval != "[40,45)", Age_interval != "[80,85)") %>%
-  group_by(Age_interval) %>%
-  do(fit_Age = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int= TRUE)) %>% unnest(cols = c(fit_Age))
-
-N_subj <- filter(dados_hemi_v1, Diagnostic == "CTL", Age_interval != "[40,45)", Age_interval != "[80,85)") %>%
-  group_by(Age_interval) %>%
-  summarise(N_SUBJ = n_distinct(SUBJ))
-                                           
-fig1a <- ggplot(
-  data = filter(lm_Age, term == "logExposedArea"),
-  aes(
-  x = Age_interval,
-  y = estimate
-  )
-  ) +
-  geom_point() +
-  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
-  geom_smooth(method = "lm", se = TRUE) +
-  geom_hline(yintercept = 1.25, linetype = "dashed") +
-  geom_text(aes(label = N_subj$N_SUBJ), nudge_y = 0.6) +
-  theme_pubr() +
-  labs(y = "Slope", x = "Age [years]") +
-  theme(axis.title = element_text(size = 11),
-    axis.text = element_text(size = 10),
-    text = element_text(size = 10),
-    axis.text.x = element_text(angle = 45, hjust = 1))
-
-fig1a
-
-fig1a_alt <- ggplot(
-  data = filter(lm_Age, term == "logExposedArea"),
-  aes(
-  x = Age_interval,
-  y = estimate
-  )
-  ) +
-  geom_point() +
-  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
-  geom_smooth(method = "lm", se = TRUE) +
-  geom_hline(yintercept = 1.25, linetype = "dashed") +
-  theme_pubr() +
-  labs(y = "Slope", x = "Age [years]") +
-  theme(axis.title = element_text(size = 11),
-    axis.text = element_text(size = 10),
-    text = element_text(size = 10),
-    axis.text.x = element_text(angle = 45, hjust = 1))
-
-
-Age_Coef_term <- filter(lm_Age, term == "logExposedArea")
-
-Age_coef_aov <- (kruskal.test(estimate ~ Age_interval, data = Age_Coef_term))
-Age_coef_aov
-
-Age_coef_aov_k <- (aov(K ~ Age_interval, data = dados_hemi_v1))
-summary(Age_coef_aov_k)
-Age_coef_aov_K_TK <- TukeyHSD(Age_coef_aov_k)
-
-lm_Age_diag <- dados_hemi_v1 %>%
-  group_by(Diagnostic, 
-           Age_interval) %>%
-  do(fit_Age_diag = tidy(lm(1/2 * logAvgThickness + logTotalArea ~ logExposedArea, data = ., na.action = na.omit), conf.int=TRUE)) %>% unnest()
-
-lm_Age_diag
-
-N_subj_diag <- dados_hemi_v1 %>%
-  group_by(Diagnostic, 
-           Age_interval) %>%
-  summarise(N_SUBJ = n_distinct(SUBJ))
-
-ggplot(
-  data = filter(lm_Age_diag, term == "logExposedArea"),
-  aes(
-  x = Age_interval,
-  y = estimate, color = Diagnostic
-  )
-  ) +
-  geom_point() +
-  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
-  geom_smooth(method = "lm", se = TRUE) +
-  geom_text(aes(label = N_subj_diag$N_SUBJ), nudge_y = 0.6) +
-  geom_hline(yintercept = 1.25, linetype = "dashed") +
-  stat_compare_means(method = "kruskal.test") +
-  theme_pubr() +
-  labs(y = "slope") +
-  facet_grid(Diagnostic ~ . )  +
-  labs(caption = paste(
-  "Todos, apenas 1 visita, N = ",
-  n_distinct(dados_hemi_v1$SUBJ)))
-```
-
-Brain volume:
-```{r}
-
-ggplot(data = dados_hemi_v1, aes(GMvolume, K, alpha = 0.4)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = TRUE, color = "gray") +
-  theme_pubr()
-
-lm_Age <- dados_hemi_v1 %>%
-  group_by(Diagnostic) %>%
-  do(fit_Age = glance(lm(K ~ GMvolume, data = ., na.action = na.omit), conf.int = TRUE)) %>% unnest()
-
-cor.test(x = filter(dados_hemi_v1, Diagnostic == "CTL")$GMvolume, y = filter(dados_hemi_v1, Diagnostic == "CTL")$K)
-
-```
-
-K:
-```{r}
-
-# fig1b <- ggplot(data = dados_hemi_v1, aes(Age, K, color = Diagnostic, fill = Diagnostic, shape = Diagnostic)) +
-#   geom_point() +
-#   geom_smooth(method = "lm", se = TRUE) +
-#   theme_pubr() +
-#   guides(alpha = "none", shape = FALSE) + 
-#   labs(x = "Age in years") +
-#     scale_fill_manual(values=c("#999999", "#666666", "#000000")) + scale_color_manual(values=c("#999999", "#666666", "#000000")) +
-#   theme(axis.title = element_text(size = 11),
-#     axis.text = element_text(size = 10), text = element_text(size = 10))
-
-fig1b <- ggplot(data = dados_hemi_v1, aes(Age, K, color = Diagnostic, fill = Diagnostic, alpha = 0.4)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = TRUE) +
-  theme_pubr() +
-    guides(alpha = "none", color = "none", fill = "none") + 
-  labs(x = "Age [years]") +
-  theme(axis.title = element_text(size = 11),
-    axis.text = element_text(size = 10), text = element_text(size = 10))
-
-fig1b
-
-fig1 <- ggarrange(fig1a, fig1b, labels = c("A","B"), nrow = 2, ncol = 1, font.label = list(size = 11))
-
-fig1_alt_2 <- ggarrange(fig2a, fig1b, labels = c("A", "B"),  ncol = 1, font.label = list(size = 11), common.legend = TRUE, legend = "bottom")
-
-lm_Age <- dados_hemi_v1 %>%
-  group_by(Diagnostic) %>%
-  do(fit_Age = glance(lm(K ~ Age, data = ., na.action = na.omit), conf.int = TRUE)) %>% unnest()
-
-cor.test(x = filter(dados_hemi_v1, Diagnostic == "CTL")$Age, y = filter(dados_hemi_v1, Diagnostic == "CTL")$K)
-
-```
 
 
 I:
@@ -701,11 +696,9 @@ lm_Age <- dados_lobos_v1 %>%
 
 ggplot(
   data = filter(lm_Age, term == "logExposedArea"),
-  aes(
-  x = Age_interval,
-  y = estimate, color = Diagnostic
-  )
-  ) +
+  aes(x = Age_interval,
+      y = estimate, color = Diagnostic)
+) +
   geom_point() + geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) + geom_smooth(method = "lm", se = TRUE) + geom_hline(yintercept = 1.25, linetype = "dashed")  + stat_compare_means(method = "kruskal.test") + theme_pubr() + labs(y = "slope") + facet_grid(ROI ~ Diagnostic) + theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 

@@ -1,4 +1,4 @@
-# CorticalFolding_aging_MCI_AD
+# Independent morphological variables correlate to aging, Mild Cognitive Impairment, and Alzheimer's Disease
 Description of the procedures and analysis present in de Moraes et al., in submission. This manuscript was included as Manuscript 1, **Independent morphological variables correlate to aging, Mild Cognitive Impairment, and Alzheimer's Disease**, at the Doctorate Thesis presented to the Programa de Pós-Graduação em Ciência Médicas at the Instituto D’Or de Pesquisa e Ensino as a partial requirement to obtain the Doctorate Degree.
 
 The part of the data used here cannot be shared due to restrictions of the Ethic Comittee. Data can be shared upon reasonable request to the corresponding author. To fullfil these limitation, we will generate random data to simulate the results.
